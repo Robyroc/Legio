@@ -7,4 +7,6 @@ void translate_ranks(int, MPI_Comm, int*);
 
 void replace_comm(MPI_Comm*);
 
+void agree_and_eventually_replace(int*, MPI_Comm*);
+
 #endif

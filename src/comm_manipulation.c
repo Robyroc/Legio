@@ -33,3 +33,13 @@ void replace_comm(MPI_Comm* cur_comm)
         *cur_comm = new_comm;
     }
 }
+
+void agree_and_eventually_replace(int* rc, MPI_Comm* cur_comm)
+{
+    int flag = (MPI_SUCCESS==*rc);
+    MPIX_Comm_agree(*cur_comm, &flag);
+    if(!flag && *rc == MPI_SUCCESS)
+        *rc = MPIX_ERR_PROC_FAILED;
+    if(*rc != MPI_SUCCESS)
+        replace_comm(cur_comm);
+}

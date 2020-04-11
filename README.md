@@ -23,6 +23,10 @@ As of now, Legio will introduce fault tolerance on the following functions over 
 
  - MPI_Barrier
  - MPI_Bcast
+ - MPI_Send
+ - MPI_Recv
+ - MPI_Allreduce
+ - MPI_Reduce
 
 Support for other calls is under development, as well as support for other communicators.
 ## Configuration
