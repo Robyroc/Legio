@@ -27,6 +27,11 @@ As of now, Legio will introduce fault tolerance on the following functions over 
  - MPI_Recv
  - MPI_Allreduce
  - MPI_Reduce
+ - MPI_Win_create
+ - MPI_Win_free
+ - MPI_Win_fence
+ - MPI_Get
+ - MPI_Put
 
 Support for other calls is under development, as well as support for other communicators.
 ## Configuration
