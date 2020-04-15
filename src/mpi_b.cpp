@@ -7,7 +7,7 @@
 #include "complex_comm.h"
 
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 char errstr[MPI_MAX_ERROR_STRING];
 int len, rc;
@@ -18,11 +18,14 @@ int any_recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status*);
 int MPI_Init(int* argc, char *** argv)
 {
     MPI_Comm temp;
+    int keyval;
     int rc = PMPI_Init(argc, argv);
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
     PMPI_Comm_dup(MPI_COMM_WORLD, &temp);
     cur_complex = new ComplexComm(temp);
     MPI_Comm_set_errhandler(cur_complex->get_comm(), MPI_ERRORS_RETURN);
+    MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
+    cur_complex->set_keyval(keyval);
     return rc;
 }
 
@@ -216,7 +219,10 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
     {
         int rc;
         if(comm == MPI_COMM_WORLD)
+        {
             rc = PMPI_Win_create(base, size, disp_unit, info, cur_complex->get_comm(), win);
+            MPI_Win_set_errhandler(*win, MPI_ERRORS_RETURN);
+        }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
         if (VERBOSE)
@@ -241,8 +247,11 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
 
 int MPI_Win_free(MPI_Win *win)
 {
-    cur_complex->remove_window(*win);
-    return PMPI_Win_free(win);
+    int flag;
+    cur_complex->check_global(*win, &flag);
+    if(flag)
+        cur_complex->remove_window(*win);
+    return MPI_SUCCESS;
 }
 
 int MPI_Win_fence(int assert, MPI_Win win)
@@ -292,12 +301,12 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get done (error: %s)\n", rank, size, errstr);
+        printf("Rank %d / %d: get done (error: %s) flag %d\n", rank, size, errstr, flag);
     }
     return rc;
 }
 
-int MPI_Put(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
+int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
     int rc, flag;
     cur_complex->check_global(win, &flag);
@@ -306,8 +315,11 @@ int MPI_Put(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
         MPI_Win translated = cur_complex->translate_win(win);
         int new_rank;
         translate_ranks(target_rank, cur_complex->get_comm(), &new_rank);
+        printf("%d %d\n", target_rank, new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
+            int rank;
+            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
             HANDLE_PUT_FAIL(cur_complex->get_comm());
         }
         rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp, target_count, target_datatype, translated);
@@ -321,7 +333,7 @@ int MPI_Put(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: put done (error: %s)\n", rank, size, errstr);
+        printf("Rank %d / %d: put done (error: %s) flag %d\n", rank, size, errstr, flag);
     }
     return rc;
 }

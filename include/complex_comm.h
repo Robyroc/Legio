@@ -5,8 +5,6 @@
 #include <list>
 #include <unordered_map>
 
-#define MPI_WIN_GLOB 75
-
 struct FullWindow
 {
     int id;
@@ -27,11 +25,13 @@ class ComplexComm
         MPI_Win translate_win(MPI_Win);
         void check_global(MPI_Win, int*);
         ComplexComm(MPI_Comm);
+        void set_keyval(int);
 
     private:
         MPI_Comm cur_comm;
         std::unordered_map<int, FullWindow> opened_windows;
         int counter;
+        int keyval;
 };
 
 #endif
