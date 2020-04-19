@@ -4,5 +4,8 @@
     #define FAULT_IGNORE 1
     #define FAULT_STOP 2
 
+    #define RANK_SHIFT 3
+    #define RANK_KEEP 4
+
 
 #endif

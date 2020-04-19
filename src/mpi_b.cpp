@@ -220,6 +220,7 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
         int rc;
         if(comm == MPI_COMM_WORLD)
         {
+            MPI_Barrier(MPI_COMM_WORLD);
             rc = PMPI_Win_create(base, size, disp_unit, info, cur_complex->get_comm(), win);
             MPI_Win_set_errhandler(*win, MPI_ERRORS_RETURN);
         }
@@ -261,6 +262,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
         int rc, flag;
         cur_complex->check_global(win, &flag);
         MPI_Win translated = cur_complex->translate_win(win);
+        if(flag)
+            MPI_Barrier(MPI_COMM_WORLD);
         rc = PMPI_Win_fence(assert, translated);
         if (VERBOSE)
         {
@@ -301,7 +304,7 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get done (error: %s) flag %d\n", rank, size, errstr, flag);
+        printf("Rank %d / %d: get done (error: %s)\n", rank, size, errstr);
     }
     return rc;
 }
@@ -315,7 +318,6 @@ int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datat
         MPI_Win translated = cur_complex->translate_win(win);
         int new_rank;
         translate_ranks(target_rank, cur_complex->get_comm(), &new_rank);
-        printf("%d %d\n", target_rank, new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
             int rank;
@@ -333,9 +335,99 @@ int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datat
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: put done (error: %s) flag %d\n", rank, size, errstr, flag);
+        printf("Rank %d / %d: put done (error: %s)\n", rank, size, errstr);
     }
     return rc;
+}
+
+int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
+{
+    while(1)
+    {
+        int rc, actual_root, total_size, fake_rank;
+        MPI_Comm actual_comm;
+        MPI_Comm_size(comm, &total_size);
+        MPI_Comm_rank(comm, &fake_rank);
+        if(comm == MPI_COMM_WORLD)
+        {
+            actual_comm = cur_complex->get_comm();
+            translate_ranks(root, actual_comm, &actual_root);
+            if(actual_root == MPI_UNDEFINED)
+            {
+                HANDLE_GATHER_FAIL(actual_comm);
+            }
+        }
+        else
+        {
+            actual_comm = comm;
+            actual_root = root;
+        }
+
+        PERFORM_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root, actual_comm, total_size, fake_rank, comm);
+
+        gather_handling:
+        if(VERBOSE)
+        {
+            int rank, size;
+            PMPI_Comm_size(MPI_COMM_WORLD, &size);
+            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Error_string(rc, errstr, &len);
+            printf("Rank %d / %d: gather done (error: %s)\n", rank, size, errstr);
+        }
+        if(comm == MPI_COMM_WORLD)
+        {
+            agree_and_eventually_replace(&rc, cur_complex);
+            if(rc == MPI_SUCCESS)
+                return rc;
+        }
+        else
+            return rc;
+    }
+}
+
+int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
+{
+    while(1)
+    {
+        int rc, actual_root, total_size, fake_rank;
+        MPI_Comm actual_comm;
+        MPI_Comm_size(comm, &total_size);
+        MPI_Comm_rank(comm, &fake_rank);
+        if(comm == MPI_COMM_WORLD)
+        {
+            actual_comm = cur_complex->get_comm();
+            translate_ranks(root, actual_comm, &actual_root);
+            if(actual_root == MPI_UNDEFINED)
+            {
+                HANDLE_SCATTER_FAIL(actual_comm);
+            }
+        }
+        else
+        {
+            actual_comm = comm;
+            actual_root = root;
+        }
+
+        PERFORM_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root, actual_comm, total_size, fake_rank, comm);
+
+        scatter_handling:
+        if(VERBOSE)
+        {
+            int rank, size;
+            PMPI_Comm_size(MPI_COMM_WORLD, &size);
+            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Error_string(rc, errstr, &len);
+            printf("Rank %d / %d: scatter done (error: %s)\n", rank, size, errstr);
+        }
+        if(comm == MPI_COMM_WORLD)
+        {
+            agree_and_eventually_replace(&rc, cur_complex);
+            if(rc == MPI_SUCCESS)
+                return rc;
+        }
+        else
+            return rc;
+    }
 }
 
 int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status * status)

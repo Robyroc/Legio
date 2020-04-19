@@ -32,6 +32,8 @@ As of now, Legio will introduce fault tolerance on the following functions over 
  - MPI_Win_fence
  - MPI_Get
  - MPI_Put
+ - MPI_Scatter
+ - MPI_Gather
 
 Support for other calls is under development, as well as support for other communicators.
 ## Configuration

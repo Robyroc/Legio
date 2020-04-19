@@ -10,6 +10,10 @@
     #define REDUCE_FAIL_POLICY          FAULT_IGNORE
     #define GET_FAIL_POLICY             FAULT_STOP
     #define PUT_FAIL_POLICY             FAULT_IGNORE
+    #define GATHER_FAIL_POLICY          FAULT_IGNORE
+    #define GATHER_APPROACH             RANK_KEEP
+    #define SCATTER_FAIL_POLICY         FAULT_STOP
+    #define SCATTER_APPROACH            RANK_KEEP
 
 
 
@@ -63,5 +67,64 @@
     #else
         #define HANDLE_PUT_FAIL(C) raise(SIGINT)
     #endif
+
+    #if GATHER_FAIL_POLICY == FAULT_IGNORE
+        #define HANDLE_GATHER_FAIL(C) ({\
+            rc = MPI_SUCCESS;\
+            goto gather_handling;})
+    #else
+        #define HANDLE_GATHER_FAIL(C) raise(SIGINT)
+    #endif
+
+    #if SCATTER_FAIL_POLICY == FAULT_IGNORE
+        #define HANDLE_SCATTER_FAIL(C) ({\
+            rc = MPI_SUCCESS;\
+            goto scatter_handling;})
+    #else
+        #define HANDLE_SCATTER_FAIL(C) raise(SIGINT)
+    #endif
+
+
+    #if GATHER_APPROACH == RANK_SHIFT
+        #define PERFORM_GATHER(A, B, C, D, E, F, G, H, I, J, K) rc = PMPI_Gather(A, B, C, D, E, F, G, H)
+
+    #else
+        #define PERFORM_GATHER(SENDBUF, SENDCOUNT, SENDTYPE, RECVBUF, RECVCOUNT, RECVTYPE, ROOT, COMM, TOTALSIZE, FAKERANK, FAKECOMM) ({\
+            int type_size, cur_rank;\
+            MPI_Win win;\
+            MPI_Type_size(RECVTYPE, &type_size);\
+            MPI_Comm_rank(COMM, &cur_rank);\
+            if(cur_rank == ROOT)\
+                MPI_Win_create(RECVBUF, TOTALSIZE * RECVCOUNT * type_size, type_size, MPI_INFO_NULL, FAKECOMM, &win);\
+            else\
+                MPI_Win_create(RECVBUF, 0, type_size, MPI_INFO_NULL, FAKECOMM, &win);\
+            MPI_Win_fence(0, win);\
+            MPI_Put(SENDBUF, SENDCOUNT, SENDTYPE, ROOT, FAKERANK * RECVCOUNT, RECVCOUNT, RECVTYPE, win);\
+            MPI_Win_fence(0, win);\
+            MPI_Win_free(&win);\
+            rc = MPI_SUCCESS;})
+    #endif
+
+    #if SCATTER_APPROACH == RANK_SHIFT
+        #define PERFORM_SCATTER(A, B, C, D, E, F, G, H, I, J, K) rc = PMPI_Scatter(A, B, C, D, E, F, G, H)
+
+    #else
+        #define PERFORM_SCATTER(SENDBUF, SENDCOUNT, SENDTYPE, RECVBUF, RECVCOUNT, RECVTYPE, ROOT, COMM, TOTALSIZE, FAKERANK, FAKECOMM) ({\
+            int type_size, cur_rank;\
+            MPI_Win win;\
+            MPI_Type_size(RECVTYPE, &type_size);\
+            MPI_Comm_rank(COMM, &cur_rank);\
+            if(cur_rank == ROOT)\
+                MPI_Win_create((void *) SENDBUF, TOTALSIZE * SENDCOUNT * type_size, type_size, MPI_INFO_NULL, FAKECOMM, &win);\
+            else\
+                MPI_Win_create((void *) SENDBUF, 0, type_size, MPI_INFO_NULL, FAKECOMM, &win);\
+            MPI_Win_fence(0, win);\
+            MPI_Get(RECVBUF, RECVCOUNT, RECVTYPE, ROOT, FAKERANK * SENDCOUNT, SENDCOUNT, SENDTYPE, win);\
+            MPI_Win_fence(0, win);\
+            MPI_Win_free(&win);\
+            rc = MPI_SUCCESS;})
+    #endif
+
+
 
 #endif

@@ -18,8 +18,7 @@ void ComplexComm::add_window(void* base, MPI_Aint size, int disp_unit, MPI_Info 
     std::unordered_map<int, FullWindow>::iterator res = opened_windows.find(window.id);
     MPI_Win_set_attr(win, keyval, &(res->second.id));
     MPI_Win_set_attr(res->second.win, keyval, &(res->second.id));
-    //printf("PROBLEMO 1 %d %d %d %d %d %d\n", res->second.id, res->second.base, res->second.size, res->second.disp_unit, res->second.info, &(res->second.win));
-}
+}    
 
 MPI_Win ComplexComm::translate_win(MPI_Win win)
 {
