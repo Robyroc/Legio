@@ -1,7 +1,10 @@
 # Legio
 Library to introduce fault-tolerance in MPI in the form of graceful degradation
 
-> Bella citazione in latino che rende l'idea + traduzione in inglese
+> We are led on by courage, and obedience, and fortitude, which [...] does not desert us in our ill fortune.
+>
+> -- <cite>Tito Flavio Giuseppe</cite>
+
 ## Overview
 Legio is a library that introduces fault-tolerance in MPI applications in the form of graceful degradation. It's designed for embarrassingly parallel applications. It is based on [ULFM](https://fault-tolerance.org/2017/11/03/ulfm-2-0/).
 ## Usage
@@ -28,6 +31,7 @@ As of now, Legio will introduce fault tolerance on the following functions over 
  - MPI_Allreduce
  - MPI_Reduce
  - MPI_Win_create
+ - MPI_Win_allocate
  - MPI_Win_free
  - MPI_Win_fence
  - MPI_Get

@@ -3,7 +3,9 @@ ULFM_FILE = $(ULFM_PREFIX)/bin/mpirun
 NAME = name
 CC = $(ULFM_PREFIX)/bin/mpicc
 CXX = $(ULFM_PREFIX)/bin/mpicxx
-CFLAGS = -Wall -O3 $(INCFLAGS)
+COMMONFLAGS = -Wall -O3 $(INCFLAGS)
+CFLAGS = $(COMMONFLAGS)
+CPPFLAGS = -std=c++11 $(COMMONFLAGS)
 LDFLAGS = -lm -L$(ULFM_PREFIX)/lib
 SRCDIR = ./src
 INCFLAGS = -I$(ULFM_PREFIX)/include -I./include
@@ -25,19 +27,19 @@ TUTORIALNAME = tutorial
 all: $(ULFM_FILE) $(NAME)
 
 $(TUTORIALNAME): $(ULFM_FILE) $(TESTSRC) 
-	$(CXX) $(word 2,$^) -o $@ $(CFLAGS) $(LDFLAGS)
+	$(CXX) $(word 2,$^) -o $@ $(CPPFLAGS) $(LDFLAGS)
 
 $(TESTOBJ): $(TESTSRC)
 	$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
 $(NAME): $(OBJECTS)
-	$(CXX) $^ -o $@ $(CFLAGS) $(LDFLAGS)
+	$(CXX) $^ -o $@ $(CPPFLAGS) $(LDFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
-	$(CXX) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
+	$(CXX) -c $< -o $@ $(CPPFLAGS) $(LDFLAGS)
 
 $(ULFM_FILE):
 	git clone --recursive https://bitbucket.org/icldistcomp/ulfm2/src/ulfm/
