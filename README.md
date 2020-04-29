@@ -3,7 +3,7 @@ Library to introduce fault-tolerance in MPI in the form of graceful degradation
 
 > We are led on by courage, and obedience, and fortitude, which [...] does not desert us in our ill fortune.
 >
-> -- <cite>Tito Flavio Giuseppe</cite>
+> -- <cite>Titus Flavius Josephus</cite>
 
 ## Overview
 Legio is a library that introduces fault-tolerance in MPI applications in the form of graceful degradation. It's designed for embarrassingly parallel applications. It is based on [ULFM](https://fault-tolerance.org/2017/11/03/ulfm-2-0/).
@@ -38,6 +38,27 @@ As of now, Legio will introduce fault tolerance on the following functions over 
  - MPI_Put
  - MPI_Scatter
  - MPI_Gather
+ - MPI_File_open
+ - MPI_File_close
+ - MPI_File_read_at
+ - MPI_File_write_at
+ - MPI_File_read_at_all
+ - MPI_File_write_at_all
+ - MPI_File_seek
+ - MPI_File_get_position
+ - MPI_File_seek_shared
+ - MPI_File_get_position_shared
+ - MPI_File_read_all
+ - MPI_File_write_all
+ - MPI_File_set_view
+ - MPI_File_read
+ - MPI_File_write
+ - MPI_File_read_shared
+ - MPI_File_write_shared
+ - MPI_File_read_ordered
+ - MPI_File_write_ordered
+
+Last two calls need some refinement to adjust position in case of fault.
 
 Support for other calls is under development, as well as support for other communicators.
 ## Configuration

@@ -19,7 +19,10 @@ TESTDIR = ./testsrc
 TESTSRC = $(TESTDIR)/$(TEST).c
 TESTOBJ = $(OBJDIR)/$(TEST).o
 TUTORIALNAME = tutorial
-
+LEGIOTESTCSRC = $(wildcard $(LEGIOTESTDIR)/*.c)
+LEGIOTESTCPPSRC = $(wildcard $(LEGIOTESTDIR)/*.cpp)
+LEGIOTESTOBJECTS = $(patsubst $(LEGIOTESTDIR)/%.c, $(OBJDIR)/%.o, $(LEGIOTESTCSRC))
+LEGIOTESTOBJECTS += $(patsubst $(LEGIOTESTDIR)/%.cpp, $(OBJDIR)/%.o, $(LEGIOTESTCPPSRC))
 
 
 .PHONY = all clean install uninstall run test
@@ -57,6 +60,16 @@ install: all
 	cp $(NAME) $(BINDIR)
 uninstall:
 	rm -f $(BINDIR)/$(NAME)
+
+legio_test: $(LEGIOTESTOBJECTS) $(OBJECTS)
+	echo  $(LEGIOTESTOBJECTS)
+	$(CXX) $^ -o $(NAME) $(CPPFLAGS) $(LDFLAGS)
+
+$(OBJDIR)/%.o: $(LEGIOTESTDIR)/%.c
+	$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
+
+$(OBJDIR)/%.o: $(LEGIOTESTDIR)/%.cpp
+	$(CXX) -c $< -o $@ $(CPPFLAGS) $(LDFLAGS)
 
 run: all
 	$(ULFM_PREFIX)/bin/mpiexec $(NAME) 
