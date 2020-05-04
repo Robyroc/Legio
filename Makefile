@@ -1,4 +1,4 @@
-ULFM_PREFIX ?= ./ulfm/build
+ULFM_PREFIX ?= $(CURDIR)/./ulfm/build
 ULFM_FILE = $(ULFM_PREFIX)/bin/mpirun
 NAME = name
 CC = $(ULFM_PREFIX)/bin/mpicc
@@ -25,9 +25,12 @@ LEGIOTESTOBJECTS = $(patsubst $(LEGIOTESTDIR)/%.c, $(OBJDIR)/%.o, $(LEGIOTESTCSR
 LEGIOTESTOBJECTS += $(patsubst $(LEGIOTESTDIR)/%.cpp, $(OBJDIR)/%.o, $(LEGIOTESTCPPSRC))
 
 
-.PHONY = all clean install uninstall run test
+.PHONY = all clean install uninstall run test ulfm
 
 all: $(ULFM_FILE) $(NAME)
+
+ulfm: $(ULFM_FILE)
+	@echo $(CC)
 
 $(TUTORIALNAME): $(ULFM_FILE) $(TESTSRC) 
 	$(CXX) $(word 2,$^) -o $@ $(CPPFLAGS) $(LDFLAGS)
