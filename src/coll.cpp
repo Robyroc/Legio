@@ -5,32 +5,22 @@
 #include "comm_manipulation.h"
 #include "configuration.h"
 #include "complex_comm.h"
+#include "multicomm.h"
 
-
-int VERBOSE = 0;
-
-char errstr[MPI_MAX_ERROR_STRING];
-int len;
-ComplexComm *cur_complex;
-
-int MPI_Init(int* argc, char *** argv)
-{
-    MPI_Comm temp;
-    int rc = PMPI_Init(argc, argv);
-    MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    PMPI_Comm_dup(MPI_COMM_WORLD, &temp);
-    cur_complex = new ComplexComm(temp);
-    MPI_Comm_set_errhandler(cur_complex->get_comm(), MPI_ERRORS_RETURN);
-    return rc;
-}
+extern Multicomm *cur_comms;
+extern int VERBOSE;
+extern char errstr[MPI_MAX_ERROR_STRING];
+extern int len;
 
 int MPI_Barrier(MPI_Comm comm)
 {
     while(1)
     {
-        int rc;
-        if(comm == MPI_COMM_WORLD)
-            rc = PMPI_Barrier(cur_complex->get_comm());
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
+            rc = PMPI_Barrier(translated->get_comm());
         else
             rc = PMPI_Barrier(comm);
         if (VERBOSE)
@@ -41,10 +31,11 @@ int MPI_Barrier(MPI_Comm comm)
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: barrier done (error: %s)\n", rank, size, errstr);
         }
-        if(rc == MPI_SUCCESS || comm != MPI_COMM_WORLD)
+        
+        if(rc == MPI_SUCCESS || !flag)
             return rc;
         else
-            replace_comm(cur_complex);
+            replace_comm(translated);
     }
 }
 
@@ -52,16 +43,18 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 {
     while(1)
     {
-        int rc;
-        if(comm == MPI_COMM_WORLD)
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
         {
             int root_rank;
-            translate_ranks(root, cur_complex->get_comm(), &root_rank);
+            translate_ranks(root, translated->get_comm(), &root_rank);
             if(root_rank == MPI_UNDEFINED)
             {
-                HANDLE_BCAST_FAIL(cur_complex->get_comm());
+                HANDLE_BCAST_FAIL(translated->get_comm());
             }
-            rc = PMPI_Bcast(buffer, count, datatype, root_rank, cur_complex->get_comm());
+            rc = PMPI_Bcast(buffer, count, datatype, root_rank, translated->get_comm());
         }
         else
             rc = PMPI_Bcast(buffer, count, datatype, root, comm);
@@ -74,9 +67,9 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: bcast done (error: %s)\n", rank, size, errstr);
         }
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            agree_and_eventually_replace(&rc, cur_complex);
+            agree_and_eventually_replace(&rc, translated);
             if(rc == MPI_SUCCESS)
                 return rc;
         }
@@ -89,9 +82,11 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
 {
     while(1)
     {
-        int rc;
-        if(comm == MPI_COMM_WORLD)
-            rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, cur_complex->get_comm());
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
+            rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
         else
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
         if (VERBOSE)
@@ -102,10 +97,10 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: allreduce done (error: %s)\n", rank, size, errstr);
         }
-        if(rc == MPI_SUCCESS || comm != MPI_COMM_WORLD)
+        if(rc == MPI_SUCCESS || !flag)
             return rc;
         else
-            replace_comm(cur_complex);
+            replace_comm(translated);
     }
 }
 
@@ -113,16 +108,18 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
 {
     while(1)
     {
-        int rc;
-        if(comm == MPI_COMM_WORLD)
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
         {
             int root_rank;
-            translate_ranks(root, cur_complex->get_comm(), &root_rank);
+            translate_ranks(root, translated->get_comm(), &root_rank);
             if(root_rank == MPI_UNDEFINED)
             {
-                HANDLE_REDUCE_FAIL(cur_complex->get_comm());
+                HANDLE_REDUCE_FAIL(translated.get_comm());
             }
-            rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, cur_complex->get_comm());
+            rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, translated->get_comm());
         }
         else
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
@@ -135,9 +132,9 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: reduce done (error: %s)\n", rank, size, errstr);
         }
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            agree_and_eventually_replace(&rc, cur_complex);
+            agree_and_eventually_replace(&rc, translated);
             if(rc == MPI_SUCCESS)
                 return rc;
         }
@@ -150,13 +147,15 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 {
     while(1)
     {
-        int rc, actual_root, total_size, fake_rank;
+        int rc, actual_root, total_size, fake_rank, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            actual_comm = cur_complex->get_comm();
+            actual_comm = translated->get_comm();
             translate_ranks(root, actual_comm, &actual_root);
             if(actual_root == MPI_UNDEFINED)
             {
@@ -180,9 +179,9 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: gather done (error: %s)\n", rank, size, errstr);
         }
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            agree_and_eventually_replace(&rc, cur_complex);
+            agree_and_eventually_replace(&rc, translated);
             if(rc == MPI_SUCCESS)
                 return rc;
         }
@@ -195,13 +194,15 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
 {
     while(1)
     {
-        int rc, actual_root, total_size, fake_rank;
+        int rc, actual_root, total_size, fake_rank, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            actual_comm = cur_complex->get_comm();
+            actual_comm = translated->get_comm();
             translate_ranks(root, actual_comm, &actual_root);
             if(actual_root == MPI_UNDEFINED)
             {
@@ -225,9 +226,9 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: scatter done (error: %s)\n", rank, size, errstr);
         }
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            agree_and_eventually_replace(&rc, cur_complex);
+            agree_and_eventually_replace(&rc, translated);
             if(rc == MPI_SUCCESS)
                 return rc;
         }

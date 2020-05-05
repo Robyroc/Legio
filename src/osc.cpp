@@ -5,8 +5,9 @@
 #include "comm_manipulation.h"
 #include "configuration.h"
 #include "complex_comm.h"
+#include "multicomm.h"
 
-extern ComplexComm *cur_complex;
+extern Multicomm *cur_comms;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
@@ -15,18 +16,20 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
 {
     while(1)
     {
-        int rc;
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
         std::function<int(MPI_Comm, MPI_Win *)> func;
-        if(comm == MPI_COMM_WORLD)
+        if(flag)
         {
-            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Barrier(translated->get_comm());
             func = [base, size, disp_unit, info] (MPI_Comm c, MPI_Win* w) -> int
             {
                 int rc = PMPI_Win_create(base, size, disp_unit, info, c, w);
                 MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
                 return rc;
             };
-            rc = func(cur_complex->get_comm(), win);
+            rc = func(translated->get_comm(), win);
         }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
@@ -38,15 +41,15 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: win created (error: %s)\n", rank, size, errstr);
         }
-        if(comm != MPI_COMM_WORLD)
+        if(!flag)
             return rc;
         else if(rc == MPI_SUCCESS)
         {
-            cur_complex->add_structure(*win, func);
+            cur_comms->add_window(translated, *win, func);
             return rc;
         }
         else
-            replace_comm(cur_complex);
+            replace_comm(translated);
     }
 }
 
@@ -54,18 +57,20 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
 {
     while(1)
     {
-        int rc;
+        int rc, flag;
         std::function<int(MPI_Comm, MPI_Win *)> func;
-        if(comm == MPI_COMM_WORLD)
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
         {
-            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Barrier(translated->get_comm());
             func = [size, disp_unit, info, baseptr] (MPI_Comm c, MPI_Win* w) -> int
             {
                 int rc = PMPI_Win_allocate(size, disp_unit, info, c, baseptr, w);
                 MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
                 return rc;
             };
-            rc = func(cur_complex->get_comm(), win);
+            rc = func(translated->get_comm(), win);
         }
         else
             rc = PMPI_Win_allocate(size, disp_unit, info, comm, baseptr, win);
@@ -77,24 +82,21 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: win allocated (error: %s)\n", rank, size, errstr);
         }
-        if(comm != MPI_COMM_WORLD)
+        if(!flag)
             return rc;
         else if(rc == MPI_SUCCESS)
         {
-            cur_complex->add_structure(*win, func);
+            cur_comms->add_window(translated, *win, func);
             return rc;
         }
         else
-            replace_comm(cur_complex);
+            replace_comm(translated);
     }
 }
 
 int MPI_Win_free(MPI_Win *win)
 {
-    int flag;
-    cur_complex->check_global(*win, &flag);
-    if(flag)
-        cur_complex->remove_structure(*win);
+    cur_comms->remove_window(win);
     return MPI_SUCCESS;
 }
 
@@ -102,12 +104,16 @@ int MPI_Win_fence(int assert, MPI_Win win)
 {
     while(1)
     {
-        int rc, flag;
-        cur_complex->check_global(win, &flag);
-        MPI_Win translated = cur_complex->translate_structure(win);
-        if(flag)
-            MPI_Barrier(MPI_COMM_WORLD);
-        rc = PMPI_Win_fence(assert, translated);
+        int rc;
+        ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+        if(comm != NULL)
+        {
+            MPI_Win translated = comm->translate_structure(win);
+            MPI_Barrier(comm->get_comm());
+            rc = PMPI_Win_fence(assert, translated);
+        }
+        else
+            rc = PMPI_Win_fence(assert, win);
         if (VERBOSE)
         {
             int rank, size;
@@ -116,25 +122,25 @@ int MPI_Win_fence(int assert, MPI_Win win)
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: fence done (error: %s)\n", rank, size, errstr);
         }
-        if(rc == MPI_SUCCESS || !flag)
+        if(rc == MPI_SUCCESS || comm == NULL)
             return rc;
         else
-            replace_comm(cur_complex);
+            replace_comm(comm);
     }
 }
 
 int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
-    int rc, flag;
-    cur_complex->check_global(win, &flag);
-    if(flag)
+    int rc;
+    ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+    if(comm != NULL)
     {
-        MPI_Win translated = cur_complex->translate_structure(win);
+        MPI_Win translated = comm->translate_structure(win);
         int new_rank;
-        translate_ranks(target_rank, cur_complex->get_comm(), &new_rank);
+        translate_ranks(target_rank, comm->get_comm(), &new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
-            HANDLE_GET_FAIL(cur_complex->get_comm());
+            HANDLE_GET_FAIL(comm->get_comm());
         }
         rc = PMPI_Get(origin_addr, origin_count, origin_datatype, new_rank, target_disp, target_count, target_datatype, translated);
     }
@@ -154,18 +160,16 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
 
 int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
-    int rc, flag;
-    cur_complex->check_global(win, &flag);
-    if(flag)
+    int rc;
+    ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+    if(comm != NULL)
     {
-        MPI_Win translated = cur_complex->translate_structure(win);
+        MPI_Win translated = comm->translate_structure(win);
         int new_rank;
-        translate_ranks(target_rank, cur_complex->get_comm(), &new_rank);
+        translate_ranks(target_rank, comm->get_comm(), &new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
-            int rank;
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            HANDLE_PUT_FAIL(cur_complex->get_comm());
+            HANDLE_PUT_FAIL(comm->get_comm());
         }
         rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp, target_count, target_datatype, translated);
     }

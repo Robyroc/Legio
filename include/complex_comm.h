@@ -28,8 +28,8 @@ class ComplexComm
         MPI_Comm get_comm();
         MPI_Win translate_structure(MPI_Win);
         MPI_File translate_structure(MPI_File);
-        void check_global(MPI_Win, int*);
-        void check_global(MPI_File, int*);
+        void check_served(MPI_Win, int*);
+        void check_served(MPI_File, int*);
         ComplexComm(MPI_Comm);
 
     private:

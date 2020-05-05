@@ -101,12 +101,12 @@ void ComplexComm::replace_comm(MPI_Comm comm)
     cur_comm = comm;
 }
 
-void ComplexComm::check_global(MPI_Win win, int* result)
+void ComplexComm::check_served(MPI_Win win, int* result)
 {
     windows->part_of(win, result);
 }
 
-void ComplexComm::check_global(MPI_File file, int* result)
+void ComplexComm::check_served(MPI_File file, int* result)
 {
     files->part_of(file, result);
 }
