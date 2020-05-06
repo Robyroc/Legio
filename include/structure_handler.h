@@ -66,7 +66,7 @@ T StructureHandler<T, U>::translate(T input)
     attribute_get(input, (int*) &pointer, &flag);
     if(flag || fake_flag)
     {
-        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(value);
+        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(*pointer);
         if(res == opened.end())
             return input;
         else return res->second.second;
@@ -84,10 +84,10 @@ void StructureHandler<T, U>::remove(T item)
     attribute_get(item, (int*) &pointer, &flag);
     if(flag || fake_flag)
     {
-        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(key);
+        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(*pointer);
         if(res != opened.end())
             destroyer(&(res->second.second));
-        opened.erase(key);
+        opened.erase(*pointer);
     }
 }
 
@@ -116,7 +116,7 @@ void StructureHandler<T, U>::part_of(T checked, int* result)
     {
         int flag;
         attribute_get(checked, (int*) &pointer, &flag);
-        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(value);
+        typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(*pointer);
         *result = (res != opened.end());
     }
 }

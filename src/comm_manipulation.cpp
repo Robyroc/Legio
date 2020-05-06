@@ -2,19 +2,19 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include "complex_comm.h"
+#include "multicomm.h"
 
-MPI_Group world;
-int initialized = 0;
+extern Multicomm *cur_comms;
+extern int VERBOSE;
+extern char errstr[MPI_MAX_ERROR_STRING];
+extern int len;
 
-void translate_ranks(int root, MPI_Comm comm, int* tr_rank)
+void translate_ranks(int root, ComplexComm* comm, int* tr_rank)
 {
-    MPI_Group cur_group;
+    MPI_Group tr_group;
     int source = root;
-    if(!initialized)
-        MPI_Comm_group(MPI_COMM_WORLD, &world);
-
-    MPI_Comm_group(comm, &cur_group);
-    MPI_Group_translate_ranks(world, 1, &source, cur_group, tr_rank);
+    MPI_Comm_group(comm->get_comm(), &tr_group);
+    MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, tr_rank);
 }
 
 void replace_comm(ComplexComm* cur_complex)
@@ -30,7 +30,7 @@ void replace_comm(ComplexComm* cur_complex)
     else
     {
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-        cur_complex->replace_comm(new_comm);
+        cur_comms->change_comm(cur_complex, new_comm);
     }
 }
 
@@ -42,4 +42,26 @@ void agree_and_eventually_replace(int* rc, ComplexComm* cur_complex)
         *rc = MPIX_ERR_PROC_FAILED;
     if(*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
+}
+
+int MPI_Barrier(ComplexComm* comm)
+{
+    while(1)
+    {
+        int rc;
+        rc = PMPI_Barrier(comm->get_comm());
+        if (VERBOSE)
+        {
+            int rank, size;
+            PMPI_Comm_size(comm->get_comm(), &size);
+            PMPI_Comm_rank(comm->get_comm(), &rank);
+            MPI_Error_string(rc, errstr, &len);
+            printf("Rank %d / %d: barrier done (error: %s)\n", rank, size, errstr);
+        }
+        
+        if(rc == MPI_SUCCESS)
+            return rc;
+        else
+            replace_comm(comm);
+    }
 }

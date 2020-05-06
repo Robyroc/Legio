@@ -2,8 +2,9 @@
 #define MULTICOMM_H
 
 #include <unordered_map>
-#include "complex_comm.h"
 #include "mpi.h"
+
+class ComplexComm;
 
 class Multicomm
 {
@@ -19,6 +20,7 @@ class Multicomm
         void remove_file(MPI_File*);
         ComplexComm* get_complex_from_win(MPI_Win);
         ComplexComm* get_complex_from_file(MPI_File);
+        void change_comm(ComplexComm*, MPI_Comm);
     private:
         std::unordered_map<int, ComplexComm> comms;
         int counter;

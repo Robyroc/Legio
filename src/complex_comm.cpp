@@ -56,6 +56,7 @@ ComplexComm::ComplexComm(MPI_Comm comm):cur_comm(comm)
     };
     
     files = new StructureHandler<MPI_File, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
+    MPI_Comm_group(comm, &group);
 }
 
 void ComplexComm::add_structure(MPI_Win win, std::function<int(MPI_Comm, MPI_Win*)> func)
@@ -109,4 +110,9 @@ void ComplexComm::check_served(MPI_Win win, int* result)
 void ComplexComm::check_served(MPI_File file, int* result)
 {
     files->part_of(file, result);
+}
+
+MPI_Group ComplexComm::get_group()
+{
+    return group;
 }
