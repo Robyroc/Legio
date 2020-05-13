@@ -1,366 +1,366 @@
-Group;Call;Supported;Difficulty;Notes
-general;MPI_Abort;NO;easy;comm_translation
-osc;MPI_Accumulate;NO;easy;reduce on windows
-errors;MPI_Add_error_class;-;;
-errors;MPI_Add_error_code;-;;
-errors;MPI_Add_error_string;-;;
-collective;MPI_Allgather;NO;medium;gather + broadcast
-async;MPI_Iallgather;NO;medium;request handling
-collective;MPI_Allgatherv;NO;hard;gatherv + broadcast
-async;MPI_Iallgatherv;NO;hard;request handling
-osc;MPI_Alloc_mem;-;;
-collective;MPI_Allreduce;YES;;
-async;MPI_Iallreduce;NO;medium;request handling
-collective;MPI_Alltoall;NO;medium;gather-like
-async;MPI_Ialltoall;NO;medium;request handling
-collective;MPI_Alltoallv;NO;hard;gatherv-like
-async;MPI_Ialltoallv;NO;hard;request handling
-collective;MPI_Alltoallw;NO;hard;more complex than gatherv
-async;MPI_Ialltoallw;NO;hard;request handling
-collective;MPI_Barrier;YES;;
-async;MPI_Ibarrier;NO;medium;request handling
-collective;MPI_Bcast;YES;;
-ptp;MPI_Bsend;NO;easy;like send
-async;MPI_Ibcast;NO;medium;request handling
-?;MPI_Ibsend_init;NO;?;?
-general;MPI_Buffer_attach;-;;
-general;MPI_Buffer_detach;-;;
-async;MPI_Cancel;NO;medium;request handling
-topo;MPI_Cart_coords;NO;?;
-topo;MPI_Cart_create;NO;?;
-topo;MPI_Cart_get;NO;?;
-topo;MPI_Cart_map;NO;?;
-topo;MPI_Cart_rank;NO;?;
-topo;MPI_Cart_shift;NO;?;
-topo;MPI_Cart_sub;NO;?;
-topo;MPI_Cartdim_get;NO;?;
-intercom;MPI_Close_port;NO;?;
-intercom;MPI_Comm_accept;NO;?;
-fortran;MPI_Comm_c2f;-;;
-errors;MPI_Comm_call_errhandler;NO;?;errorhandler usage shall be wrapped
-comm;MPI_Comm_compare;NO;medium;handling alias between comm
-intercom;MPI_Comm_connect;NO;?;
-errors;MPI_Comm_create_errhandler;NO;?;errorhandler usage shall be wrapped
-attr;MPI_Comm_create_keyval;-;;
-comm;MPI_Comm_create_group;NO;medium;manage strange collectivity
-comm;MPI_Comm_create;YES;;
-attr;MPI_Comm_delete_attr;-;;
-comm;MPI_Comm_disconnect;YES;;
-comm;MPI_Comm_dup;YES;;
-async;MPI_Comm_idup;NO;medium;request handling
-comm;MPI_Comm_dup_with_info;NO;easy;like dup
-fortran;MPI_Comm_f2c;-;;
-attr;MPI_Comm_free_keyval;-;;
-comm;MPI_Comm_free;YES;;
-attr;MPI_Comm_get_attr;-;;
-topo;MPI_Dist_graph_create;NO;?;
-topo;MPI_Dist_graph_create_adjacent;NO;?;
-topo;MPI_Dist_graph_neighbors;NO;?;
-topo;MPI_Dist_graph_neighbors_count;NO;?;
-errors;MPI_Comm_get_errhandler;NO;?;errorhandler usage shall be wrapped
-info;MPI_Comm_get_info;-;;
-info;MPI_Comm_get_name;-;;
-info;MPI_Comm_get_parent;-;;
-Group;MPI_Comm_group;-;;
-?;MPI_Comm_join;NO;?;
-comm;MPI_Comm_rank;-;;
-intercom;MPI_Comm_remote_group;NO;?;
-intercom;MPI_Comm_remote_size;NO;?;
-attr;MPI_Comm_set_attr;-;;
-errors;MPI_Comm_set_errhandler;NO;?;errorhandler usage shall be wrapped
-info;MPI_Comm_set_info;-;;
-info;MPI_Comm_set_name;-;;
-comm;MPI_Comm_size;-;;
-dynamic;MPI_Comm_spawn;NO;?;
-dynamic;MPI_Comm_spawn_multiple;NO;?;
-comm;MPI_Comm_split;YES;;
-comm;MPI_Comm_split_type;NO;easy;like split
-intercom;MPI_Comm_test_inter;NO;?;
-osc;MPI_Compare_and_swap;NO;easy;win translation
-topo;MPI_Dims_create;NO;?;
-fortran;MPI_Errhandler_c2f;-;;
-fortran;MPI_Errhandler_f2c;-;;
-errors;MPI_Errhandler_free;NO;?;errorhandler usage shall be wrapped
-errors;MPI_Error_class;-;;
-errors;MPI_Error_string;-;;
-collective;MPI_Exscan;NO;easy;like scan
-osc;MPI_Fetch_and_op;NO;easy;win and rank translation
-async;MPI_Iexscan;NO;medium;request handling
-fortran;MPI_File_c2f;-;;
-fortran;MPI_File_f2c;-;;
-errors;MPI_File_call_errhandler;NO;?;errorhandler usage shall be wrapped
-errors;MPI_File_create_errhandler;NO;?;errorhandler usage shall be wrapped
-errors;MPI_File_set_errhandler;NO;?;errorhandler usage shall be wrapped
-errors;MPI_File_get_errhandler;NO;?;errorhandler usage shall be wrapped
-file;MPI_File_open;YES;;
-file;MPI_File_close;YES;;
-file;MPI_File_delete;-;;
-file;MPI_File_set_size;NO;easy;file translation
-file;MPI_File_preallocate;NO;easy;file translation
-file;MPI_File_get_size;NO;easy;file translation
-file;MPI_File_get_group;NO;medium;no adapt or translate
-file;MPI_File_get_amode;-;;
-info;MPI_File_set_info;-;;
-info;MPI_File_get_info;-;;
-file;MPI_File_set_view;YES;;
-file;MPI_File_get_view;NO;easy;file translation
-file;MPI_File_read_at;YES;;
-file;MPI_File_read_at_all;YES;;
-file;MPI_File_write_at;YES;;
-file;MPI_File_write_at_all;YES;;
-async;MPI_File_iread_at;NO;medium;request handling
-async;MPI_File_iwrite_at;NO;medium;request handling
-async;MPI_File_iread_at_all;NO;medium;request handling
-async;MPI_File_iwrite_at_all;NO;medium;request handling
-file;MPI_File_read;YES;;
-file;MPI_File_read_all;YES;;
-file;MPI_File_write;YES;;
-file;MPI_File_write_all;YES;;
-async;MPI_File_iread;NO;medium;request handling
-async;MPI_File_iwrite;NO;medium;request handling
-async;MPI_File_iread_all;NO;medium;request handling
-async;MPI_File_iwrite_all;NO;medium;request handling
-file;MPI_File_seek;YES;;
-file;MPI_File_get_position;YES;;
-file;MPI_File_get_byte_offset;NO;easy;file translation
-file;MPI_File_read_shared;YES;;
-file;MPI_File_write_shared;YES;;
-async;MPI_File_iread_shared;NO;medium;request handling
-async;MPI_File_iwrite_shared;NO;medium;request handling
-file;MPI_File_read_ordered;NO;hard;easy implementation provided, needs something like gather
-file;MPI_File_write_ordered;NO;hard;easy implementation provided, needs something like gather
-file;MPI_File_seek_shared;YES;;
-file;MPI_File_get_position_shared;YES;;
-async;MPI_File_read_at_all_begin;NO;medium;request handling
-async;MPI_File_read_at_all_end;NO;medium;request handling
-async;MPI_File_write_at_all_begin;NO;medium;request handling
-async;MPI_File_write_at_all_end;NO;medium;request handling
-async;MPI_File_read_all_begin;NO;medium;request handling
-async;MPI_File_reat_all_end;NO;medium;request handling
-async;MPI_File_write_all_begin;NO;medium;request handling
-async;MPI_File_write_all_end;NO;medium;request handling
-async;MPI_File_read_ordered_begin;NO;medium;request handling
-async;MPI_File_read_ordered­_end;NO;medium;request handling
-async;MPI_File_write_ordered_begin;NO;medium;request handling
-async;MPI_File_write_ordered_end;NO;medium;request handling
-file;MPI_File_get_type_extent;NO;?;
-file;MPI_File_set_atomicity;NO;easy;file translation
-file;MPI_File_get_atomicity;NO;easy;file translation
-file;MPI_File_sync;NO;easy;file translation
-general;MPI_Finalize;-;;
-general;MPI_Finalized;-;;
-osc;MPI_Free_mem;-;;
-collective;MPI_Gather;YES;;
-async;MPI_Igather;NO;medium;request handling
-collective;MPI_Gatherv;NO;hard;complex to translate counts
-async;MPI_Igatherv;NO;hard;request handling
-general;MPI_Get_address;-;;
-status;MPI_Get_count;-;;
-status;MPI_Get_elements;-;;
-?;MPI_Get_elements_x;NO;?;
-osc;MPI_Get;YES;;
-osc;MPI_Get_accumulate;NO;easy;translate win and rank
-general;MPI_Get_library_version;-;;
-general;MPI_Get_processor_name;-;;
-general;MPI_Get_version;-;;
-topo;MPI_Graph_create;NO;?;
-topo;MPI_Graph_get;NO;?;
-topo;MPI_Graph_map;NO;?;
-topo;MPI_Graph_neighbors_count;NO;?;
-topo;MPI_Graph_neighbors;NO;?;
-topo;MPI_Graphdims_get;NO;?;
-async;MPI_Grequest_complete;NO;medium;request handling
-async;MPI_Grequest_start;NO;medium;request handling
-general;MPI_Group_c2f;-;;
-general;MPI_Group_free;-;;
-general;MPI_Group_incl;-;;
-general;MPI_Group_intersection;-;;
-general;MPI_Group_range_excl;-;;
-general;MPI_Group_range_incl;-;;
-general;MPI_Group_rank;-;;
-general;MPI_Group_size;-;;
-general;MPI_Group_translate_ranks;-;;
-general;MPI_Group_union;-;;
-async;MPI_Ibsend;NO;medium;request handling
-async;MPI_Improbe;NO;medium;request handling
-async;MPI_Imrecv;NO;medium;request handling
-info;MPI_Info_c2f;-;;
-info;MPI_Info_create;-;;
-info;MPI_Info_delete;-;;
-info;MPI_Info_dup;-;;
-info;MPI_Info_f2c;-;;
-info;MPI_Info_free;-;;
-info;MPI_Info_get;-;;
-info;MPI_Info_get_nkeys;-;;
-info;MPI_Info_get_nthkey;-;;
-info;MPI_Info_get_valuelen;-;;
-info;MPI_Info_set;-;;
-general;MPI_Init;YES;;
-general;MPI_Initialized;NO;;
-general;MPI_Init_thread;-;;
-intercom;MPI_Intercomm_create;?;;
-intercom;MPI_Intercomm_merge;?;;
-async;MPI_Iprobe;NO;medium;request handling
-async;MPI_Irecv;NO;medium;request handling
-async;MPI_Irsend;NO;medium;request handling
-async;MPI_Isend;NO;medium;request handling
-async;MPI_Issend;NO;medium;request handling
-general;MPI_Is_thread_main;-;;
-general;MPI_Lookup_name;-;;
-general;MPI_Message_c2f;-;;
-general;MPI_Message_f2c;-;;
-ptp;MPI_Mprobe;NO;easy;like probe
-ptp;MPI_Mrecv;NO;easy;like Mrecv
-topo;MPI_Neighbor_allgather;NO;?;
-topo;MPI_Ineighbor_allgather;NO;?;
-topo;MPI_Neighbor_allgatherv;NO;?;
-topo;MPI_Ineighbor_allgatherv;NO;?;
-topo;MPI_Neighbor_alltoall;NO;?;
-topo;MPI_Ineighbor_alltoall;NO;?;
-topo;MPI_Neighbor_alltoallv;NO;?;
-topo;MPI_Ineighbor_alltoallv;NO;?;
-topo;MPI_Neighbor_alltoallw;NO;?;
-topo;MPI_Ineighbor_alltoallw;NO;?;
-general;MPI_Op_c2f;-;;
-general;MPI_Op_commutative;-;;
-general;MPI_Op_create;-;;
-intercom;MPI_Open_port;NO;?;
-general;MPI_Op_f2c;-;;
-general;MPI_Op_free;-;;
-pack;MPI_Pack_external;NO;?;
-pack;MPI_Pack_external_size;NO;?;
-pack;MPI_Pack;NO;?;
-pack;MPI_Pack_size;NO;?;
-general;MPI_Pcontrol;-;;
-ptp;MPI_Probe;NO;easy;like recv
-intercom;MPI_Publish_name;NO;?;
-osc;MPI_Put;YES;;
-general;MPI_Query_thread;-;;
-async;MPI_Raccumulate;NO;medium;request handling
-async;MPI_Recv_init;NO;medium;request handling
-ptp;MPI_Recv;YES;;
-collective;MPI_Reduce;YES;;
-async;MPI_Ireduce;NO;medium;request handling
-collective;MPI_Reduce_local;NO;easy;like reduce
-collective;MPI_Reduce_scatter;NO;easy;reduce + scatter
-async;MPI_Ireduce_scatter;NO;medium;request handling
-collective;MPI_Reduce_scatter_block;NO;easy;reduce + scatter
-async;MPI_Ireduce_scatter_block;NO;medium;request handling
-file;MPI_Register_datarep;-;;
-general;MPI_Request_c2f;-;;
-general;MPI_Request_f2c;-;;
-async;MPI_Request_free;NO;medium;request handling
-async;MPI_Request_get_status;NO;medium;request handling
-async;MPI_Rget;NO;medium;request handling
-async;MPI_Rget_accumulate;NO;medium;request handling
-async;MPI_Rput;NO;medium;request handling
-async;MPI_Rsend;NO;medium;request handling
-async;MPI_Rsend_init;NO;medium;request handling
-collective;MPI_Scan;NO;easy;like reduce
-async;MPI_Iscan;NO;medium;request handling
-collective;MPI_Scatter;YES;;
-async;MPI_Iscatter;NO;medium;request handling
-collective;MPI_Scatterv;NO;hard;analyze vector is complex computationally
-async;MPI_Iscatterv;NO;hard;request handling
-async;MPI_Send_init;NO;medium;request handling
-ptp;MPI_Send;YES;;
-ptp;MPI_Sendrecv;NO;easy;
-ptp;MPI_Sendrecv_replace;NO;easy;save old value in case of something bad happens
-async;MPI_Ssend_init;NO;medium;request handling
-ptp;MPI_Ssend;NO;easy;
-async;MPI_Start;NO;medium;request handling
-async;MPI_Startall;NO;medium;request handling
-general;MPI_Status_c2f;-;;
-general;MPI_Status_f2c;-;;
-general;MPI_Status_set_cancelled;-;;
-general;MPI_Status_set_elements;-;;
-general;MPI_Status_set_elements_x;?;;
-async;MPI_Testall;NO;medium;request handling
-async;MPI_Testany;NO;medium;request handling
-async;MPI_Test;NO;medium;request handling
-async;MPI_Test_cancelled;NO;medium;request handling
-async;MPI_Testsome;NO;medium;request handling
-topo;MPI_Topo_test;NO;?;
-type;MPI_Type_c2f;-;;
-type;MPI_Type_commit;-;;
-type;MPI_Type_contiguous;-;;
-type;MPI_Type_create_darray;-;;
-type;MPI_Type_create_f90_complex;-;;
-type;MPI_Type_create_f90_integer;-;;
-type;MPI_Type_create_f90_real;-;;
-type;MPI_Type_create_hindexed_block;-;;
-type;MPI_Type_create_hindexed;-;;
-type;MPI_Type_create_hvector;-;;
-type;MPI_Type_create_keyval;-;;
-type;MPI_Type_create_indexed_block;-;;
-type;MPI_Type_create_struct;-;;
-type;MPI_Type_create_subarray;-;;
-type;MPI_Type_create_resized;-;;
-type;MPI_Type_delete_attr;-;;
-type;MPI_Type_dup;-;;
-type;MPI_Type_free;-;;
-type;MPI_Type_free_keyval;-;;
-type;MPI_Type_f2c;-;;
-type;MPI_Type_get_attr;-;;
-type;MPI_Type_get_contents;-;;
-type;MPI_Type_get_envelope;-;;
-type;MPI_Type_get_extent;-;;
-type;MPI_Type_get_extent_x;?;;
-type;MPI_Type_get_name;-;;
-type;MPI_Type_get_true_extent;-;;
-type;MPI_Type_get_true_extent_x;?;;
-type;MPI_Type_indexed;-;;
-type;MPI_Type_match_size;-;;
-type;MPI_Type_set_attr;-;;
-type;MPI_Type_set_name;-;;
-type;MPI_Type_size;-;;
-type;MPI_Type_size_x;?;;
-type;MPI_Type_vector;-;;
-pack;MPI_Unpack;NO;?;
-intercom;MPI_Unpublish_name;NO;?;
-pack;MPI_Unpack_external;NO;?;
-async;MPI_Waitall;NO;medium;request handling
-async;MPI_Waitany;NO;medium;request handling
-async;MPI_Wait;NO;medium;request handling
-async;MPI_Waitsome;NO;medium;request handling
-osc;MPI_Win_allocate;YES;;
-osc;MPI_Win_allocate_shared;NO;easy;
-osc;MPI_Win_attach;NO;medium;variable size window
-general;MPI_Win_c2f;-;;
-errors;MPI_Win_call_errhandler;NO;?;errorhandler usage shall be wrapped
-osc;MPI_Win_complete;NO;medium;Fence is simpler
-osc;MPI_Win_create;YES;;
-osc;MPI_Win_create_dynamic;NO;medium;variable size window
-errors;MPI_Win_create_errhandler;NO;?;errorhandler usage shall be wrapped
-attr;MPI_Win_create_keyval;-;;
-attr;MPI_Win_delete_attr;-;;
-osc;MPI_Win_detach;NO;medium;variable size window
-general;MPI_Win_f2c;-;;
-osc;MPI_Win_fence;YES;;
-osc;MPI_Win_flush;NO;easy;
-osc;MPI_Win_flush_all;NO;easy;
-osc;MPI_Win_flush_local;NO;easy;
-osc;MPI_Win_flush_local_all;NO;easy;
-osc;MPI_Win_free;YES;;
-attr;MPI_Win_free_keyval;-;;
-attr;MPI_Win_get_attr;-;;
-errors;MPI_Win_get_errhandler;NO;?;errorhandler usage shall be wrapped
-general;MPI_Win_get_group;NO;easy;
-info;MPI_Win_get_info;-;;
-info;MPI_Win_get_name;-;;
-osc;MPI_Win_lock;NO;medium;Fence is simpler
-osc;MPI_Win_lock_all;NO;medium;Fence is simpler
-osc;MPI_Win_post;NO;medium;Fence is simpler
-attr;MPI_Win_set_attr;-;;
-errors;MPI_Win_set_errhandler;NO;?;errorhandler usage shall be wrapped
-info;MPI_Win_set_info;-;;
-info;MPI_Win_set_name;-;;
-info;MPI_Win_shared_query;-;;
-osc;MPI_Win_start;NO;medium;Fence is simpler
-osc;MPI_Win_sync;NO;easy;
-osc;MPI_Win_test;NO;medium;Fence is simpler
-osc;MPI_Win_unlock;NO;medium;Fence is simpler
-osc;MPI_Win_unlock_all;NO;medium;Fence is simpler
-osc;MPI_Win_wait;NO;medium;Fence is simpler
-general;MPI_Wtick;-;;
-general;MPI_Wtime;-;;
+Group,Call,Supported,Difficulty,Notes
+general,MPI_Abort,NO,easy,comm_translation
+osc,MPI_Accumulate,NO,easy,reduce on windows
+errors,MPI_Add_error_class,-,,
+errors,MPI_Add_error_code,-,,
+errors,MPI_Add_error_string,-,,
+collective,MPI_Allgather,NO,medium,gather + broadcast
+async,MPI_Iallgather,NO,medium,request handling
+collective,MPI_Allgatherv,NO,hard,gatherv + broadcast
+async,MPI_Iallgatherv,NO,hard,request handling
+osc,MPI_Alloc_mem,-,,
+collective,MPI_Allreduce,YES,,
+async,MPI_Iallreduce,NO,medium,request handling
+collective,MPI_Alltoall,NO,medium,gather-like
+async,MPI_Ialltoall,NO,medium,request handling
+collective,MPI_Alltoallv,NO,hard,gatherv-like
+async,MPI_Ialltoallv,NO,hard,request handling
+collective,MPI_Alltoallw,NO,hard,more complex than gatherv
+async,MPI_Ialltoallw,NO,hard,request handling
+collective,MPI_Barrier,YES,,
+async,MPI_Ibarrier,NO,medium,request handling
+collective,MPI_Bcast,YES,,
+ptp,MPI_Bsend,NO,easy,like send
+async,MPI_Ibcast,NO,medium,request handling
+?,MPI_Ibsend_init,NO,?,?
+general,MPI_Buffer_attach,-,,
+general,MPI_Buffer_detach,-,,
+async,MPI_Cancel,NO,medium,request handling
+topo,MPI_Cart_coords,NO,?,
+topo,MPI_Cart_create,NO,?,
+topo,MPI_Cart_get,NO,?,
+topo,MPI_Cart_map,NO,?,
+topo,MPI_Cart_rank,NO,?,
+topo,MPI_Cart_shift,NO,?,
+topo,MPI_Cart_sub,NO,?,
+topo,MPI_Cartdim_get,NO,?,
+intercom,MPI_Close_port,NO,?,
+intercom,MPI_Comm_accept,NO,?,
+fortran,MPI_Comm_c2f,-,,
+errors,MPI_Comm_call_errhandler,NO,?,errorhandler usage shall be wrapped
+comm,MPI_Comm_compare,NO,medium,handling alias between comm
+intercom,MPI_Comm_connect,NO,?,
+errors,MPI_Comm_create_errhandler,NO,?,errorhandler usage shall be wrapped
+attr,MPI_Comm_create_keyval,-,,
+comm,MPI_Comm_create_group,NO,medium,manage strange collectivity
+comm,MPI_Comm_create,YES,,
+attr,MPI_Comm_delete_attr,-,,
+comm,MPI_Comm_disconnect,YES,,
+comm,MPI_Comm_dup,YES,,
+async,MPI_Comm_idup,NO,medium,request handling
+comm,MPI_Comm_dup_with_info,NO,easy,like dup
+fortran,MPI_Comm_f2c,-,,
+attr,MPI_Comm_free_keyval,-,,
+comm,MPI_Comm_free,YES,,
+attr,MPI_Comm_get_attr,-,,
+topo,MPI_Dist_graph_create,NO,?,
+topo,MPI_Dist_graph_create_adjacent,NO,?,
+topo,MPI_Dist_graph_neighbors,NO,?,
+topo,MPI_Dist_graph_neighbors_count,NO,?,
+errors,MPI_Comm_get_errhandler,NO,?,errorhandler usage shall be wrapped
+info,MPI_Comm_get_info,-,,
+info,MPI_Comm_get_name,-,,
+info,MPI_Comm_get_parent,-,,
+Group,MPI_Comm_group,-,,
+?,MPI_Comm_join,NO,?,
+comm,MPI_Comm_rank,-,,
+intercom,MPI_Comm_remote_group,NO,?,
+intercom,MPI_Comm_remote_size,NO,?,
+attr,MPI_Comm_set_attr,-,,
+errors,MPI_Comm_set_errhandler,NO,?,errorhandler usage shall be wrapped
+info,MPI_Comm_set_info,-,,
+info,MPI_Comm_set_name,-,,
+comm,MPI_Comm_size,-,,
+dynamic,MPI_Comm_spawn,NO,?,
+dynamic,MPI_Comm_spawn_multiple,NO,?,
+comm,MPI_Comm_split,YES,,
+comm,MPI_Comm_split_type,NO,easy,like split
+intercom,MPI_Comm_test_inter,NO,?,
+osc,MPI_Compare_and_swap,NO,easy,win translation
+topo,MPI_Dims_create,NO,?,
+fortran,MPI_Errhandler_c2f,-,,
+fortran,MPI_Errhandler_f2c,-,,
+errors,MPI_Errhandler_free,NO,?,errorhandler usage shall be wrapped
+errors,MPI_Error_class,-,,
+errors,MPI_Error_string,-,,
+collective,MPI_Exscan,NO,easy,like scan
+osc,MPI_Fetch_and_op,NO,easy,win and rank translation
+async,MPI_Iexscan,NO,medium,request handling
+fortran,MPI_File_c2f,-,,
+fortran,MPI_File_f2c,-,,
+errors,MPI_File_call_errhandler,NO,?,errorhandler usage shall be wrapped
+errors,MPI_File_create_errhandler,NO,?,errorhandler usage shall be wrapped
+errors,MPI_File_set_errhandler,NO,?,errorhandler usage shall be wrapped
+errors,MPI_File_get_errhandler,NO,?,errorhandler usage shall be wrapped
+file,MPI_File_open,YES,,
+file,MPI_File_close,YES,,
+file,MPI_File_delete,-,,
+file,MPI_File_set_size,NO,easy,file translation
+file,MPI_File_preallocate,NO,easy,file translation
+file,MPI_File_get_size,NO,easy,file translation
+file,MPI_File_get_group,NO,medium,no adapt or translate
+file,MPI_File_get_amode,-,,
+info,MPI_File_set_info,-,,
+info,MPI_File_get_info,-,,
+file,MPI_File_set_view,YES,,
+file,MPI_File_get_view,NO,easy,file translation
+file,MPI_File_read_at,YES,,
+file,MPI_File_read_at_all,YES,,
+file,MPI_File_write_at,YES,,
+file,MPI_File_write_at_all,YES,,
+async,MPI_File_iread_at,NO,medium,request handling
+async,MPI_File_iwrite_at,NO,medium,request handling
+async,MPI_File_iread_at_all,NO,medium,request handling
+async,MPI_File_iwrite_at_all,NO,medium,request handling
+file,MPI_File_read,YES,,
+file,MPI_File_read_all,YES,,
+file,MPI_File_write,YES,,
+file,MPI_File_write_all,YES,,
+async,MPI_File_iread,NO,medium,request handling
+async,MPI_File_iwrite,NO,medium,request handling
+async,MPI_File_iread_all,NO,medium,request handling
+async,MPI_File_iwrite_all,NO,medium,request handling
+file,MPI_File_seek,YES,,
+file,MPI_File_get_position,YES,,
+file,MPI_File_get_byte_offset,NO,easy,file translation
+file,MPI_File_read_shared,YES,,
+file,MPI_File_write_shared,YES,,
+async,MPI_File_iread_shared,NO,medium,request handling
+async,MPI_File_iwrite_shared,NO,medium,request handling
+file,MPI_File_read_ordered,NO,hard,easy implementation provided, needs something like gather
+file,MPI_File_write_ordered,NO,hard,easy implementation provided, needs something like gather
+file,MPI_File_seek_shared,YES,,
+file,MPI_File_get_position_shared,YES,,
+async,MPI_File_read_at_all_begin,NO,medium,request handling
+async,MPI_File_read_at_all_end,NO,medium,request handling
+async,MPI_File_write_at_all_begin,NO,medium,request handling
+async,MPI_File_write_at_all_end,NO,medium,request handling
+async,MPI_File_read_all_begin,NO,medium,request handling
+async,MPI_File_reat_all_end,NO,medium,request handling
+async,MPI_File_write_all_begin,NO,medium,request handling
+async,MPI_File_write_all_end,NO,medium,request handling
+async,MPI_File_read_ordered_begin,NO,medium,request handling
+async,MPI_File_read_ordered­_end,NO,medium,request handling
+async,MPI_File_write_ordered_begin,NO,medium,request handling
+async,MPI_File_write_ordered_end,NO,medium,request handling
+file,MPI_File_get_type_extent,NO,?,
+file,MPI_File_set_atomicity,NO,easy,file translation
+file,MPI_File_get_atomicity,NO,easy,file translation
+file,MPI_File_sync,NO,easy,file translation
+general,MPI_Finalize,-,,
+general,MPI_Finalized,-,,
+osc,MPI_Free_mem,-,,
+collective,MPI_Gather,YES,,
+async,MPI_Igather,NO,medium,request handling
+collective,MPI_Gatherv,NO,hard,complex to translate counts
+async,MPI_Igatherv,NO,hard,request handling
+general,MPI_Get_address,-,,
+status,MPI_Get_count,-,,
+status,MPI_Get_elements,-,,
+?,MPI_Get_elements_x,NO,?,
+osc,MPI_Get,YES,,
+osc,MPI_Get_accumulate,NO,easy,translate win and rank
+general,MPI_Get_library_version,-,,
+general,MPI_Get_processor_name,-,,
+general,MPI_Get_version,-,,
+topo,MPI_Graph_create,NO,?,
+topo,MPI_Graph_get,NO,?,
+topo,MPI_Graph_map,NO,?,
+topo,MPI_Graph_neighbors_count,NO,?,
+topo,MPI_Graph_neighbors,NO,?,
+topo,MPI_Graphdims_get,NO,?,
+async,MPI_Grequest_complete,NO,medium,request handling
+async,MPI_Grequest_start,NO,medium,request handling
+general,MPI_Group_c2f,-,,
+general,MPI_Group_free,-,,
+general,MPI_Group_incl,-,,
+general,MPI_Group_intersection,-,,
+general,MPI_Group_range_excl,-,,
+general,MPI_Group_range_incl,-,,
+general,MPI_Group_rank,-,,
+general,MPI_Group_size,-,,
+general,MPI_Group_translate_ranks,-,,
+general,MPI_Group_union,-,,
+async,MPI_Ibsend,NO,medium,request handling
+async,MPI_Improbe,NO,medium,request handling
+async,MPI_Imrecv,NO,medium,request handling
+info,MPI_Info_c2f,-,,
+info,MPI_Info_create,-,,
+info,MPI_Info_delete,-,,
+info,MPI_Info_dup,-,,
+info,MPI_Info_f2c,-,,
+info,MPI_Info_free,-,,
+info,MPI_Info_get,-,,
+info,MPI_Info_get_nkeys,-,,
+info,MPI_Info_get_nthkey,-,,
+info,MPI_Info_get_valuelen,-,,
+info,MPI_Info_set,-,,
+general,MPI_Init,YES,,
+general,MPI_Initialized,NO,,
+general,MPI_Init_thread,-,,
+intercom,MPI_Intercomm_create,?,,
+intercom,MPI_Intercomm_merge,?,,
+async,MPI_Iprobe,NO,medium,request handling
+async,MPI_Irecv,NO,medium,request handling
+async,MPI_Irsend,NO,medium,request handling
+async,MPI_Isend,NO,medium,request handling
+async,MPI_Issend,NO,medium,request handling
+general,MPI_Is_thread_main,-,,
+general,MPI_Lookup_name,-,,
+general,MPI_Message_c2f,-,,
+general,MPI_Message_f2c,-,,
+ptp,MPI_Mprobe,NO,easy,like probe
+ptp,MPI_Mrecv,NO,easy,like Mrecv
+topo,MPI_Neighbor_allgather,NO,?,
+topo,MPI_Ineighbor_allgather,NO,?,
+topo,MPI_Neighbor_allgatherv,NO,?,
+topo,MPI_Ineighbor_allgatherv,NO,?,
+topo,MPI_Neighbor_alltoall,NO,?,
+topo,MPI_Ineighbor_alltoall,NO,?,
+topo,MPI_Neighbor_alltoallv,NO,?,
+topo,MPI_Ineighbor_alltoallv,NO,?,
+topo,MPI_Neighbor_alltoallw,NO,?,
+topo,MPI_Ineighbor_alltoallw,NO,?,
+general,MPI_Op_c2f,-,,
+general,MPI_Op_commutative,-,,
+general,MPI_Op_create,-,,
+intercom,MPI_Open_port,NO,?,
+general,MPI_Op_f2c,-,,
+general,MPI_Op_free,-,,
+pack,MPI_Pack_external,NO,?,
+pack,MPI_Pack_external_size,NO,?,
+pack,MPI_Pack,NO,?,
+pack,MPI_Pack_size,NO,?,
+general,MPI_Pcontrol,-,,
+ptp,MPI_Probe,NO,easy,like recv
+intercom,MPI_Publish_name,NO,?,
+osc,MPI_Put,YES,,
+general,MPI_Query_thread,-,,
+async,MPI_Raccumulate,NO,medium,request handling
+async,MPI_Recv_init,NO,medium,request handling
+ptp,MPI_Recv,YES,,
+collective,MPI_Reduce,YES,,
+async,MPI_Ireduce,NO,medium,request handling
+collective,MPI_Reduce_local,NO,easy,like reduce
+collective,MPI_Reduce_scatter,NO,easy,reduce + scatter
+async,MPI_Ireduce_scatter,NO,medium,request handling
+collective,MPI_Reduce_scatter_block,NO,easy,reduce + scatter
+async,MPI_Ireduce_scatter_block,NO,medium,request handling
+file,MPI_Register_datarep,-,,
+general,MPI_Request_c2f,-,,
+general,MPI_Request_f2c,-,,
+async,MPI_Request_free,NO,medium,request handling
+async,MPI_Request_get_status,NO,medium,request handling
+async,MPI_Rget,NO,medium,request handling
+async,MPI_Rget_accumulate,NO,medium,request handling
+async,MPI_Rput,NO,medium,request handling
+async,MPI_Rsend,NO,medium,request handling
+async,MPI_Rsend_init,NO,medium,request handling
+collective,MPI_Scan,NO,easy,like reduce
+async,MPI_Iscan,NO,medium,request handling
+collective,MPI_Scatter,YES,,
+async,MPI_Iscatter,NO,medium,request handling
+collective,MPI_Scatterv,NO,hard,analyze vector is complex computationally
+async,MPI_Iscatterv,NO,hard,request handling
+async,MPI_Send_init,NO,medium,request handling
+ptp,MPI_Send,YES,,
+ptp,MPI_Sendrecv,NO,easy,
+ptp,MPI_Sendrecv_replace,NO,easy,save old value in case of something bad happens
+async,MPI_Ssend_init,NO,medium,request handling
+ptp,MPI_Ssend,NO,easy,
+async,MPI_Start,NO,medium,request handling
+async,MPI_Startall,NO,medium,request handling
+general,MPI_Status_c2f,-,,
+general,MPI_Status_f2c,-,,
+general,MPI_Status_set_cancelled,-,,
+general,MPI_Status_set_elements,-,,
+general,MPI_Status_set_elements_x,?,,
+async,MPI_Testall,NO,medium,request handling
+async,MPI_Testany,NO,medium,request handling
+async,MPI_Test,NO,medium,request handling
+async,MPI_Test_cancelled,NO,medium,request handling
+async,MPI_Testsome,NO,medium,request handling
+topo,MPI_Topo_test,NO,?,
+type,MPI_Type_c2f,-,,
+type,MPI_Type_commit,-,,
+type,MPI_Type_contiguous,-,,
+type,MPI_Type_create_darray,-,,
+type,MPI_Type_create_f90_complex,-,,
+type,MPI_Type_create_f90_integer,-,,
+type,MPI_Type_create_f90_real,-,,
+type,MPI_Type_create_hindexed_block,-,,
+type,MPI_Type_create_hindexed,-,,
+type,MPI_Type_create_hvector,-,,
+type,MPI_Type_create_keyval,-,,
+type,MPI_Type_create_indexed_block,-,,
+type,MPI_Type_create_struct,-,,
+type,MPI_Type_create_subarray,-,,
+type,MPI_Type_create_resized,-,,
+type,MPI_Type_delete_attr,-,,
+type,MPI_Type_dup,-,,
+type,MPI_Type_free,-,,
+type,MPI_Type_free_keyval,-,,
+type,MPI_Type_f2c,-,,
+type,MPI_Type_get_attr,-,,
+type,MPI_Type_get_contents,-,,
+type,MPI_Type_get_envelope,-,,
+type,MPI_Type_get_extent,-,,
+type,MPI_Type_get_extent_x,?,,
+type,MPI_Type_get_name,-,,
+type,MPI_Type_get_true_extent,-,,
+type,MPI_Type_get_true_extent_x,?,,
+type,MPI_Type_indexed,-,,
+type,MPI_Type_match_size,-,,
+type,MPI_Type_set_attr,-,,
+type,MPI_Type_set_name,-,,
+type,MPI_Type_size,-,,
+type,MPI_Type_size_x,?,,
+type,MPI_Type_vector,-,,
+pack,MPI_Unpack,NO,?,
+intercom,MPI_Unpublish_name,NO,?,
+pack,MPI_Unpack_external,NO,?,
+async,MPI_Waitall,NO,medium,request handling
+async,MPI_Waitany,NO,medium,request handling
+async,MPI_Wait,NO,medium,request handling
+async,MPI_Waitsome,NO,medium,request handling
+osc,MPI_Win_allocate,YES,,
+osc,MPI_Win_allocate_shared,NO,easy,
+osc,MPI_Win_attach,NO,medium,variable size window
+general,MPI_Win_c2f,-,,
+errors,MPI_Win_call_errhandler,NO,?,errorhandler usage shall be wrapped
+osc,MPI_Win_complete,NO,medium,Fence is simpler
+osc,MPI_Win_create,YES,,
+osc,MPI_Win_create_dynamic,NO,medium,variable size window
+errors,MPI_Win_create_errhandler,NO,?,errorhandler usage shall be wrapped
+attr,MPI_Win_create_keyval,-,,
+attr,MPI_Win_delete_attr,-,,
+osc,MPI_Win_detach,NO,medium,variable size window
+general,MPI_Win_f2c,-,,
+osc,MPI_Win_fence,YES,,
+osc,MPI_Win_flush,NO,easy,
+osc,MPI_Win_flush_all,NO,easy,
+osc,MPI_Win_flush_local,NO,easy,
+osc,MPI_Win_flush_local_all,NO,easy,
+osc,MPI_Win_free,YES,,
+attr,MPI_Win_free_keyval,-,,
+attr,MPI_Win_get_attr,-,,
+errors,MPI_Win_get_errhandler,NO,?,errorhandler usage shall be wrapped
+general,MPI_Win_get_group,NO,easy,
+info,MPI_Win_get_info,-,,
+info,MPI_Win_get_name,-,,
+osc,MPI_Win_lock,NO,medium,Fence is simpler
+osc,MPI_Win_lock_all,NO,medium,Fence is simpler
+osc,MPI_Win_post,NO,medium,Fence is simpler
+attr,MPI_Win_set_attr,-,,
+errors,MPI_Win_set_errhandler,NO,?,errorhandler usage shall be wrapped
+info,MPI_Win_set_info,-,,
+info,MPI_Win_set_name,-,,
+info,MPI_Win_shared_query,-,,
+osc,MPI_Win_start,NO,medium,Fence is simpler
+osc,MPI_Win_sync,NO,easy,
+osc,MPI_Win_test,NO,medium,Fence is simpler
+osc,MPI_Win_unlock,NO,medium,Fence is simpler
+osc,MPI_Win_unlock_all,NO,medium,Fence is simpler
+osc,MPI_Win_wait,NO,medium,Fence is simpler
+general,MPI_Wtick,-,,
+general,MPI_Wtime,-,,
