@@ -32,10 +32,8 @@ int main(int argc, char **argv) {
 
     MPI_Scatter(globaldata, COUNT, MPI_INT, &localdata, COUNT, MPI_INT, 0, MPI_COMM_WORLD);
 
-    printf("2. Processor %d has data %d\n", rank, localdata);
     for(int i = 0; i < COUNT; i++)
         localdata[i]*=2;
-    printf("3. Processor %d now has %d\n", rank, localdata);
 
     MPI_Gather(&localdata, COUNT, MPI_INT, globaldata, COUNT, MPI_INT, 0, MPI_COMM_WORLD);
 

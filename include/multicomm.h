@@ -11,7 +11,7 @@ class Multicomm
     public:
         void add_comm(MPI_Comm);
         ComplexComm* translate_into_complex(MPI_Comm);
-        void remove(MPI_Comm);
+        void remove(MPI_Comm, std::function<int(MPI_Comm*)>);
         void part_of(MPI_Comm, int*);
         Multicomm();
         void add_file(ComplexComm*, MPI_File, std::function<int(MPI_Comm, MPI_File *)>);

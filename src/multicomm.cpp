@@ -39,12 +39,12 @@ ComplexComm* Multicomm::translate_into_complex(MPI_Comm input)
     }
     else
     {
-        printf("THIS SHOULDN'T HAVE HAPPENED1...\n");
+        printf("THIS SHOULDN'T HAVE HAPPENED, USE part_of BEFORE TRANSLATE.\n");
         return NULL;
     }
 }
 
-void Multicomm::remove(MPI_Comm removed)
+void Multicomm::remove(MPI_Comm removed, std::function<int(MPI_Comm*)> destroyer)
 {
     int key;
     int* pointer = &key;
@@ -57,13 +57,13 @@ void Multicomm::remove(MPI_Comm removed)
         {
             MPI_Comm target = res->second.get_comm();
 
-            PMPI_Comm_free(&target);
+            destroyer(&target);
         }
         comms.erase(*pointer);
     }
     else
     {
-        printf("THIS SHOULDN'T HAVE HAPPENED2...\n");
+        printf("THIS SHOULDN'T HAVE HAPPENED, REMOVING A NEVER INSERTED COMM.\n");
     }
     
 }
@@ -73,6 +73,8 @@ void Multicomm::part_of(MPI_Comm checked, int* result)
     int value;
     int* pointer = &value;
     MPI_Comm_get_attr(checked, keyval, &pointer, result);
+    if(!(*result))
+        printf("COMM NOT MAPPED\n");
 }
 
 void Multicomm::add_file(ComplexComm* comm, MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
@@ -81,7 +83,7 @@ void Multicomm::add_file(ComplexComm* comm, MPI_File file, std::function<int(MPI
     int value, flag;
     int* pointer = &value;
     MPI_Comm_get_attr(comm->get_comm(), keyval, &pointer, &flag);
-    window_map.insert({MPI_File_c2f(file), *pointer});
+    file_map.insert({MPI_File_c2f(file), *pointer});
 }
 
 void Multicomm::add_window(ComplexComm* comm, MPI_Win win, std::function<int(MPI_Comm, MPI_Win *)> func)
@@ -117,7 +119,10 @@ ComplexComm* Multicomm::get_complex_from_win(MPI_Win win)
     if(res != window_map.end())
         return &(comms.find(res->second)->second);
     else
+    {
+        printf("WIN NOT MAPPED\n");
         return NULL;
+    }
 }
 
 ComplexComm* Multicomm::get_complex_from_file(MPI_File file)
@@ -126,7 +131,10 @@ ComplexComm* Multicomm::get_complex_from_file(MPI_File file)
     if(res != file_map.end())
         return &(comms.find(res->second)->second);
     else
+    {
+        printf("FILE NOT MAPPED\n");
         return NULL;
+    }
 }
 
 void Multicomm::change_comm(ComplexComm* current, MPI_Comm newcomm)
