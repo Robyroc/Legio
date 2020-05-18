@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(Legio)
 
-set(CMAKE_CXX_FLAGS -std=c++11)
+set(LEGIO_VERSION_MAJOR 0)
+set(LEGIO_VERSION_MINOR 1)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
@@ -19,10 +20,13 @@ endif()
 #set(CMAKE_BUILD_TYPE Release)
 
 if(NOT "a${MPICC}" STREQUAL "a")
-    set(MPI_C_COMPILER ${MPICC})
+    string(REPLACE "\n" "" MPI_C_COMPILER ${MPICC})
     set(CMAKE_C_COMPILER ${MPI_C_COMPILER})
-
+    string(REPLACE "mpicc" "mpicxx" MPI_CXX_COMPILER ${MPI_C_COMPILER})
+    set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
+    
     message("[legio] MPICC has been passed: ${MPICC}")
+    message("[legio] MPICXX found: ${MPI_CXX_COMPILER}")
 else()
     message("[legio] MPICC was not passed, searching for MPI")
     find_package(MPI REQUIRED)
