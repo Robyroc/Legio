@@ -7,6 +7,9 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/lib/include/defaults.cmake")
 set(LEGIO_VERSION_MAJOR 0)
 set(LEGIO_VERSION_MINOR 1)
 
+option(BUILD_TESTS "Build example programs from legiotest directory" ON)
+option(BUILD_EXAMPLES "Build example programs using ULFM from testsrc directory" OFF)
+
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -46,9 +49,11 @@ function(linkMPI TOLINK)
 endfunction(linkMPI)
 
 add_subdirectory(lib)
-add_subdirectory(legiotest)
 
+if(BUILD_TESTS)
+    add_subdirectory(legiotest)
+endif()
 
-if(ON)
-add_subdirectory(testsrc)
+if(BUILD_EXAMPLES)
+    add_subdirectory(testsrc)
 endif()

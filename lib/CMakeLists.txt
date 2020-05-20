@@ -28,14 +28,17 @@ add_library(legio
         src/comm_manipulation.cpp
         src/complex_comm.cpp
         src/fileio.cpp
+        src/general.cpp
         src/legio.c
+        src/multicomm.cpp
         src/osc.cpp
         src/ptp.cpp
         include/comm_manipulation.h
         include/complex_comm.h
         include/configuration.h
         include/legio.h
-        include/structure_handler.h)
+        include/structure_handler.h
+        include/multicomm.h)
 
 target_include_directories(legio PUBLIC ./include)
 target_compile_features(legio PUBLIC cxx_std_11)

@@ -28,12 +28,14 @@ class ComplexComm
         MPI_Comm get_comm();
         MPI_Win translate_structure(MPI_Win);
         MPI_File translate_structure(MPI_File);
-        void check_global(MPI_Win, int*);
-        void check_global(MPI_File, int*);
+        void check_served(MPI_Win, int*);
+        void check_served(MPI_File, int*);
         ComplexComm(MPI_Comm);
+        MPI_Group get_group();
 
     private:
         MPI_Comm cur_comm;
+        MPI_Group group;
         StructureHandler<MPI_Win, MPI_Comm> * windows;
         StructureHandler<MPI_File, MPI_Comm> * files;
 };

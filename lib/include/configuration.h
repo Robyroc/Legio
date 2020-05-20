@@ -1,6 +1,8 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
+    #define NUM_RETRY 3
+
     #if 2 == 1
         #define HANDLE_BCAST_FAIL(C) ({\
             rc = MPI_SUCCESS;\
