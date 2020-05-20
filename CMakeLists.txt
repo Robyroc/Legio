@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(Legio)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/lib/include/defaults.cmake")
+
 set(LEGIO_VERSION_MAJOR 0)
 set(LEGIO_VERSION_MINOR 1)
 
@@ -46,3 +48,7 @@ endfunction(linkMPI)
 add_subdirectory(lib)
 add_subdirectory(legiotest)
 
+
+if(ON)
+add_subdirectory(testsrc)
+endif()

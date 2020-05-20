@@ -1,3 +1,27 @@
+include("${CMAKE_CURRENT_SOURCE_DIR}/include/defaults.cmake")
+
+function(defaultValue VAR VALUE)
+    if(NOT DEFINED ${VAR})
+        set(${VAR} ${VALUE} PARENT_SCOPE)
+    endif()
+endfunction(defaultValue)
+
+defaultValue(BROADCAST_FAIL_POLICY ${FAULT_STOP})
+defaultValue(SEND_FAIL_POLICY ${FAULT_IGNORE})
+defaultValue(NUM_RETRY 3)
+defaultValue(RECV_FAIL_POLICY ${FAULT_STOP})
+defaultValue(REDUCE_FAIL_POLICY ${FAULT_IGNORE})
+defaultValue(GET_FAIL_POLICY ${FAULT_STOP})
+defaultValue(PUT_FAIL_POLICY ${FAULT_IGNORE})
+defaultValue(GATHER_FAIL_POLICY ${FAULT_IGNORE})
+defaultValue(GATHER_APPROACH ${RANK_KEEP})
+defaultValue(SCATTER_FAIL_POLICY ${FAULT_STOP})
+defaultValue(SCATTER_APPROACH ${RANK_KEEP})
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.h"
+)
 
 add_library(legio
         src/coll.cpp 
@@ -10,7 +34,6 @@ add_library(legio
         include/comm_manipulation.h
         include/complex_comm.h
         include/configuration.h
-        include/defaults.h
         include/legio.h
         include/structure_handler.h)
 

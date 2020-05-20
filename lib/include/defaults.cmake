@@ -1,0 +1,9 @@
+
+if(NOT DEFINED DEFAULTS_CMAKE)
+    set(DEFAULTS_CMAKE 1)
+
+    set(FAULT_IGNORE 1)
+    set(FAULT_STOP 2)
+    set(RANK_SHIFT 3)
+    set(RANK_KEEP 4)
+endif()
