@@ -127,8 +127,8 @@ file,MPI_File_read_shared,YES,,
 file,MPI_File_write_shared,YES,,
 async,MPI_File_iread_shared,NO,medium,request handling
 async,MPI_File_iwrite_shared,NO,medium,request handling
-file,MPI_File_read_ordered,NO,hard,easy implementation provided, needs something like gather
-file,MPI_File_write_ordered,NO,hard,easy implementation provided, needs something like gather
+file,MPI_File_read_ordered,NO,hard,easy implementation provided. Will need something like gather
+file,MPI_File_write_ordered,NO,hard,easy implementation provided. Will need something like gather
 file,MPI_File_seek_shared,YES,,
 file,MPI_File_get_position_shared,YES,,
 async,MPI_File_read_at_all_begin,NO,medium,request handling
