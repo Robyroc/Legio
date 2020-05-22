@@ -1,5 +1,5 @@
 Group,Call,Supported,Difficulty,Notes
-general,MPI_Abort,NO,easy,comm_translation
+general,MPI_Abort,YES,,
 osc,MPI_Accumulate,NO,easy,reduce on windows
 errors,MPI_Add_error_class,-,,
 errors,MPI_Add_error_code,-,,
@@ -146,7 +146,7 @@ async,MPI_File_write_ordered_end,NO,medium,request handling
 file,MPI_File_get_type_extent,NO,?,
 file,MPI_File_set_atomicity,NO,easy,file translation
 file,MPI_File_get_atomicity,NO,easy,file translation
-file,MPI_File_sync,NO,easy,file translation
+file,MPI_File_sync,YES,,
 general,MPI_Finalize,-,,
 general,MPI_Finalized,-,,
 osc,MPI_Free_mem,-,,
@@ -256,7 +256,7 @@ async,MPI_Rget_accumulate,NO,medium,request handling
 async,MPI_Rput,NO,medium,request handling
 async,MPI_Rsend,NO,medium,request handling
 async,MPI_Rsend_init,NO,medium,request handling
-collective,MPI_Scan,NO,easy,like reduce
+collective,MPI_Scan,YES,,
 async,MPI_Iscan,NO,medium,request handling
 collective,MPI_Scatter,YES,,
 async,MPI_Iscatter,NO,medium,request handling

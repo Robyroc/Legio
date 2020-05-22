@@ -236,3 +236,33 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
             return rc;
     }
 }
+
+int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
+{
+    while(1)
+    {
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
+            rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
+        else
+            rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm);
+        if(VERBOSE)
+        {
+            int rank, size;
+            PMPI_Comm_size(comm, &size);
+            PMPI_Comm_rank(comm, &rank);
+            MPI_Error_string(rc, errstr, &len);
+            printf("Rank %d / %d: scan done (error: %s)\n", rank, size, errstr);
+        }
+        if(flag)
+        {
+            agree_and_eventually_replace(&rc, translated);
+            if(rc == MPI_SUCCESS)
+                return rc;
+        }
+        else
+            return rc;
+    }
+}

@@ -539,3 +539,26 @@ int MPI_File_write_ordered(MPI_File mpi_fh, const void* buf, int count, MPI_Data
     }
     return rc;
 }
+
+int MPI_File_sync(MPI_File mpi_fh)
+{
+    int rc;
+    ComplexComm * comm = cur_comms->get_complex_from_file(mpi_fh);
+    if(comm != NULL)
+    {
+        MPI_File translated = comm->translate_structure(mpi_fh);
+        //MPI_Barrier(comm);
+        rc = PMPI_File_sync(translated);
+    }
+    else
+        rc = PMPI_File_sync(mpi_fh);
+    if(VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(MPI_COMM_WORLD, &size);
+        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: file_sync done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
+}

@@ -23,6 +23,26 @@ int MPI_Init(int* argc, char *** argv)
     return rc;
 }
 
+int MPI_Abort(MPI_Comm comm, int errorcode)
+{
+    int rc, flag;
+    cur_comms->part_of(comm, &flag);
+    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    if(flag)
+        rc = PMPI_Abort(translated->get_comm(), errorcode);
+    else
+        rc = PMPI_Abort(comm, errorcode);
+    if(VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(comm, &size);
+        PMPI_Comm_rank(comm, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: abort done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
+}
+
 int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 {
     while(1)
