@@ -22,13 +22,7 @@ if("a${MPICC}" STREQUAL "a")
 	    OUTPUT_VARIABLE outVar
 	)
 	execute_process(
-	    COMMAND bash -c "cd ..
-			  && cd ulfm 
-			  && ./autogen.pl
-			  && mkdir build
-			  && ./configure --with-ft --prefix=$(ULFM_PREFIX)
-			  && make all
-			  && make install"
+	    COMMAND bash -c "cd .. && cd ulfm && ./autogen.pl && mkdir build && ./configure --with-ft --prefix=$(ULFM_PREFIX) && make all && make install"
 	    OUTPUT_VARIABLE outVar
 	)
     endif()
