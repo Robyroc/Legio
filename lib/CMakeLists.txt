@@ -55,25 +55,13 @@ if(MPI_LINK_FLAGS)
     set_target_properties(legio PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif()
 
-
-include(GNUInstallDirs)
-install(TARGETS legio
-    EXPORT legioTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legio
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legio
-)
-
 include(CMakePackageConfigHelpers)
-set(CONFIG_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}/cmake")
 configure_package_config_file(config/config.in
     ${CMAKE_CURRENT_BINARY_DIR}/legioConfig.cmake
     INSTALL_DESTINATION cmake
 )
 
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/legioConfigVersion.cmake
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/legioConfigVersion.cmake
     VERSION "1.0"
     COMPATIBILITY ExactVersion
 )
@@ -82,5 +70,5 @@ install(
     FILES
     ${CMAKE_CURRENT_BINARY_DIR}/legioConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/legioConfigVersion.cmake
-    DESTINATION ${CONFIG_INSTALL_PATH}
+    DESTINATION cmake
 )

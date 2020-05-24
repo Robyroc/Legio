@@ -16,22 +16,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(MPICC $ENV{MPICC})
 if("a${MPICC}" STREQUAL "a")
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ulfm/build/bin/mpicc")
-	execute_process(
-	    COMMAND bash -c "cd .. && git clone --recursive https://bitbucket.org/icldistcomp/ulfm2/src/ulfm/"
-	    OUTPUT_VARIABLE outVar
-	)
-	execute_process(
-	    COMMAND bash -c "cd .. && cd ulfm && ./autogen.pl && mkdir build && ./configure --with-ft --prefix=$(shell pwd)/ulfm/build && make all && make install"
-	    OUTPUT_VARIABLE outVar
-	)
-    endif()
-    	set(MPICC "${CMAKE_CURRENT_SOURCE_DIR}/ulfm/build/bin/mpicc")
-#    execute_process(
-#        COMMAND bash -c "cd .. && make ulfm"
-#        OUTPUT_VARIABLE outVar
-#    )
-#    set(MPICC ${outVar})
+    execute_process(
+        COMMAND bash -c "cd .. && make ulfm"
+        OUTPUT_VARIABLE outVar
+    )
+    set(MPICC ${outVar})
 endif()
 #set(CMAKE_BUILD_TYPE Release)
 
@@ -68,5 +57,3 @@ endif()
 if(BUILD_EXAMPLES)
     add_subdirectory(testsrc)
 endif()
-
-
