@@ -12,7 +12,7 @@ $(ULFM_FILE):
 	cd ulfm; \
 	./autogen.pl; \
 	mkdir build; \
-	./configure --with-ft --prefix="$(shell pwd)"/$(ULFM_PREFIX); \
+	./configure --with-ft --prefix=$(ULFM_PREFIX); \
 	make all; \
 	make install
 
