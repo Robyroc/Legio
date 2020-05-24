@@ -45,7 +45,8 @@ target_compile_features(legio PUBLIC cxx_std_11)
 set_target_properties(legio PROPERTIES CXX_EXTENSIONS OFF)
 linkMPI(legio)
 
-target_link_libraries(legio ${MPI_C_LIBRARIES})
+linkMPI(legio)
+#target_link_libraries(legio ${MPI_C_LIBRARIES})
 if(MPI_COMPILE_FLAGS)
     set_target_properties(legio PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 endif()
@@ -54,3 +55,20 @@ if(MPI_LINK_FLAGS)
     set_target_properties(legio PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif()
 
+include(CMakePackageConfigHelpers)
+configure_package_config_file(config/config.in
+    ${CMAKE_CURRENT_BINARY_DIR}/legioConfig.cmake
+    INSTALL_DESTINATION cmake
+)
+
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/legioConfigVersion.cmake
+    VERSION "1.0"
+    COMPATIBILITY ExactVersion
+)
+
+install(
+    FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/legioConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/legioConfigVersion.cmake
+    DESTINATION cmake
+)
