@@ -68,7 +68,10 @@ T StructureHandler<T, U>::translate(T input)
     {
         typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(*pointer);
         if(res == opened.end())
+        {
+            printf("CANNOT TRANSLATE SOMETHING...\n");
             return input;
+        }
         else return res->second.second;
     }
     else return input;
@@ -87,6 +90,8 @@ void StructureHandler<T, U>::remove(T item)
         typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator res = opened.find(*pointer);
         if(res != opened.end())
             destroyer(&(res->second.second));
+        else
+            printf("REMOVING SOMETHING NOT PRESENT...\n");
         opened.erase(*pointer);
     }
 }

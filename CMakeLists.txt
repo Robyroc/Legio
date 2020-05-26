@@ -7,6 +7,8 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/lib/include/defaults.cmake")
 set(LEGIO_VERSION_MAJOR 0)
 set(LEGIO_VERSION_MINOR 1)
 
+#set(CMAKE_BUILD_TYPE "Debug")
+
 option(BUILD_TESTS "Build example programs from legiotest directory" ON)
 option(BUILD_EXAMPLES "Build example programs using ULFM from testsrc directory" OFF)
 

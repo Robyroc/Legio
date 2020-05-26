@@ -23,8 +23,6 @@ class Multicomm
         void change_comm(ComplexComm*, MPI_Comm);
     private:
         std::unordered_map<int, ComplexComm> comms;
-        int counter;
-        int keyval;
         std::unordered_map<int, int> window_map;
         std::unordered_map<int, int> file_map;
 };

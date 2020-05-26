@@ -17,10 +17,21 @@ Multicomm *cur_comms;
 int MPI_Init(int* argc, char *** argv)
 {
     int rc = PMPI_Init(argc, argv);
-    cur_comms = new Multicomm();
-    MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    cur_comms->add_comm(MPI_COMM_WORLD);
+    initialization();
     return rc;
+}
+
+int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
+{
+    int rc = PMPI_Init_thread(argc, argv, required, provided);
+    initialization();
+    return rc;
+}
+
+int MPI_Finalize()
+{
+    finalization();
+    return PMPI_Finalize();
 }
 
 int MPI_Abort(MPI_Comm comm, int errorcode)
@@ -148,6 +159,7 @@ int MPI_Comm_disconnect(MPI_Comm * comm)
 {
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_disconnect(a);};
     cur_comms->remove(*comm, func);
+    func(comm);
     return MPI_SUCCESS;
 }
 
@@ -155,6 +167,7 @@ int MPI_Comm_free(MPI_Comm* comm)
 {
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_free(a);};
     cur_comms->remove(*comm, func);
+    func(comm);
     return MPI_SUCCESS;
 }
 
@@ -190,4 +203,55 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
         else
             return rc;
     }
+}
+
+int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
+{
+    while(1)
+    {
+        int rc, flag;
+        cur_comms->part_of(comm, &flag);
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        if(flag)
+            rc = PMPI_Comm_set_info(translated->get_comm(), info);
+        else
+            rc = PMPI_Comm_set_info(comm, info);
+        if(VERBOSE)
+        {
+            int rank, size;
+            PMPI_Comm_size(comm, &size);
+            PMPI_Comm_rank(comm, &rank);
+            MPI_Error_string(rc, errstr, &len);
+            printf("Rank %d / %d: comm_set_info done (error: %s)\n", rank, size, errstr);
+        }
+        if(flag)
+        {
+            agree_and_eventually_replace(&rc, translated);
+            if(rc == MPI_SUCCESS)
+                return rc;
+        }
+        else
+            return rc;
+    }
+}
+
+
+int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
+{
+    int rc, flag;
+    cur_comms->part_of(comm, &flag);
+    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    if(flag)
+        rc = PMPI_Comm_get_info(translated->get_comm(), info_used);
+    else
+        rc = PMPI_Comm_get_info(comm, info_used);
+    if(VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(comm, &size);
+        PMPI_Comm_rank(comm, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: comm_get_info done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
 }

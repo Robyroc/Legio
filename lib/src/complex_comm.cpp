@@ -2,7 +2,7 @@
 #include "mpi.h"
 #include "structure_handler.h"
 
-ComplexComm::ComplexComm(MPI_Comm comm):cur_comm(comm)
+ComplexComm::ComplexComm(MPI_Comm comm, int id):cur_comm(comm), alias_id(id)
 {
     int keyval;
     MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
@@ -98,6 +98,10 @@ void ComplexComm::replace_comm(MPI_Comm comm)
 {
     windows->replace(comm);
     files->replace(comm);
+    MPI_Info info;
+    PMPI_Comm_get_info(cur_comm, &info);
+    PMPI_Comm_set_info(comm, info);
+    PMPI_Info_free(&info);
     PMPI_Comm_free(&cur_comm);
     cur_comm = comm;
 }
@@ -115,4 +119,9 @@ void ComplexComm::check_served(MPI_File file, int* result)
 MPI_Group ComplexComm::get_group()
 {
     return group;
+}
+
+MPI_Comm ComplexComm::get_alias()
+{
+    return MPI_Comm_f2c(alias_id);
 }

@@ -58,7 +58,7 @@ topo,MPI_Dist_graph_create_adjacent,NO,?,
 topo,MPI_Dist_graph_neighbors,NO,?,
 topo,MPI_Dist_graph_neighbors_count,NO,?,
 errors,MPI_Comm_get_errhandler,NO,?,errorhandler usage shall be wrapped
-info,MPI_Comm_get_info,-,,
+info,MPI_Comm_get_info,YES,,
 info,MPI_Comm_get_name,-,,
 info,MPI_Comm_get_parent,-,,
 Group,MPI_Comm_group,-,,
@@ -68,7 +68,7 @@ intercom,MPI_Comm_remote_group,NO,?,
 intercom,MPI_Comm_remote_size,NO,?,
 attr,MPI_Comm_set_attr,-,,
 errors,MPI_Comm_set_errhandler,NO,?,errorhandler usage shall be wrapped
-info,MPI_Comm_set_info,-,,
+info,MPI_Comm_set_info,YES,,
 info,MPI_Comm_set_name,-,,
 comm,MPI_Comm_size,-,,
 dynamic,MPI_Comm_spawn,NO,?,
@@ -95,9 +95,9 @@ errors,MPI_File_get_errhandler,NO,?,errorhandler usage shall be wrapped
 file,MPI_File_open,YES,,
 file,MPI_File_close,YES,,
 file,MPI_File_delete,-,,
-file,MPI_File_set_size,NO,easy,file translation
+file,MPI_File_set_size,YES,,
 file,MPI_File_preallocate,NO,easy,file translation
-file,MPI_File_get_size,NO,easy,file translation
+file,MPI_File_get_size,YES,,
 file,MPI_File_get_group,NO,medium,no adapt or translate
 file,MPI_File_get_amode,-,,
 info,MPI_File_set_info,-,,
@@ -143,11 +143,11 @@ async,MPI_File_read_ordered_begin,NO,medium,request handling
 async,MPI_File_read_ordered­_end,NO,medium,request handling
 async,MPI_File_write_ordered_begin,NO,medium,request handling
 async,MPI_File_write_ordered_end,NO,medium,request handling
-file,MPI_File_get_type_extent,NO,?,
+file,MPI_File_get_type_extent,YES,,
 file,MPI_File_set_atomicity,NO,easy,file translation
 file,MPI_File_get_atomicity,NO,easy,file translation
 file,MPI_File_sync,YES,,
-general,MPI_Finalize,-,,
+general,MPI_Finalize,YES,,
 general,MPI_Finalized,-,,
 osc,MPI_Free_mem,-,,
 collective,MPI_Gather,YES,,
@@ -197,7 +197,7 @@ info,MPI_Info_get_valuelen,-,,
 info,MPI_Info_set,-,,
 general,MPI_Init,YES,,
 general,MPI_Initialized,NO,,
-general,MPI_Init_thread,-,,
+general,MPI_Init_thread,YES,,
 intercom,MPI_Intercomm_create,?,,
 intercom,MPI_Intercomm_merge,?,,
 async,MPI_Iprobe,NO,medium,request handling

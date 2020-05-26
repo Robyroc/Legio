@@ -41,7 +41,7 @@ int MPI_File_open(MPI_Comm comm, const char *filename, int amode, MPI_Info info,
         std::function<int(MPI_Comm, MPI_File *)> func;
         if(flag)
         {
-            MPI_Barrier(translated);
+            MPI_Barrier(translated->get_alias());
             func = [filename, consequent_amode, info] (MPI_Comm c, MPI_File* f) -> int
             {
                 int rc = PMPI_File_open(c, filename, consequent_amode, info, f);
@@ -84,7 +84,7 @@ int MPI_File_read_at(MPI_File mpi_fh, MPI_Offset offset, void *buf, int count, M
     ComplexComm* comm = cur_comms->get_complex_from_file(mpi_fh);
     if(comm != NULL)
     {
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         MPI_File translated = comm->translate_structure(mpi_fh);
         rc = PMPI_File_read_at(translated, offset, buf, count, datatype, status);
     }
@@ -108,7 +108,7 @@ int MPI_File_write_at(MPI_File mpi_fh, MPI_Offset offset, const void *buf, int c
     
     if(comm != NULL)
     {
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         MPI_File translated = comm->translate_structure(mpi_fh);
         rc = PMPI_File_write_at(translated, offset, buf, count, datatype, status);
     }
@@ -134,7 +134,7 @@ int MPI_File_read_at_all(MPI_File mpi_fh, MPI_Offset offset, void *buf, int coun
         if(comm != NULL)
         {
             MPI_File translated = comm->translate_structure(mpi_fh);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_File_read_at_all(translated, offset, buf, count, datatype, status);
         }
         else
@@ -167,7 +167,7 @@ int MPI_File_write_at_all(MPI_File mpi_fh, MPI_Offset offset, const void* buf, i
         if(comm != NULL)
         {
             MPI_File translated = comm->translate_structure(mpi_fh);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_File_write_at_all(translated, offset, buf, count, datatype, status);
         }
         else
@@ -197,7 +197,7 @@ int MPI_File_seek(MPI_File mpi_fh, MPI_Offset offset, int whence)
     ComplexComm* comm = cur_comms->get_complex_from_file(mpi_fh);
     if(comm != NULL)
     {
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         MPI_File translated = comm->translate_structure(mpi_fh);
         rc = PMPI_File_seek(translated, offset, whence);
     }
@@ -245,7 +245,7 @@ int MPI_File_seek_shared(MPI_File mpi_fh, MPI_Offset offset, int whence)
         ComplexComm* comm = cur_comms->get_complex_from_file(mpi_fh);
         if(comm != NULL)
         {
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             MPI_File translated = comm->translate_structure(mpi_fh);
             MPI_File_get_position_shared(translated, &starting_offset);
             rc = PMPI_File_seek_shared(translated, offset, whence);
@@ -283,7 +283,7 @@ int MPI_File_get_position_shared(MPI_File mpi_fh, MPI_Offset *offset)
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_get_position_shared(translated, offset);
     }
     else
@@ -309,7 +309,7 @@ int MPI_File_read_all(MPI_File mpi_fh, void *buf, int count, MPI_Datatype dataty
         if(comm != NULL)
         {
             MPI_File translated = comm->translate_structure(mpi_fh);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_File_read_all(translated, buf, count, datatype, status);
         }
         else        
@@ -342,7 +342,7 @@ int MPI_File_write_all(MPI_File mpi_fh, const void* buf, int count, MPI_Datatype
         if(comm != NULL)
         {
             MPI_File translated = comm->translate_structure(mpi_fh);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_File_write_all(translated, buf, count, datatype, status);
         }
         else
@@ -376,7 +376,7 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype, MPI_
         if(comm != NULL)
         {
             MPI_File translated = comm->translate_structure(mpi_fh);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_File_set_view(translated, disp, etype, filetype, datarep, info);
         }
         else
@@ -407,7 +407,7 @@ int MPI_File_read(MPI_File mpi_fh, void *buf, int count, MPI_Datatype datatype, 
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_read(translated, buf, count, datatype, status);
     }
     else
@@ -430,7 +430,7 @@ int MPI_File_write(MPI_File mpi_fh, const void* buf, int count, MPI_Datatype dat
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_write(translated, buf, count, datatype, status);
     }
     else
@@ -453,7 +453,7 @@ int MPI_File_read_shared(MPI_File mpi_fh, void *buf, int count, MPI_Datatype dat
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_read_shared(translated, buf, count, datatype, status);
     }
     else
@@ -477,7 +477,7 @@ int MPI_File_write_shared(MPI_File mpi_fh, const void* buf, int count, MPI_Datat
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_write_shared(translated, buf, count, datatype, status);
     }
     else
@@ -501,7 +501,7 @@ int MPI_File_read_ordered(MPI_File mpi_fh, void *buf, int count, MPI_Datatype da
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        MPI_Barrier(comm);
+        MPI_Barrier(comm->get_alias());
         rc = PMPI_File_read_ordered(translated, buf, count, datatype, status);
     }
     else
@@ -524,7 +524,7 @@ int MPI_File_write_ordered(MPI_File mpi_fh, const void* buf, int count, MPI_Data
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        MPI_Barrier(comm);
+        MPI_Barrier(comm->get_alias());
         rc = PMPI_File_write_ordered(translated, buf, count, datatype, status);
     }
     else
@@ -547,7 +547,7 @@ int MPI_File_sync(MPI_File mpi_fh)
     if(comm != NULL)
     {
         MPI_File translated = comm->translate_structure(mpi_fh);
-        //MPI_Barrier(comm);
+        //MPI_Barrier(comm->get_alias());
         rc = PMPI_File_sync(translated);
     }
     else
@@ -559,6 +559,75 @@ int MPI_File_sync(MPI_File mpi_fh)
         PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Error_string(rc, errstr, &len);
         printf("Rank %d / %d: file_sync done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
+}
+
+int MPI_File_get_size(MPI_File mpi_fh, MPI_Offset * size)
+{
+    int rc;
+    ComplexComm * comm = cur_comms->get_complex_from_file(mpi_fh);
+    if(comm != NULL)
+    {
+        MPI_File translated = comm->translate_structure(mpi_fh);
+        //MPI_Barrier(comm->get_alias());
+        rc = PMPI_File_get_size(translated, size);
+    }
+    else
+        rc = PMPI_File_get_size(mpi_fh, size);
+    if(VERBOSE)
+    {
+        int rank, comm_size;
+        PMPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: file_get_size done (error: %s)\n", rank, comm_size, errstr);
+    }
+    return rc;
+}
+
+int MPI_File_get_type_extent(MPI_File mpi_fh, MPI_Datatype datatype, MPI_Aint * extent)
+{
+    int rc;
+    ComplexComm * comm = cur_comms->get_complex_from_file(mpi_fh);
+    if(comm != NULL)
+    {
+        MPI_File translated = comm->translate_structure(mpi_fh);
+        //MPI_Barrier(comm->get_alias());
+        rc = PMPI_File_get_type_extent(translated, datatype, extent);
+    }
+    else
+        rc = PMPI_File_get_type_extent(mpi_fh, datatype, extent);
+    if(VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(MPI_COMM_WORLD, &size);
+        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: file_get_type_extent done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
+}
+
+int MPI_File_set_size(MPI_File mpi_fh, MPI_Offset size)
+{
+    int rc;
+    ComplexComm * comm = cur_comms->get_complex_from_file(mpi_fh);
+    if(comm != NULL)
+    {
+        MPI_File translated = comm->translate_structure(mpi_fh);
+        //MPI_Barrier(comm->get_alias());
+        rc = PMPI_File_set_size(translated, size);
+    }
+    else
+        rc = PMPI_File_set_size(mpi_fh, size);
+    if(VERBOSE)
+    {
+        int rank, comm_size;
+        PMPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: file_set_size done (error: %s)\n", rank, comm_size, errstr);
     }
     return rc;
 }

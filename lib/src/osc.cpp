@@ -22,7 +22,7 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
         std::function<int(MPI_Comm, MPI_Win *)> func;
         if(flag)
         {
-            MPI_Barrier(translated);
+            MPI_Barrier(translated->get_alias());
             func = [base, size, disp_unit, info] (MPI_Comm c, MPI_Win* w) -> int
             {
                 int rc = PMPI_Win_create(base, size, disp_unit, info, c, w);
@@ -63,7 +63,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
         {
-            MPI_Barrier(translated);
+            MPI_Barrier(translated->get_alias());
             func = [size, disp_unit, info, baseptr] (MPI_Comm c, MPI_Win* w) -> int
             {
                 int rc = PMPI_Win_allocate(size, disp_unit, info, c, baseptr, w);
@@ -109,7 +109,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
         if(comm != NULL)
         {
             MPI_Win translated = comm->translate_structure(win);
-            MPI_Barrier(comm);
+            MPI_Barrier(comm->get_alias());
             rc = PMPI_Win_fence(assert, translated);
         }
         else

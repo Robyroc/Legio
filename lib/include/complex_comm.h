@@ -30,14 +30,16 @@ class ComplexComm
         MPI_File translate_structure(MPI_File);
         void check_served(MPI_Win, int*);
         void check_served(MPI_File, int*);
-        ComplexComm(MPI_Comm);
+        ComplexComm(MPI_Comm, int);
         MPI_Group get_group();
+        MPI_Comm get_alias();
 
     private:
         MPI_Comm cur_comm;
         MPI_Group group;
         StructureHandler<MPI_Win, MPI_Comm> * windows;
         StructureHandler<MPI_File, MPI_Comm> * files;
+        int alias_id;
 };
 
 #endif
