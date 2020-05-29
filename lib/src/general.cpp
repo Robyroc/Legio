@@ -8,7 +8,7 @@
 #include "multicomm.h"
 
 
-int VERBOSE = 0;
+int VERBOSE = 1;
 
 char errstr[MPI_MAX_ERROR_STRING];
 int len;
@@ -19,19 +19,27 @@ int MPI_Init(int* argc, char *** argv)
     int rc = PMPI_Init(argc, argv);
     initialization();
     return rc;
+    /*
+    int provided;
+    return MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+    */
 }
 
 int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
 {
     int rc = PMPI_Init_thread(argc, argv, required, provided);
     initialization();
+    //kalive_thread();
     return rc;
 }
 
 int MPI_Finalize()
 {
+    MPI_Barrier(MPI_COMM_WORLD);
+    //kill_kalive_thread();
     finalization();
-    return PMPI_Finalize();
+    //return PMPI_Finalize();
+    return MPI_SUCCESS;
 }
 
 int MPI_Abort(MPI_Comm comm, int errorcode)

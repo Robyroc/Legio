@@ -3,11 +3,14 @@
 #include <mpi-ext.h>
 #include "complex_comm.h"
 #include "multicomm.h"
+//#include <thread>
 
 extern Multicomm *cur_comms;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
+//std::thread * kalive;
+//int temp;
 
 void initialization()
 {
@@ -57,3 +60,25 @@ void agree_and_eventually_replace(int* rc, ComplexComm* cur_complex)
     if(*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
 }
+/*
+void receiver()
+{
+    MPI_Recv(&temp, 1, MPI_INT, 0, 75, MPI_COMM_SELF, MPI_STATUS_IGNORE);
+}
+
+void sender()
+{
+    int i = 0;
+    MPI_Send(&i, 1, MPI_INT, 0, 75, MPI_COMM_SELF);
+}
+
+void kalive_thread()
+{
+    kalive = new std::thread(receiver);
+}
+
+void kill_kalive_thread()
+{
+    sender();
+}
+*/

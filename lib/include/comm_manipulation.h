@@ -15,4 +15,8 @@ void initialization();
 
 void finalization();
 
+//void kalive_thread();
+
+//void kill_kalive_thread();
+
 #endif
