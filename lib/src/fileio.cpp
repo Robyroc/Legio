@@ -64,8 +64,9 @@ int MPI_File_open(MPI_Comm comm, const char *filename, int amode, MPI_Info info,
             return rc;
         else if(rc == MPI_SUCCESS)
         {
-            cur_comms->add_file(translated, *mpi_fh, func);
-            return rc;
+            bool result = cur_comms->add_file(translated, *mpi_fh, func);
+            if(result)
+                return rc;
         }
         else
             replace_comm(translated);

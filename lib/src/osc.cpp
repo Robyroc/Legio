@@ -45,8 +45,9 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
             return rc;
         else if(rc == MPI_SUCCESS)
         {
-            cur_comms->add_window(translated, *win, func);
-            return rc;
+            bool result = cur_comms->add_window(translated, *win, func);
+            if(result)
+                return rc;
         }
         else
             replace_comm(translated);
@@ -86,8 +87,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
             return rc;
         else if(rc == MPI_SUCCESS)
         {
-            cur_comms->add_window(translated, *win, func);
-            return rc;
+            bool result = cur_comms->add_window(translated, *win, func);
+            if(result)
+                return rc;
         }
         else
             replace_comm(translated);

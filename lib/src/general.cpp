@@ -87,8 +87,9 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                cur_comms->add_comm(*newcomm);
-                return rc;
+                bool result = cur_comms->add_comm(*newcomm);
+                if(result)
+                    return rc;
             }
         }
         else
@@ -204,8 +205,9 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                cur_comms->add_comm(*newcomm);
-                return rc;
+                bool result = cur_comms->add_comm(*newcomm);
+                if(result)
+                    return rc;
             }
         }
         else

@@ -7,15 +7,15 @@
 Multicomm::Multicomm()
 {}
 
-void Multicomm::add_comm(MPI_Comm added)
+bool Multicomm::add_comm(MPI_Comm added)
 {
     int id = MPI_Comm_c2f(added);
     MPI_Comm temp;
     PMPI_Comm_dup(added, &temp);
     MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
     std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id));
-    comms.insert(adding);
-    std::unordered_map<int, ComplexComm>::iterator res = comms.find(id);
+    auto res = comms.insert(adding);
+    return res.second;
 }
 
 ComplexComm* Multicomm::translate_into_complex(MPI_Comm input)
@@ -53,18 +53,22 @@ void Multicomm::part_of(MPI_Comm checked, int* result)
     *result = (res != comms.end());
 }
 
-void Multicomm::add_file(ComplexComm* comm, MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
+bool Multicomm::add_file(ComplexComm* comm, MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
 {
-    comm->add_structure(file, func);
     int id = MPI_Comm_c2f(comm->get_alias());
-    file_map.insert({MPI_File_c2f(file), id});
+    auto res = file_map.insert({MPI_File_c2f(file), id});
+    if(res.second) 
+        comm->add_structure(file, func);
+    return res.second;
 }
 
-void Multicomm::add_window(ComplexComm* comm, MPI_Win win, std::function<int(MPI_Comm, MPI_Win *)> func)
+bool Multicomm::add_window(ComplexComm* comm, MPI_Win win, std::function<int(MPI_Comm, MPI_Win *)> func)
 {
-    comm->add_structure(win, func);
     int id = MPI_Comm_c2f(comm->get_alias());
-    window_map.insert({MPI_Win_c2f(win), id});
+    auto res = window_map.insert({MPI_Win_c2f(win), id});
+    if(res.second)
+        comm->add_structure(win, func);
+    return res.second;
 }
 
 void Multicomm::remove_window(MPI_Win* win)
