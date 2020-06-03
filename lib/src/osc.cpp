@@ -18,7 +18,7 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         std::function<int(MPI_Comm, MPI_Win *)> func;
         if(flag)
         {
@@ -61,7 +61,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
         int rc, flag;
         std::function<int(MPI_Comm, MPI_Win *)> func;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
         {
             MPI_Barrier(translated->get_alias());
@@ -107,7 +107,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
     while(1)
     {
         int rc;
-        ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+        AdvComm* comm = cur_comms->get_complex_from_win(win); 
         if(comm != NULL)
         {
             MPI_Win translated = comm->translate_structure(win);
@@ -134,7 +134,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
 int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
     int rc;
-    ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+    AdvComm* comm = cur_comms->get_complex_from_win(win); 
     if(comm != NULL)
     {
         MPI_Win translated = comm->translate_structure(win);
@@ -163,7 +163,7 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
 int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
     int rc;
-    ComplexComm* comm = cur_comms->get_complex_from_win(win); 
+    AdvComm* comm = cur_comms->get_complex_from_win(win); 
     if(comm != NULL)
     {
         MPI_Win translated = comm->translate_structure(win);

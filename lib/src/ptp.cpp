@@ -18,7 +18,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 {
     int i, rc, flag;
     cur_comms->part_of(comm, &flag);
-    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_complex(comm);
     for(i = 0; i < NUM_RETRY; i++)
     {
         if(flag)
@@ -55,7 +55,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_complex(comm);
     if(flag)
     {
         int source_rank;
@@ -84,7 +84,7 @@ int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_complex(comm);
     if(flag)
     {
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);

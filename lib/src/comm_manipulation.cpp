@@ -1,6 +1,7 @@
 #include "comm_manipulation.h"
 #include <mpi.h>
 #include <mpi-ext.h>
+#include "adv_comm.h"
 #include "complex_comm.h"
 #include "multicomm.h"
 //#include <thread>
@@ -16,9 +17,14 @@ void initialization()
 {
     cur_comms = new Multicomm();
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    cur_comms->add_comm(MPI_COMM_WORLD);
+    add_comm(MPI_COMM_WORLD);
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
-    cur_comms->add_comm(MPI_COMM_SELF);
+    add_comm(MPI_COMM_SELF);
+}
+
+bool add_comm(MPI_Comm comm)
+{
+    cur_comms->add_comm<ComplexComm>(comm);
 }
 
 void finalization()
@@ -26,7 +32,7 @@ void finalization()
     delete cur_comms;
 }
 
-void translate_ranks(int root, ComplexComm* comm, int* tr_rank)
+void translate_ranks(int root, AdvComm* comm, int* tr_rank)
 {
     MPI_Group tr_group;
     int source = root;
@@ -34,24 +40,12 @@ void translate_ranks(int root, ComplexComm* comm, int* tr_rank)
     MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, tr_rank);
 }
 
-void replace_comm(ComplexComm* cur_complex)
+void replace_comm(AdvComm* cur_complex)
 {
-    MPI_Comm new_comm;
-    int old_size, new_size, diff;
-    MPIX_Comm_shrink(cur_complex->get_comm(), &new_comm);
-    MPI_Comm_size(cur_complex->get_comm(), &old_size);
-    MPI_Comm_size(new_comm, &new_size);
-    diff = old_size - new_size; /* number of deads */
-    if(0 == diff)
-        PMPI_Comm_free(&new_comm);
-    else
-    {
-        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-        cur_comms->change_comm(cur_complex, new_comm);
-    }
+    cur_complex->fault_manage();
 }
 
-void agree_and_eventually_replace(int* rc, ComplexComm* cur_complex)
+void agree_and_eventually_replace(int* rc, AdvComm* cur_complex)
 {
     int flag = (MPI_SUCCESS==*rc);
     MPIX_Comm_agree(cur_complex->get_comm(), &flag);

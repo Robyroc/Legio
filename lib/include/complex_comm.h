@@ -2,44 +2,33 @@
 #define COMPLEX_COMM_H
 
 #include "mpi.h"
-#include <list>
+#include "adv_comm.h"
 #include <unordered_map>
 #include <functional>
 #include "structure_handler.h"
 
-struct FullWindow
-{
-    int id;
-    void* base;
-    MPI_Aint size;
-    int disp_unit;
-    MPI_Info info;
-    MPI_Win win;
-};
-
-class ComplexComm
+class ComplexComm : public AdvComm
 {
     public:
+        ComplexComm(MPI_Comm);
+
+        void fault_manage();
+
+        inline bool file_support() { return true; }
+        inline bool window_support() { return true; }
         void add_structure(MPI_Win, std::function<int(MPI_Comm, MPI_Win *)>);
         void add_structure(MPI_File, std::function<int(MPI_Comm, MPI_File *)>);
         void remove_structure(MPI_Win);
         void remove_structure(MPI_File);
-        void replace_comm(MPI_Comm);
-        MPI_Comm get_comm();
         MPI_Win translate_structure(MPI_Win);
         MPI_File translate_structure(MPI_File);
         void check_served(MPI_Win, int*);
         void check_served(MPI_File, int*);
-        ComplexComm(MPI_Comm, int);
-        MPI_Group get_group();
-        MPI_Comm get_alias();
 
     private:
-        MPI_Comm cur_comm;
-        MPI_Group group;
+        void replace_comm(MPI_Comm);
         StructureHandler<MPI_Win, MPI_Comm> * windows;
         StructureHandler<MPI_File, MPI_Comm> * files;
-        int alias_id;
 };
 
 #endif

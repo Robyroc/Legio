@@ -46,7 +46,7 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_complex(comm);
     if(flag)
         rc = PMPI_Abort(translated->get_comm(), errorcode);
     else
@@ -68,7 +68,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Comm_dup(translated->get_comm(), newcomm);
         else
@@ -87,7 +87,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(*newcomm);
+                bool result = add_comm(*newcomm);
                 if(result)
                     return rc;
             }
@@ -130,7 +130,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
         {
             MPI_Group new_group, failed_group;
@@ -186,7 +186,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Comm_split(translated->get_comm(), color, key, newcomm);
         else
@@ -205,7 +205,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(*newcomm);
+                bool result = add_comm(*newcomm);
                 if(result)
                     return rc;
             }
@@ -221,7 +221,7 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Comm_set_info(translated->get_comm(), info);
         else
@@ -250,7 +250,7 @@ int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_complex(comm);
     if(flag)
         rc = PMPI_Comm_get_info(translated->get_comm(), info_used);
     else

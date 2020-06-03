@@ -1,8 +1,9 @@
 #include "complex_comm.h"
 #include "mpi.h"
 #include "structure_handler.h"
+#include "mpi-ext.h"
 
-ComplexComm::ComplexComm(MPI_Comm comm, int id):cur_comm(comm), alias_id(id)
+ComplexComm::ComplexComm(MPI_Comm comm) : AdvComm{comm}
 {
     int keyval;
     MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
@@ -56,7 +57,6 @@ ComplexComm::ComplexComm(MPI_Comm comm, int id):cur_comm(comm), alias_id(id)
     };
     
     files = new StructureHandler<MPI_File, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
-    MPI_Comm_group(comm, &group);
 }
 
 void ComplexComm::add_structure(MPI_Win win, std::function<int(MPI_Comm, MPI_Win*)> func)
@@ -89,11 +89,6 @@ void ComplexComm::remove_structure(MPI_File file)
     files->remove(file);
 }
 
-MPI_Comm ComplexComm::get_comm()
-{
-    return cur_comm;
-}
-
 void ComplexComm::replace_comm(MPI_Comm comm)
 {
     windows->replace(comm);
@@ -116,12 +111,19 @@ void ComplexComm::check_served(MPI_File file, int* result)
     files->part_of(file, result);
 }
 
-MPI_Group ComplexComm::get_group()
+void ComplexComm::fault_manage()
 {
-    return group;
-}
-
-MPI_Comm ComplexComm::get_alias()
-{
-    return MPI_Comm_f2c(alias_id);
+    MPI_Comm new_comm;
+    int old_size, new_size, diff;
+    MPIX_Comm_shrink(cur_comm, &new_comm);
+    MPI_Comm_size(cur_comm, &old_size);
+    MPI_Comm_size(new_comm, &new_size);
+    diff = old_size - new_size; /* number of deads */
+    if(0 == diff)
+        PMPI_Comm_free(&new_comm);
+    else
+    {
+        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+        replace_comm(new_comm);
+    }
 }

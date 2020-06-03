@@ -33,6 +33,7 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/structure_handler.h"
     "${LIBRARY_HDR_PATH}/multicomm.h"
+    "${LIBRARY_HDR_PATH}/adv_comm.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 

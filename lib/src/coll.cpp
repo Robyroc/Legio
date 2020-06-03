@@ -18,7 +18,7 @@ int MPI_Barrier(MPI_Comm comm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Barrier(translated->get_comm());
         else
@@ -45,7 +45,7 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
         {
             int root_rank;
@@ -84,7 +84,7 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
         else
@@ -110,7 +110,7 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
         {
             int root_rank;
@@ -149,7 +149,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
     {
         int rc, actual_root, total_size, fake_rank, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
@@ -196,7 +196,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
     {
         int rc, actual_root, total_size, fake_rank, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
@@ -243,7 +243,7 @@ int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatyp
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_complex(comm);
         if(flag)
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
         else

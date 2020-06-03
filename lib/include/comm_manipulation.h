@@ -1,15 +1,17 @@
 #ifndef COMM_MANIPULATION_H
 #define COMM_MANIPULATION_H
 
-class ComplexComm;
+#include "mpi.h"
 
-void translate_ranks(int, ComplexComm*, int*);
+class AdvComm;
 
-void replace_comm(ComplexComm*);
+bool add_comm(MPI_Comm);
 
-void agree_and_eventually_replace(int*, ComplexComm*);
+void translate_ranks(int, AdvComm*, int*);
 
-int MPI_Barrier(ComplexComm* comm);
+void replace_comm(AdvComm*);
+
+void agree_and_eventually_replace(int*, AdvComm*);
 
 void initialization();
 
