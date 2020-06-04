@@ -4,7 +4,7 @@
 #include <signal.h>
 #include "comm_manipulation.h"
 #include "configuration.h"
-#include "complex_comm.h"
+#include "adv_comm.h"
 #include "multicomm.h"
 
 
@@ -51,14 +51,9 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
         rc = PMPI_Abort(translated->get_comm(), errorcode);
     else
         rc = PMPI_Abort(comm, errorcode);
-    if(VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: abort done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("abort", comm, rc);
+
     return rc;
 }
 
@@ -73,14 +68,9 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
             rc = PMPI_Comm_dup(translated->get_comm(), newcomm);
         else
             rc = PMPI_Comm_dup(comm, newcomm);
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: comm_dup done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("comm_dup", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -140,14 +130,9 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
         }
         else
             rc = PMPI_Comm_create_group(comm, group, tag, newcomm);
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: comm_create_group done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("comm_create_group", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -191,14 +176,9 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
             rc = PMPI_Comm_split(translated->get_comm(), color, key, newcomm);
         else
             rc = PMPI_Comm_split(comm, color, key, newcomm);
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: comm_split done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("comm_split", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -226,14 +206,9 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
             rc = PMPI_Comm_set_info(translated->get_comm(), info);
         else
             rc = PMPI_Comm_set_info(comm, info);
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: comm_set_info done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("comm_set_info", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -255,13 +230,8 @@ int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
         rc = PMPI_Comm_get_info(translated->get_comm(), info_used);
     else
         rc = PMPI_Comm_get_info(comm, info_used);
-    if(VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: comm_get_info done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("comm_get_info", comm, rc);
+
     return rc;
 }

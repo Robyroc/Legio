@@ -1,9 +1,9 @@
-#include "complex_comm.h"
+#include "single_comm.h"
 #include "mpi.h"
 #include "structure_handler.h"
 #include "mpi-ext.h"
 
-ComplexComm::ComplexComm(MPI_Comm comm) : AdvComm{comm}
+SingleComm::SingleComm(MPI_Comm comm) : AdvComm{comm}
 {
     int keyval;
     MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
@@ -59,37 +59,37 @@ ComplexComm::ComplexComm(MPI_Comm comm) : AdvComm{comm}
     files = new StructureHandler<MPI_File, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
 }
 
-void ComplexComm::add_structure(MPI_Win win, std::function<int(MPI_Comm, MPI_Win*)> func)
+void SingleComm::add_structure(MPI_Win win, std::function<int(MPI_Comm, MPI_Win*)> func)
 {
     windows->add_general(win, func);
 }
 
-void ComplexComm::add_structure(MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
+void SingleComm::add_structure(MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
 {
     files->add(MPI_File_c2f(file), file, func);
 }
 
-MPI_Win ComplexComm::translate_structure(MPI_Win win)
+MPI_Win SingleComm::translate_structure(MPI_Win win)
 {
     return windows->translate(win);
 }
 
-MPI_File ComplexComm::translate_structure(MPI_File file)
+MPI_File SingleComm::translate_structure(MPI_File file)
 {
     return files->translate(file);
 }
 
-void ComplexComm::remove_structure(MPI_Win win)
+void SingleComm::remove_structure(MPI_Win win)
 {
     windows->remove(win);
 }
 
-void ComplexComm::remove_structure(MPI_File file)
+void SingleComm::remove_structure(MPI_File file)
 {
     files->remove(file);
 }
 
-void ComplexComm::replace_comm(MPI_Comm comm)
+void SingleComm::replace_comm(MPI_Comm comm)
 {
     windows->replace(comm);
     files->replace(comm);
@@ -101,17 +101,17 @@ void ComplexComm::replace_comm(MPI_Comm comm)
     cur_comm = comm;
 }
 
-void ComplexComm::check_served(MPI_Win win, int* result)
+void SingleComm::check_served(MPI_Win win, int* result)
 {
     windows->part_of(win, result);
 }
 
-void ComplexComm::check_served(MPI_File file, int* result)
+void SingleComm::check_served(MPI_File file, int* result)
 {
     files->part_of(file, result);
 }
 
-void ComplexComm::fault_manage()
+void SingleComm::fault_manage()
 {
     MPI_Comm new_comm;
     int old_size, new_size, diff;
@@ -126,4 +126,52 @@ void ComplexComm::fault_manage()
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
         replace_comm(new_comm);
     }
+}
+
+int SingleComm::perform_operation(OneToOne op, int other_rank)
+{
+    int new_rank = translate_ranks(other_rank);
+    return op(new_rank, get_comm());
+}
+
+int SingleComm::perform_operation(OneToAll op, int root_rank)
+{
+    int new_rank = translate_ranks(root_rank);
+    return op(new_rank, get_comm());
+}
+
+int SingleComm::perform_operation(AllToOne op, int root_rank)
+{
+    int new_rank = translate_ranks(root_rank);
+    return op(new_rank, get_comm());
+}
+
+int SingleComm::perform_operation(AllToAll op)
+{
+    return op(get_comm());
+}
+
+int SingleComm::perform_operation(FileOp op, MPI_File file)
+{
+    MPI_File translated = translate_structure(file);
+    return op(translated, get_comm());
+}
+
+int SingleComm::perform_operation(FileOpColl op, MPI_File file)
+{
+    MPI_File translated = translate_structure(file);
+    return op(translated, get_comm());
+}
+
+int SingleComm::perform_operation(WinOp op, int root_rank, MPI_Win win)
+{
+    int new_rank = translate_ranks(root_rank);
+    MPI_Win translated = translate_structure(win);
+    return op(new_rank, translated, get_comm());
+}
+
+int SingleComm::perform_operation(WinOpColl op, MPI_Win win)
+{
+    MPI_Win translated = translate_structure(win);
+    return op(translated, get_comm());
 }

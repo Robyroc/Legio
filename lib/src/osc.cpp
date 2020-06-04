@@ -4,7 +4,7 @@
 #include <signal.h>
 #include "comm_manipulation.h"
 #include "configuration.h"
-#include "complex_comm.h"
+#include "adv_comm.h"
 #include "multicomm.h"
 
 extern Multicomm *cur_comms;
@@ -33,14 +33,9 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
         }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: win created (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("win_create", comm, rc);
+
         if(!flag)
             return rc;
         else if(rc == MPI_SUCCESS)
@@ -75,14 +70,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
         }
         else
             rc = PMPI_Win_allocate(size, disp_unit, info, comm, baseptr, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: win allocated (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("win_allocate", comm, rc);
+
         if(!flag)
             return rc;
         else if(rc == MPI_SUCCESS)
@@ -116,14 +106,9 @@ int MPI_Win_fence(int assert, MPI_Win win)
         }
         else
             rc = PMPI_Win_fence(assert, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: fence done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("fence", MPI_COMM_WORLD, rc);
+
         if(rc == MPI_SUCCESS || comm == NULL)
             return rc;
         else
@@ -149,14 +134,9 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
     else
         rc = PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank, target_disp, target_count, target_datatype, win);
     get_handling:
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("get", MPI_COMM_WORLD, rc);
+
     return rc;
 }
 
@@ -178,13 +158,8 @@ int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datat
     else
         rc = PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank, target_disp, target_count, target_datatype, win);
     put_handling:
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: put done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("put", MPI_COMM_WORLD, rc);
+
     return rc;
 }

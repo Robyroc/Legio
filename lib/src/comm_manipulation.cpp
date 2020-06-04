@@ -2,8 +2,9 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include "adv_comm.h"
-#include "complex_comm.h"
+#include "single_comm.h"
 #include "multicomm.h"
+#include <string>
 //#include <thread>
 
 extern Multicomm *cur_comms;
@@ -24,7 +25,7 @@ void initialization()
 
 bool add_comm(MPI_Comm comm)
 {
-    cur_comms->add_comm<ComplexComm>(comm);
+    cur_comms->add_comm<SingleComm>(comm);
 }
 
 void finalization()
@@ -54,6 +55,19 @@ void agree_and_eventually_replace(int* rc, AdvComm* cur_complex)
     if(*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
 }
+
+void print_info(std::string method, MPI_Comm comm, int rc)
+{
+    if (VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(comm, &size);
+        PMPI_Comm_rank(comm, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: %s done (error: %s)\n", rank, size, method.c_str(), errstr);
+    }
+}
+
 /*
 void receiver()
 {

@@ -3,6 +3,7 @@
 
 #include "mpi.h"
 #include <functional>
+#include "operations.h"
 
 class AdvComm
 {
@@ -30,7 +31,7 @@ class AdvComm
             return MPI_Comm_f2c(alias_id);
         }
 
-        void destroy(std::function<int(MPI_Comm*)> destroyer)
+        inline void destroy(std::function<int(MPI_Comm*)> destroyer)
         {
             destroyer(&cur_comm);
         }
@@ -48,8 +49,26 @@ class AdvComm
         virtual MPI_Win translate_structure(MPI_Win) = 0;
         virtual MPI_File translate_structure(MPI_File) = 0;
 
+        virtual int perform_operation(OneToOne, int) = 0;
+        virtual int perform_operation(OneToAll, int) = 0;
+        virtual int perform_operation(AllToOne, int) = 0;
+        virtual int perform_operation(AllToAll) = 0;
+        virtual int perform_operation(FileOp, MPI_File) = 0;
+        virtual int perform_operation(FileOpColl, MPI_File) = 0;
+        virtual int perform_operation(WinOp, int, MPI_Win) = 0;
+        virtual int perform_operation(WinOpColl, MPI_Win) = 0;
+
     protected:
         MPI_Comm cur_comm;
+        int translate_ranks(int old_rank)
+        {
+            int source = old_rank, tr_rank;
+            MPI_Group tr_group;
+            MPI_Comm_group(get_comm(), &tr_group);
+            MPI_Group_translate_ranks(group, 1, &source, tr_group, &tr_rank);
+            return tr_rank;
+        }
+
     private:
         MPI_Group group;
         int alias_id;

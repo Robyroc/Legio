@@ -4,7 +4,7 @@
 #include <signal.h>
 #include "comm_manipulation.h"
 #include "configuration.h"
-#include "complex_comm.h"
+#include "adv_comm.h"
 #include "multicomm.h"
 
 extern Multicomm *cur_comms;
@@ -23,15 +23,9 @@ int MPI_Barrier(MPI_Comm comm)
             rc = PMPI_Barrier(translated->get_comm());
         else
             rc = PMPI_Barrier(comm);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: barrier done (error: %s)\n", rank, size, errstr);
-        }
-        
+
+        print_info("barrier", comm, rc);
+
         if(rc == MPI_SUCCESS || !flag)
             return rc;
         else
@@ -59,14 +53,9 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
         else
             rc = PMPI_Bcast(buffer, count, datatype, root, comm);
         bcast_handling:
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: bcast done (error: %s)\n", rank, size, errstr);
-        }
+
+        print_info("bcast", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -89,14 +78,9 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
         else
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: allreduce done (error: %s)\n", rank, size, errstr);
-        }
+
+        print_info("allreduce", comm, rc);
+
         if(rc == MPI_SUCCESS || !flag)
             return rc;
         else
@@ -124,14 +108,9 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
         else
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
         reduce_handling:
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: reduce done (error: %s)\n", rank, size, errstr);
-        }
+
+        print_info("reduce", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -171,14 +150,9 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
         PERFORM_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root, actual_comm, total_size, fake_rank, comm);
 
         gather_handling:
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: gather done (error: %s)\n", rank, size, errstr);
-        }
+
+        print_info("gather", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -218,14 +192,9 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
         PERFORM_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root, actual_comm, total_size, fake_rank, comm);
 
         scatter_handling:
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: scatter done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("scatter", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);
@@ -248,14 +217,9 @@ int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatyp
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, translated->get_comm());
         else
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm);
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: scan done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("scan", comm, rc);
+
         if(flag)
         {
             agree_and_eventually_replace(&rc, translated);

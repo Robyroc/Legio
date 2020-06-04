@@ -28,12 +28,13 @@ configure_file(
 set(LIBRARY_HDR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/comm_manipulation.h"
-    "${LIBRARY_HDR_PATH}/complex_comm.h"
+    "${LIBRARY_HDR_PATH}/single_comm.h"
     "${LIBRARY_HDR_PATH}/configuration.h"
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/structure_handler.h"
     "${LIBRARY_HDR_PATH}/multicomm.h"
     "${LIBRARY_HDR_PATH}/adv_comm.h"
+    "${LIBRARY_HDR_PATH}/operations.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 
@@ -41,7 +42,7 @@ set(LIBRARY_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/coll.cpp" 
     "${LIBRARY_SRC_PATH}/comm_manipulation.cpp"
-    "${LIBRARY_SRC_PATH}/complex_comm.cpp"
+    "${LIBRARY_SRC_PATH}/single_comm.cpp"
     "${LIBRARY_SRC_PATH}/fileio.cpp"
     "${LIBRARY_SRC_PATH}/general.cpp"
     "${LIBRARY_SRC_PATH}/legio.c"

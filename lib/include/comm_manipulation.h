@@ -2,6 +2,7 @@
 #define COMM_MANIPULATION_H
 
 #include "mpi.h"
+#include <string>
 
 class AdvComm;
 
@@ -16,6 +17,8 @@ void agree_and_eventually_replace(int*, AdvComm*);
 void initialization();
 
 void finalization();
+
+void print_info(std::string, MPI_Comm, int);
 
 //void kalive_thread();
 

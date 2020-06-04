@@ -4,7 +4,7 @@
 #include <signal.h>
 #include "comm_manipulation.h"
 #include "configuration.h"
-#include "complex_comm.h"
+#include "adv_comm.h"
 #include "multicomm.h"
 
 extern Multicomm *cur_comms;
@@ -34,14 +34,9 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
         else
             rc = PMPI_Send(buf, count, datatype, dest, tag, comm);
         send_handling:
-        if(VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: send done (error: %s)\n", rank, size, errstr);
-        }
+        
+        print_info("send", comm, rc);
+
         if(rc == MPI_SUCCESS)
             return rc;
     }
@@ -69,14 +64,9 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     else
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
     recv_handling:
-    if(VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: recv done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("recv", comm, rc);
+
     return rc;
 }
 
@@ -91,14 +81,9 @@ int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     }
     else
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
-    if(VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: recv done (error: %s)\n", rank, size, errstr);
-    }
+    
+    print_info("anyrecv", comm, rc);
+
     if(rc != MPI_SUCCESS)
     {
         /*
