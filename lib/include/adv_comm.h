@@ -54,7 +54,6 @@ class AdvComm
         virtual int perform_operation(AllToOne, int) = 0;
         virtual int perform_operation(AllToAll) = 0;
         virtual int perform_operation(FileOp, MPI_File) = 0;
-        virtual int perform_operation(FileOpColl, MPI_File) = 0;
         virtual int perform_operation(WinOp, int, MPI_Win) = 0;
         virtual int perform_operation(WinOpColl, MPI_Win) = 0;
 

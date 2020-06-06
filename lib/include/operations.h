@@ -44,46 +44,39 @@ class AllToOne : public Operation
 class AllToAll : public Operation
 {
     public:
-        AllToAll(std::function<int(MPI_Comm)> a, bool pos): Operation(pos), func(a) {}
+        AllToAll(std::function<int(MPI_Comm)> a, bool pos, std::pair<AllToOne, OneToAll> decomp): Operation(pos), func(a), decomposed(decomp) {}
         int operator() (MPI_Comm a) {return func(a);}
+        std::pair<AllToOne, OneToAll> decomp(MPI_Comm a, int root) {return decomposed;}
     private:
         std::function<int(MPI_Comm)> func;
+        std::pair<AllToOne, OneToAll> decomposed;
 };
 
 class FileOp : public Operation
 {
     public:
-        FileOp(std::function<int(MPI_File, MPI_Comm)> a, bool pos): Operation(pos), func(a) {}
-        int operator() (MPI_File a, MPI_Comm b) {return func(a, b);}
+        FileOp(std::function<int(MPI_File)> a, bool pos): Operation(pos), func(a) {}
+        int operator() (MPI_File a) {return func(a);}
     private:
-        std::function<int(MPI_File, MPI_Comm)> func;
-};
-
-class FileOpColl : public Operation
-{
-    public:
-        FileOpColl(std::function<int(MPI_File, MPI_Comm)> a, bool pos): Operation(pos), func(a) {}
-        int operator() (MPI_File a, MPI_Comm b) {return func(a, b);}
-    private:
-        std::function<int(MPI_File, MPI_Comm)> func;
+        std::function<int(MPI_File)> func;
 };
 
 class WinOp : public Operation
 {
     public:
-        WinOp(std::function<int(int, MPI_Win, MPI_Comm)> a, bool pos): Operation(pos), func(a) {}
-        int operator() (int a, MPI_Win b, MPI_Comm c) {return func(a, b, c);}
+        WinOp(std::function<int(int, MPI_Win)> a, bool pos): Operation(pos), func(a) {}
+        int operator() (int a, MPI_Win b) {return func(a, b);}
     private:
-        std::function<int(int, MPI_Win, MPI_Comm)> func;
+        std::function<int(int, MPI_Win)> func;
 };
 
 class WinOpColl : public Operation
 {
     public:
-        WinOpColl(std::function<int(MPI_Win, MPI_Comm)> a, bool pos): Operation(pos), func(a) {}
-        int operator() (MPI_Win a, MPI_Comm b) {return func(a, b);}
+        WinOpColl(std::function<int(MPI_Win)> a, bool pos): Operation(pos), func(a) {}
+        int operator() (MPI_Win a) {return func(a);}
     private:
-        std::function<int(MPI_Win, MPI_Comm)> func;
+        std::function<int(MPI_Win)> func;
 };
 
 #endif

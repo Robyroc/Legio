@@ -19,21 +19,23 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
     int i, rc, flag;
     cur_comms->part_of(comm, &flag);
     AdvComm* translated = cur_comms->translate_into_complex(comm);
+
+    OneToOne func([buf, count, datatype, tag] (int other_t, MPI_Comm comm_t) -> int {
+        if(other_t == MPI_UNDEFINED)
+        {
+            HANDLE_SEND_FAIL(comm_t);
+        }
+        return PMPI_Send(buf, count, datatype, other_t, tag, comm_t);
+    }, false);
+
     for(i = 0; i < NUM_RETRY; i++)
     {
         if(flag)
         {
-            int dest_rank;
-            translate_ranks(dest, translated, &dest_rank);
-            if(dest_rank == MPI_UNDEFINED)
-            {
-                HANDLE_SEND_FAIL(cur_complex->get_comm());
-            }
-            rc = PMPI_Send(buf, count, datatype, dest_rank, tag, translated->get_comm());
+            rc = translated->perform_operation(func, dest);
         }
         else
-            rc = PMPI_Send(buf, count, datatype, dest, tag, comm);
-        send_handling:
+            rc = func(dest, comm);
         
         print_info("send", comm, rc);
 
@@ -51,19 +53,21 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     AdvComm* translated = cur_comms->translate_into_complex(comm);
+
+    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t) -> int {
+        if(other_t == MPI_UNDEFINED)
+        {
+            HANDLE_RECV_FAIL(comm_t);
+        }
+        return PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+    }, false);
+
     if(flag)
     {
-        int source_rank;
-        translate_ranks(source, translated, &source_rank);
-        if(source_rank == MPI_UNDEFINED)
-        {
-            HANDLE_RECV_FAIL(cur_complex->get_comm());
-        }
-        rc = PMPI_Recv(buf, count, datatype, source_rank, tag, translated->get_comm(), status);
+        rc = translated->perform_operation(func, source);
     }
     else
-        rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
-    recv_handling:
+        rc = func(source, comm);
     
     print_info("recv", comm, rc);
 
@@ -75,12 +79,17 @@ int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     AdvComm* translated = cur_comms->translate_into_complex(comm);
+    
+    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t) -> int {
+        return PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+    }, true);
+
     if(flag)
     {
-        rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
+        rc = translated->perform_operation(func, source);
     }
     else
-        rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
+        rc = func(source, comm);
     
     print_info("anyrecv", comm, rc);
 

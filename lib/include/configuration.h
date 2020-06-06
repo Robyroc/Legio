@@ -5,64 +5,56 @@
 
     #if 2 == 1
         #define HANDLE_BCAST_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto bcast_handling;})
+            return MPI_SUCCESS;})
     #else   
         #define HANDLE_BCAST_FAIL(C) printf("##### Broadcast failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 1 == 1
         #define HANDLE_SEND_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto send_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_SEND_FAIL(C) printf("##### Send failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 2 == 1
         #define HANDLE_RECV_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto recv_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_RECV_FAIL(C) printf("##### Receive failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 1 == 1
         #define HANDLE_REDUCE_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto reduce_handling;})
+            return MPI_SUCCESS;})
     #else   
         #define HANDLE_REDUCE_FAIL(C) printf("##### Reduce failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 2 == 1
         #define HANDLE_GET_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto get_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_GET_FAIL(C) printf("##### Get failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 1 == 1
         #define HANDLE_PUT_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto put_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_PUT_FAIL(C) printf("##### Put failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 1 == 1
         #define HANDLE_GATHER_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto gather_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_GATHER_FAIL(C) printf("##### Gather failed, stopping a node\n"); raise(SIGINT)
     #endif
 
     #if 2 == 1
         #define HANDLE_SCATTER_FAIL(C) ({\
-            rc = MPI_SUCCESS;\
-            goto scatter_handling;})
+            return MPI_SUCCESS;})
     #else
         #define HANDLE_SCATTER_FAIL(C) printf("##### Scatter failed, stopping a node\n"); raise(SIGINT)
     #endif

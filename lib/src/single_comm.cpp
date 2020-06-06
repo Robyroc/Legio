@@ -130,6 +130,8 @@ void SingleComm::fault_manage()
 
 int SingleComm::perform_operation(OneToOne op, int other_rank)
 {
+    if(other_rank == MPI_ANY_SOURCE)
+        return op(MPI_ANY_SOURCE, get_comm());
     int new_rank = translate_ranks(other_rank);
     return op(new_rank, get_comm());
 }
@@ -154,24 +156,18 @@ int SingleComm::perform_operation(AllToAll op)
 int SingleComm::perform_operation(FileOp op, MPI_File file)
 {
     MPI_File translated = translate_structure(file);
-    return op(translated, get_comm());
-}
-
-int SingleComm::perform_operation(FileOpColl op, MPI_File file)
-{
-    MPI_File translated = translate_structure(file);
-    return op(translated, get_comm());
+    return op(translated);
 }
 
 int SingleComm::perform_operation(WinOp op, int root_rank, MPI_Win win)
 {
     int new_rank = translate_ranks(root_rank);
     MPI_Win translated = translate_structure(win);
-    return op(new_rank, translated, get_comm());
+    return op(new_rank, translated);
 }
 
 int SingleComm::perform_operation(WinOpColl op, MPI_Win win)
 {
     MPI_Win translated = translate_structure(win);
-    return op(translated, get_comm());
+    return op(translated);
 }
