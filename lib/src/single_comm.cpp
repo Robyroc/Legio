@@ -5,6 +5,10 @@
 
 SingleComm::SingleComm(MPI_Comm comm) : AdvComm{comm}
 {
+
+    PMPI_Comm_dup(comm, &cur_comm);
+    MPI_Comm_set_errhandler(cur_comm, MPI_ERRORS_RETURN);
+
     int keyval;
     MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
 

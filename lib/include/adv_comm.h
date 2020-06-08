@@ -11,14 +11,7 @@ class AdvComm
         AdvComm(MPI_Comm comm)
         {
             alias_id = MPI_Comm_c2f(comm);
-            PMPI_Comm_dup(comm, &cur_comm);
-            MPI_Comm_set_errhandler(cur_comm, MPI_ERRORS_RETURN);
             MPI_Comm_group(comm, &group);
-        }
-
-        inline MPI_Comm get_comm()
-        {
-            return cur_comm;
         }
 
         inline MPI_Group get_group()
@@ -31,10 +24,14 @@ class AdvComm
             return MPI_Comm_f2c(alias_id);
         }
 
-        inline void destroy(std::function<int(MPI_Comm*)> destroyer)
+        inline bool perform_add(MPI_Comm comm)
         {
-            destroyer(&cur_comm);
+            return this->add_comm(comm);
         }
+
+        virtual bool add_comm(MPI_Comm comm) = 0;
+
+        virtual void destroy(std::function<int(MPI_Comm*)>) = 0;
         
         virtual void fault_manage() = 0;
 
@@ -56,17 +53,6 @@ class AdvComm
         virtual int perform_operation(FileOp, MPI_File) = 0;
         virtual int perform_operation(WinOp, int, MPI_Win) = 0;
         virtual int perform_operation(WinOpColl, MPI_Win) = 0;
-
-    protected:
-        MPI_Comm cur_comm;
-        int translate_ranks(int old_rank)
-        {
-            int source = old_rank, tr_rank;
-            MPI_Group tr_group;
-            MPI_Comm_group(get_comm(), &tr_group);
-            MPI_Group_translate_ranks(group, 1, &source, tr_group, &tr_rank);
-            return tr_rank;
-        }
 
     private:
         MPI_Group group;

@@ -7,6 +7,7 @@
 #include <functional>
 #include "structure_handler.h"
 #include "operations.h"
+#include "comm_manipulation.h"
 
 class SingleComm : public AdvComm
 {
@@ -14,6 +15,16 @@ class SingleComm : public AdvComm
         SingleComm(MPI_Comm);
 
         void fault_manage();
+
+        inline void destroy(std::function<int(MPI_Comm*)> destroyer)
+        {
+            destroyer(&cur_comm);
+        }
+
+        inline bool add_comm(MPI_Comm comm)
+        {
+            return ::add_comm(comm, this);
+        }
 
         inline bool file_support() { return true; }
         inline bool window_support() { return true; }
@@ -35,9 +46,19 @@ class SingleComm : public AdvComm
         int perform_operation(WinOpColl, MPI_Win);
 
     private:
+        inline MPI_Comm get_comm() {return cur_comm;};
+        MPI_Comm cur_comm;
         void replace_comm(MPI_Comm);
         StructureHandler<MPI_Win, MPI_Comm> * windows;
         StructureHandler<MPI_File, MPI_Comm> * files;
+        int translate_ranks(int old_rank)
+        {
+            int source = old_rank, tr_rank;
+            MPI_Group tr_group;
+            MPI_Comm_group(get_comm(), &tr_group);
+            MPI_Group_translate_ranks(get_group(), 1, &source, tr_group, &tr_rank);
+            return tr_rank;
+        }
 };
 
 #endif

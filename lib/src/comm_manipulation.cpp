@@ -3,8 +3,11 @@
 #include <mpi-ext.h>
 #include "adv_comm.h"
 #include "single_comm.h"
+#include "no_comm.h"
+#include "hierar_comm.h"
 #include "multicomm.h"
 #include <string>
+#include "operations.h"
 //#include <thread>
 
 extern Multicomm *cur_comms;
@@ -18,27 +21,37 @@ void initialization()
 {
     cur_comms = new Multicomm();
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    add_comm(MPI_COMM_WORLD);
+    AdvComm* bogus_world = new NoComm(MPI_COMM_WORLD);
+    add_comm(MPI_COMM_WORLD, bogus_world);
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
-    add_comm(MPI_COMM_SELF);
+    AdvComm* bogus_self = new NoComm(MPI_COMM_SELF);
+    add_comm(MPI_COMM_SELF, bogus_self);
+    delete bogus_world; delete bogus_self;
 }
 
-bool add_comm(MPI_Comm comm)
+bool add_comm(MPI_Comm comm, AdvComm* source)
 {
-    cur_comms->add_comm<SingleComm>(comm);
+    return source->add_comm(comm);
+}
+
+bool add_comm(MPI_Comm comm, NoComm* source)
+{
+    return cur_comms->add_comm<SingleComm>(comm);
+}
+
+bool add_comm(MPI_Comm comm, SingleComm* source)
+{
+    return cur_comms->add_comm<SingleComm>(comm);
+}
+
+bool add_comm(MPI_Comm comm, HierarComm* source)
+{
+    return cur_comms->add_comm<HierarComm>(comm);
 }
 
 void finalization()
 {
     delete cur_comms;
-}
-
-void translate_ranks(int root, AdvComm* comm, int* tr_rank)
-{
-    MPI_Group tr_group;
-    int source = root;
-    MPI_Comm_group(comm->get_comm(), &tr_group);
-    MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, tr_rank);
 }
 
 void replace_comm(AdvComm* cur_complex)
@@ -49,7 +62,22 @@ void replace_comm(AdvComm* cur_complex)
 void agree_and_eventually_replace(int* rc, AdvComm* cur_complex)
 {
     int flag = (MPI_SUCCESS==*rc);
-    MPIX_Comm_agree(cur_complex->get_comm(), &flag);
+    int* pointer = &flag;
+    
+    AllToOne first([pointer] (int, MPI_Comm comm_t) -> int {
+        return MPIX_Comm_agree(comm_t, pointer);
+    }, false);
+
+    OneToAll second([pointer] (int, MPI_Comm comm_t) -> int {
+        return MPIX_Comm_agree(comm_t, pointer);
+    }, false);
+
+    AllToAll func([pointer] (MPI_Comm comm_t) -> int {
+        return MPIX_Comm_agree(comm_t, pointer);
+    }, false, {first, second});
+
+    cur_complex->perform_operation(func);
+
     if(!flag && *rc == MPI_SUCCESS)
         *rc = MPIX_ERR_PROC_FAILED;
     if(*rc != MPI_SUCCESS)

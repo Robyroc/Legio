@@ -5,10 +5,17 @@
 #include <string>
 
 class AdvComm;
+class NoComm;
+class SingleComm;
+class HierarComm;
 
-bool add_comm(MPI_Comm);
+bool add_comm(MPI_Comm, AdvComm*);
 
-void translate_ranks(int, AdvComm*, int*);
+bool add_comm(MPI_Comm, NoComm*);
+
+bool add_comm(MPI_Comm, SingleComm*);
+
+bool add_comm(MPI_Comm, HierarComm*);
 
 void replace_comm(AdvComm*);
 

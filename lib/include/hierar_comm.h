@@ -7,6 +7,7 @@
 #include <functional>
 #include "structure_handler.h"
 #include "operations.h"
+#include "comm_manipulation.h"
 
 class HierarComm : public AdvComm
 {
@@ -14,6 +15,13 @@ class HierarComm : public AdvComm
         HierarComm(MPI_Comm);
 
         void fault_manage();
+
+        void destroy(std::function<int(MPI_Comm*)>);
+
+        inline bool add_comm(MPI_Comm comm)
+        {
+            return ::add_comm(comm, this);
+        }
 
         inline bool file_support() { return true; }
         inline bool window_support() { return false; }
@@ -31,9 +39,8 @@ class HierarComm : public AdvComm
         int perform_operation(AllToOne, int);
         int perform_operation(AllToAll);
         int perform_operation(FileOp, MPI_File);
-        int perform_operation(FileOpColl, MPI_File);
-        int perform_operation(WinOp, int, MPI_Win);
-        int perform_operation(WinOpColl, MPI_Win);
+        int perform_operation(WinOp, int, MPI_Win) {return MPI_SUCCESS;}
+        int perform_operation(WinOpColl, MPI_Win) {return MPI_SUCCESS;}
 
     private:
         void replace_comm(MPI_Comm);

@@ -103,7 +103,7 @@ int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
             MPI_Abort(MPI_COMM_WORLD, rc);
         }
         */
-        MPIX_Comm_failure_ack(translated->get_comm());
+        //MPIX_Comm_failure_ack(translated->get_comm());    FIX ME
     }
     return rc;
 }

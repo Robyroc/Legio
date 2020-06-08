@@ -35,6 +35,8 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/multicomm.h"
     "${LIBRARY_HDR_PATH}/adv_comm.h"
     "${LIBRARY_HDR_PATH}/operations.h"
+    "${LIBRARY_HDR_PATH}/hierar_comm.h"
+    "${LIBRARY_HDR_PATH}/no_comm.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 
@@ -49,6 +51,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
+    "${LIBRARY_SRC_PATH}/hierar_comm.cpp"
 )
 
 
