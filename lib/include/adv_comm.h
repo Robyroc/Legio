@@ -3,7 +3,14 @@
 
 #include "mpi.h"
 #include <functional>
-#include "operations.h"
+
+class OneToOne; 
+class OneToAll;
+class AllToOne;
+class AllToAll; 
+class FileOp;
+class WinOp;
+class WinOpColl;
 
 class AdvComm
 {
@@ -34,6 +41,8 @@ class AdvComm
         virtual void destroy(std::function<int(MPI_Comm*)>) = 0;
         
         virtual void fault_manage() = 0;
+
+        virtual void result_agreement(int*) = 0;
 
         virtual bool file_support() = 0;
         virtual bool window_support() = 0;

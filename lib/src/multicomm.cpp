@@ -3,17 +3,18 @@
 #include "adv_comm.h"
 #include "multicomm.h"
 #include "mpi.h"
+#include "no_comm.h"
 
 Multicomm::Multicomm()
 {}
 
-AdvComm* Multicomm::translate_into_complex(MPI_Comm input)
+AdvComm* Multicomm::translate_into_adv(MPI_Comm input)
 {
     std::unordered_map<int, AdvComm*>::iterator res = comms.find(MPI_Comm_c2f(input));
     if(res == comms.end())
     {
         printf("THIS SHOULDN'T HAVE HAPPENED, USE part_of BEFORE TRANSLATE.\n");
-        return NULL;
+        return new NoComm(input);
     }
     else return res->second;
 }
@@ -78,7 +79,7 @@ bool Multicomm::add_window(AdvComm* comm, MPI_Win win, std::function<int(MPI_Com
 
 void Multicomm::remove_window(MPI_Win* win)
 {
-    AdvComm* translated = get_complex_from_win(*win);
+    AdvComm* translated = get_adv_from_win(*win);
     if(translated != NULL && translated->window_support())
     {
         translated->remove_structure(*win);
@@ -90,7 +91,7 @@ void Multicomm::remove_window(MPI_Win* win)
 
 void Multicomm::remove_file(MPI_File* file)
 {
-    AdvComm* translated = get_complex_from_file(*file);
+    AdvComm* translated = get_adv_from_file(*file);
     if(translated != NULL && translated->file_support())
     {
         translated->remove_structure(*file);
@@ -100,7 +101,7 @@ void Multicomm::remove_file(MPI_File* file)
         PMPI_File_close(file);
 }
 
-AdvComm* Multicomm::get_complex_from_win(MPI_Win win)
+AdvComm* Multicomm::get_adv_from_win(MPI_Win win)
 {
     std::unordered_map<int, int>::iterator res = window_map.find(MPI_Win_c2f(win));
     if(res != window_map.end())
@@ -121,7 +122,7 @@ AdvComm* Multicomm::get_complex_from_win(MPI_Win win)
     }
 }
 
-AdvComm* Multicomm::get_complex_from_file(MPI_File file)
+AdvComm* Multicomm::get_adv_from_file(MPI_File file)
 {
     std::unordered_map<int, int>::iterator res = file_map.find(MPI_File_c2f(file));
     if(res != file_map.end())

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "mpi.h"
 
+
 class AdvComm;
 
 class Multicomm
@@ -19,7 +20,7 @@ class Multicomm
             return res.second;
         }
 
-        AdvComm* translate_into_complex(MPI_Comm);
+        AdvComm* translate_into_adv(MPI_Comm);
         void remove(MPI_Comm, std::function<int(MPI_Comm*)>);
         void part_of(MPI_Comm, int*);
         Multicomm();
@@ -27,8 +28,8 @@ class Multicomm
         bool add_window(AdvComm*, MPI_Win, std::function<int(MPI_Comm, MPI_Win *)>);
         void remove_window(MPI_Win*);
         void remove_file(MPI_File*);
-        AdvComm* get_complex_from_win(MPI_Win);
-        AdvComm* get_complex_from_file(MPI_File);
+        AdvComm* get_adv_from_win(MPI_Win);
+        AdvComm* get_adv_from_file(MPI_File);
     private:
         std::unordered_map<int, AdvComm*> comms;
         std::unordered_map<int, int> window_map;

@@ -19,31 +19,41 @@ int MPI_Barrier(MPI_Comm comm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
         
-        AllToOne first([] (int root, MPI_Comm comm_t) -> int {
-            return PMPI_Barrier(comm_t);
+        AllToOne first([] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Barrier(comm_t);
+            if(rc != MPI_SUCCESS)
+                replace_comm(adv);
+            return rc;
         }, false);
 
-        OneToAll second([] (int root, MPI_Comm comm_t) -> int {
-            return PMPI_Barrier(comm_t);
+        OneToAll second([] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Barrier(comm_t);
+            if(rc != MPI_SUCCESS)
+                replace_comm(adv);
+            return rc;
         }, false);
 
-        AllToAll func([](MPI_Comm comm_t) -> int {
-            return PMPI_Barrier(comm_t);
+        AllToAll func([](MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Barrier(comm_t);
+            if(rc != MPI_SUCCESS)
+                replace_comm(adv);
+            return rc;
         }, false, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
 
         print_info("barrier", comm, rc);
 
+        if(!flag)
+            delete translated;
+
         if(rc == MPI_SUCCESS || !flag)
             return rc;
-        else
-            replace_comm(translated);
     }
 }
 
@@ -53,30 +63,27 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        OneToAll func([buffer, count, datatype] (int root, MPI_Comm comm_t) -> int {
+        OneToAll func([buffer, count, datatype] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
             if(root == MPI_UNDEFINED)
             {
                 HANDLE_BCAST_FAIL(comm_t);
             }
-            return PMPI_Bcast(buffer, count, datatype, root, comm_t);
+            rc = PMPI_Bcast(buffer, count, datatype, root, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        if(flag)
-            rc = translated->perform_operation(func, root);
-        else
-            rc = func(root, comm);
+        rc = translated->perform_operation(func, root);
 
         print_info("bcast", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }
@@ -87,31 +94,39 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([sendbuf, recvbuf, count, datatype, op] (int root, MPI_Comm comm_t) -> int {
-            return PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_t);
+        AllToOne first([sendbuf, recvbuf, count, datatype, op] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        OneToAll second([recvbuf, count, datatype] (int root, MPI_Comm comm_t) -> int {
-            return PMPI_Bcast(recvbuf, count, datatype, root, comm_t);
+        OneToAll second([recvbuf, count, datatype] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Bcast(recvbuf, count, datatype, root, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        AllToAll func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t) -> int {
-            return PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm_t);
+        AllToAll func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm_t);
+            if(rc != MPI_SUCCESS)
+                replace_comm(adv);
+            return rc;
         }, false, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
 
         print_info("allreduce", comm, rc);
 
-        if(rc == MPI_SUCCESS || !flag)
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
-        else
-            replace_comm(translated);
     }
 }
 
@@ -121,32 +136,27 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne func([sendbuf, recvbuf, count, datatype, op] (int root_rank, MPI_Comm comm_t) -> int {
+        AllToOne func([sendbuf, recvbuf, count, datatype, op] (int root_rank, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
             if(root_rank == MPI_UNDEFINED)
             {
                 HANDLE_REDUCE_FAIL(comm_t);
             }
-            return PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, comm_t);
+            rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        if(flag)
-        {
-            rc = translated->perform_operation(func, root);
-        }
-        else
-            rc = func(root, comm);
+        rc = translated->perform_operation(func, root);
 
         print_info("reduce", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }
@@ -157,39 +167,30 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
     {
         int rc, total_size, fake_rank, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
 
-        AllToOne func([sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, total_size, fake_rank, comm] (int root_rank, MPI_Comm comm_t) -> int {
+        AllToOne func([sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, total_size, fake_rank, comm] (int root_rank, MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
             if(root_rank == MPI_UNDEFINED)
             {
                 HANDLE_GATHER_FAIL(comm_t);
             }
             PERFORM_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root_rank, comm_t, total_size, fake_rank, comm);
+            agree_and_eventually_replace(&rc, adv);
             return rc;
         }, true);
 
-        if(flag)
-        {
-            rc = translated->perform_operation(func, root);
-        }
-        else
-        {
-            rc =func(root, comm);
-        }
+        rc = translated->perform_operation(func, root);
 
         print_info("gather", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }
@@ -200,38 +201,29 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
     {
         int rc, total_size, fake_rank, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
 
-        OneToAll func([sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, total_size, fake_rank, comm] (int root_rank, MPI_Comm comm_t) -> int {
+        OneToAll func([sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, total_size, fake_rank, comm] (int root_rank, MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
             if(root_rank == MPI_UNDEFINED)
             {
                 HANDLE_SCATTER_FAIL(comm_t);
             }
             PERFORM_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root_rank, comm_t, total_size, fake_rank, comm);
+            agree_and_eventually_replace(&rc, adv);
             return rc;
         }, true);
 
-        if(flag)
-        {
-            rc = translated->perform_operation(func, root);
-        }
-        else
-        {
-            rc = func(root, comm);
-        }
+        rc = translated->perform_operation(func, root);
 
         print_info("scatter", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }
@@ -242,32 +234,32 @@ int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatyp
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([sendbuf, recvbuf, count, datatype, op] (int, MPI_Comm comm_t) -> int {
-            return PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
+        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
+        OneToAll second([sendbuf, recvbuf, count, datatype, op] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
 
-        AllToAll func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t) -> int {
-            return PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
+        AllToAll func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, true, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
         
         print_info("scan", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+        
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }

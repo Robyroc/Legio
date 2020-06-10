@@ -64,19 +64,7 @@ void agree_and_eventually_replace(int* rc, AdvComm* cur_complex)
     int flag = (MPI_SUCCESS==*rc);
     int* pointer = &flag;
     
-    AllToOne first([pointer] (int, MPI_Comm comm_t) -> int {
-        return MPIX_Comm_agree(comm_t, pointer);
-    }, false);
-
-    OneToAll second([pointer] (int, MPI_Comm comm_t) -> int {
-        return MPIX_Comm_agree(comm_t, pointer);
-    }, false);
-
-    AllToAll func([pointer] (MPI_Comm comm_t) -> int {
-        return MPIX_Comm_agree(comm_t, pointer);
-    }, false, {first, second});
-
-    cur_complex->perform_operation(func);
+    cur_complex->result_agreement(pointer);
 
     if(!flag && *rc == MPI_SUCCESS)
         *rc = MPIX_ERR_PROC_FAILED;

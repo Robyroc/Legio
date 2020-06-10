@@ -16,6 +16,8 @@ class SingleComm : public AdvComm
 
         void fault_manage();
 
+        void result_agreement(int*);
+
         inline void destroy(std::function<int(MPI_Comm*)> destroyer)
         {
             destroyer(&cur_comm);

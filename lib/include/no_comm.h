@@ -12,9 +12,10 @@
 class NoComm : public AdvComm
 {
     public:
-        NoComm(MPI_Comm comm): AdvComm(comm) {}
+        NoComm(MPI_Comm comm): AdvComm(comm)                                    {}
 
         void fault_manage()                                                     {}
+        void result_agreement(int*)                                             {}
 
         void destroy(std::function<int(MPI_Comm*)>)                             {}
 
@@ -31,13 +32,13 @@ class NoComm : public AdvComm
         void check_served(MPI_Win, int*)                                        {}
         void check_served(MPI_File, int*)                                       {}
 
-        int perform_operation(OneToAll func, int root)                          {return func(root, get_alias());}
-        int perform_operation(OneToOne func, int root)                          {return func(root, get_alias());} 
-        int perform_operation(AllToOne func, int root)                          {return func(root, get_alias());}
-        int perform_operation(AllToAll func)                                    {return func(get_alias());}
-        int perform_operation(FileOp func, MPI_File file)                       {return func(file);}
-        int perform_operation(WinOp func, int root, MPI_Win win)                {return func(root, win);}
-        int perform_operation(WinOpColl func, MPI_Win win)                      {return func(win);}
+        int perform_operation(OneToAll func, int root)                          {return func(root, get_alias(), this);}
+        int perform_operation(OneToOne func, int root)                          {return func(root, get_alias(), this);} 
+        int perform_operation(AllToOne func, int root)                          {return func(root, get_alias(), this);}
+        int perform_operation(AllToAll func)                                    {return func(get_alias(), this);}
+        int perform_operation(FileOp func, MPI_File file)                       {return func(file, this);}
+        int perform_operation(WinOp func, int root, MPI_Win win)                {return func(root, win, this);}
+        int perform_operation(WinOpColl func, MPI_Win win)                      {return func(win, this);}
 
 };
 

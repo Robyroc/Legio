@@ -132,46 +132,51 @@ void SingleComm::fault_manage()
     }
 }
 
+void SingleComm::result_agreement(int* flag)
+{
+    MPIX_Comm_agree(get_comm(), flag);
+}
+
 int SingleComm::perform_operation(OneToOne op, int other_rank)
 {
     if(other_rank == MPI_ANY_SOURCE)
-        return op(MPI_ANY_SOURCE, get_comm());
+        return op(MPI_ANY_SOURCE, get_comm(), this);
     int new_rank = translate_ranks(other_rank);
-    return op(new_rank, get_comm());
+    return op(new_rank, get_comm(), this);
 }
 
 int SingleComm::perform_operation(OneToAll op, int root_rank)
 {
     int new_rank = translate_ranks(root_rank);
-    return op(new_rank, get_comm());
+    return op(new_rank, get_comm(), this);
 }
 
 int SingleComm::perform_operation(AllToOne op, int root_rank)
 {
     int new_rank = translate_ranks(root_rank);
-    return op(new_rank, get_comm());
+    return op(new_rank, get_comm(), this);
 }
 
 int SingleComm::perform_operation(AllToAll op)
 {
-    return op(get_comm());
+    return op(get_comm(), this);
 }
 
 int SingleComm::perform_operation(FileOp op, MPI_File file)
 {
     MPI_File translated = translate_structure(file);
-    return op(translated);
+    return op(translated, this);
 }
 
 int SingleComm::perform_operation(WinOp op, int root_rank, MPI_Win win)
 {
     int new_rank = translate_ranks(root_rank);
     MPI_Win translated = translate_structure(win);
-    return op(new_rank, translated);
+    return op(new_rank, translated, this);
 }
 
 int SingleComm::perform_operation(WinOpColl op, MPI_Win win)
 {
     MPI_Win translated = translate_structure(win);
-    return op(translated);
+    return op(translated, this);
 }

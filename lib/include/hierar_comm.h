@@ -15,6 +15,7 @@ class HierarComm : public AdvComm
         HierarComm(MPI_Comm);
 
         void fault_manage();
+        void result_agreement(int*);
 
         void destroy(std::function<int(MPI_Comm*)>);
 
@@ -45,6 +46,8 @@ class HierarComm : public AdvComm
     private:
         void replace_comm(MPI_Comm);
         StructureHandler<MPI_File, MPI_Comm> * files;
+        MPI_Comm local;
+        MPI_Comm global;
 };
 
 #endif

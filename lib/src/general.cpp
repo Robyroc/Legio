@@ -47,23 +47,23 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    AdvComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-    AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;},false);
-    OneToAll second([errorcode] (int, MPI_Comm comm_t) -> int {
+    AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;},false);
+    OneToAll second([errorcode] (int, MPI_Comm comm_t, AdvComm*) -> int {
         return PMPI_Abort(comm_t, errorcode);
     }, false);
 
-    AllToAll func([errorcode] (MPI_Comm comm_t) -> int {
+    AllToAll func([errorcode] (MPI_Comm comm_t, AdvComm*) -> int {
         return PMPI_Abort(comm_t, errorcode);
     }, false, {first, second});
 
-    if(flag)
-        rc = translated->perform_operation(func);
-    else
-        rc = func(comm);
+    rc = translated->perform_operation(func);
     
     print_info("abort", comm, rc);
+
+    if(!flag)
+        delete translated;
 
     return rc;
 }
@@ -74,37 +74,39 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([newcomm] (int, MPI_Comm comm_t) -> int {
-            return PMPI_Comm_dup(comm_t, newcomm);
+        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
+        OneToAll second([newcomm] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Comm_dup(comm_t, newcomm);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        AllToAll func([newcomm] (MPI_Comm comm_t) -> int {
-            return PMPI_Comm_dup(comm_t, newcomm);
+        AllToAll func([newcomm] (MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Comm_dup(comm_t, newcomm);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
         
         print_info("comm_dup", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-            {
-                MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = add_comm(*newcomm, translated);
-                if(result)
-                    return rc;
-            }
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag)
             return rc;
+        else if(rc == MPI_SUCCESS)
+        {
+            MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
+            bool result = add_comm(*newcomm, translated);
+            if(result)
+                return rc;
+        }
     }
 }
 
@@ -141,7 +143,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
         AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}; false);
         OneToAll second([group, tag, newcomm, comm] (int, MPI_Comm comm_t) -> int {
@@ -206,37 +208,37 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([color, key, newcomm] (int, MPI_Comm comm_t) -> int {
-            return PMPI_Comm_split(comm_t, color, key, newcomm);
+        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
+        OneToAll second([color, key, newcomm] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc = PMPI_Comm_split(comm_t, color, key, newcomm);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        AllToAll func ([color, key, newcomm] (MPI_Comm comm_t) -> int {
-            return PMPI_Comm_split(comm_t, color, key, newcomm);
+        AllToAll func ([color, key, newcomm] (MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc = PMPI_Comm_split(comm_t, color, key, newcomm);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
         
         print_info("comm_split", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-            {
-                MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = add_comm(*newcomm, translated);
-                if(result)
-                    return rc;
-            }
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag)
             return rc;
+        else if(rc == MPI_SUCCESS)
+        {
+            MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
+            bool result = add_comm(*newcomm, translated);
+            if(result)
+                return rc;
+        }
     }
 }
 
@@ -246,31 +248,29 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
-        AdvComm* translated = cur_comms->translate_into_complex(comm);
+        AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([info] (int, MPI_Comm comm_t) -> int {
-            return PMPI_Comm_set_info(comm_t, info);
+        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
+        OneToAll second([info] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc = PMPI_Comm_set_info(comm_t, info);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false);
 
-        AllToAll func ([info] (MPI_Comm comm_t) -> int {
-            return PMPI_Comm_set_info(comm_t, info);
+        AllToAll func ([info] (MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc = PMPI_Comm_set_info(comm_t, info);
+            agree_and_eventually_replace(&rc, adv);
+            return rc;
         }, false, {first, second});
 
-        if(flag)
-            rc = translated->perform_operation(func);
-        else
-            rc = func(comm);
+        rc = translated->perform_operation(func);
         
         print_info("comm_set_info", comm, rc);
 
-        if(flag)
-        {
-            agree_and_eventually_replace(&rc, translated);
-            if(rc == MPI_SUCCESS)
-                return rc;
-        }
-        else
+        if(!flag)
+            delete translated;
+
+        if(!flag || rc == MPI_SUCCESS)
             return rc;
     }
 }
@@ -280,23 +280,24 @@ int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    AdvComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-    AllToOne first([](int, MPI_Comm) -> int {return MPI_SUCCESS;}, false);
-    OneToAll second([info_used] (int, MPI_Comm comm_t) -> int {
+    AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
+    OneToAll second([info_used] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
         return PMPI_Comm_get_info(comm_t, info_used);
     }, false);
 
-    AllToAll func ([info_used] (MPI_Comm comm_t) -> int {
+    AllToAll func ([info_used] (MPI_Comm comm_t, AdvComm* adv) -> int {
         return PMPI_Comm_get_info(comm_t, info_used);
     }, false, {first, second});
 
     if(flag)
         rc = translated->perform_operation(func);
-    else
-        rc = func(comm);
     
     print_info("comm_get_info", comm, rc);
+
+    if(!flag)
+        delete translated;
 
     return rc;
 }

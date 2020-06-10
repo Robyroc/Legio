@@ -6,6 +6,7 @@
 #include "configuration.h"
 #include "adv_comm.h"
 #include "multicomm.h"
+#include "operations.h"
 
 extern Multicomm *cur_comms;
 extern int VERBOSE;
@@ -18,9 +19,9 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 {
     int i, rc, flag;
     cur_comms->part_of(comm, &flag);
-    AdvComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-    OneToOne func([buf, count, datatype, tag] (int other_t, MPI_Comm comm_t) -> int {
+    OneToOne func([buf, count, datatype, tag] (int other_t, MPI_Comm comm_t, AdvComm* adv) -> int {
         if(other_t == MPI_UNDEFINED)
         {
             HANDLE_SEND_FAIL(comm_t);
@@ -30,14 +31,12 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
     for(i = 0; i < NUM_RETRY; i++)
     {
-        if(flag)
-        {
-            rc = translated->perform_operation(func, dest);
-        }
-        else
-            rc = func(dest, comm);
+        rc = translated->perform_operation(func, dest);
         
         print_info("send", comm, rc);
+
+        if(!flag)
+            delete translated;
 
         if(rc == MPI_SUCCESS)
             return rc;
@@ -52,9 +51,9 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    AdvComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t) -> int {
+    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t, AdvComm* adv) -> int {
         if(other_t == MPI_UNDEFINED)
         {
             HANDLE_RECV_FAIL(comm_t);
@@ -62,14 +61,12 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
         return PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
     }, false);
 
-    if(flag)
-    {
-        rc = translated->perform_operation(func, source);
-    }
-    else
-        rc = func(source, comm);
+    rc = translated->perform_operation(func, source);
     
     print_info("recv", comm, rc);
+
+    if(!flag)
+        delete translated;
 
     return rc;
 }
@@ -78,32 +75,21 @@ int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 {
     int rc, flag;
     cur_comms->part_of(comm, &flag);
-    AdvComm* translated = cur_comms->translate_into_complex(comm);
+    AdvComm* translated = cur_comms->translate_into_adv(comm);
     
-    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t) -> int {
-        return PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+    OneToOne func([buf, count, datatype, tag, status] (int other_t, MPI_Comm comm_t, AdvComm*) -> int {
+        int rc;
+        rc = PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+        if(rc != MPI_SUCCESS)
+            MPIX_Comm_failure_ack(comm_t);
     }, true);
 
-    if(flag)
-    {
-        rc = translated->perform_operation(func, source);
-    }
-    else
-        rc = func(source, comm);
+    rc = translated->perform_operation(func, source);
     
     print_info("anyrecv", comm, rc);
 
-    if(rc != MPI_SUCCESS)
-    {
-        /*
-        int eclass;
-        MPI_Error_class(rc, &eclass);
-        if( MPIX_ERR_PROC_FAILED != eclass ) 
-        {
-            MPI_Abort(MPI_COMM_WORLD, rc);
-        }
-        */
-        //MPIX_Comm_failure_ack(translated->get_comm());    FIX ME
-    }
+    if(!flag)
+        delete translated;
+        
     return rc;
 }
