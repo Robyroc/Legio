@@ -46,7 +46,7 @@ class AllToAll : public Operation
     public:
         AllToAll(std::function<int(MPI_Comm, AdvComm*)> a, bool pos, std::pair<AllToOne, OneToAll> decomp): Operation(pos), func(a), decomposed(decomp) {}
         int operator() (MPI_Comm a, AdvComm* b) {return func(a, b);}
-        std::pair<AllToOne, OneToAll> decomp(MPI_Comm a, int root) {return decomposed;}
+        std::pair<AllToOne, OneToAll> decomp() {return decomposed;}
     private:
         std::function<int(MPI_Comm, AdvComm*)> func;
         std::pair<AllToOne, OneToAll> decomposed;
@@ -77,6 +77,24 @@ class WinOpColl : public Operation
         int operator() (MPI_Win a, AdvComm* b) {return func(a, b);}
     private:
         std::function<int(MPI_Win, AdvComm*)> func;
+};
+
+class LocalOnly : public Operation
+{
+    public:
+        LocalOnly(std::function<int(MPI_Comm, AdvComm*)> a, bool pos): Operation(pos), func(a) {}
+        int operator() (MPI_Comm a, AdvComm* b) {return func(a, b);}
+    private:
+        std::function<int(MPI_Comm, AdvComm*)> func;
+};
+
+class CommCreator : public Operation
+{
+    public:
+        CommCreator(std::function<int(MPI_Comm, AdvComm*)> a, bool pos): Operation(pos), func(a) {}
+        int operator() (MPI_Comm a, AdvComm* b) {return func(a, b);}
+    private:
+        std::function<int(MPI_Comm, AdvComm*)> func;
 };
 
 #endif

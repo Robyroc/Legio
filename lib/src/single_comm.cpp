@@ -115,7 +115,7 @@ void SingleComm::check_served(MPI_File file, int* result)
     files->part_of(file, result);
 }
 
-void SingleComm::fault_manage()
+void SingleComm::fault_manage(MPI_Comm)
 {
     MPI_Comm new_comm;
     int old_size, new_size, diff;
@@ -132,9 +132,37 @@ void SingleComm::fault_manage()
     }
 }
 
-void SingleComm::result_agreement(int* flag)
+void SingleComm::fault_manage(MPI_File)
 {
-    MPIX_Comm_agree(get_comm(), flag);
+    return fault_manage(MPI_COMM_NULL);
+}
+
+void SingleComm::fault_manage(MPI_Win)
+{
+    return fault_manage(MPI_COMM_NULL);
+}
+
+void SingleComm::result_agreement(int* rc, MPI_Comm)
+{
+    int flag = (MPI_SUCCESS==*rc);
+    int* pointer = &flag;
+    
+    MPIX_Comm_agree(get_comm(), pointer);
+
+    if(!flag && *rc == MPI_SUCCESS)
+        *rc = MPIX_ERR_PROC_FAILED;
+    if(*rc != MPI_SUCCESS)
+        fault_manage(MPI_COMM_NULL);
+}
+
+void SingleComm::result_agreement(int*rc, MPI_File)
+{
+    return result_agreement(rc, MPI_COMM_NULL);
+}
+
+void SingleComm::result_agreement(int*rc, MPI_Win)
+{
+    return result_agreement(rc, MPI_COMM_NULL);
 }
 
 int SingleComm::perform_operation(OneToOne op, int other_rank)
@@ -179,4 +207,14 @@ int SingleComm::perform_operation(WinOpColl op, MPI_Win win)
 {
     MPI_Win translated = translate_structure(win);
     return op(translated, this);
+}
+
+int SingleComm::perform_operation(LocalOnly op)
+{
+    return op(get_comm(), this);
+}
+
+int SingleComm::perform_operation(CommCreator op)
+{
+    return op(get_comm(), this);
 }

@@ -28,26 +28,15 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
             return rc;
         };
 
-        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([func, win] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+        LocalOnly operation([func, win] (MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
-            MPI_Barrier(adv->get_alias());
             rc = func(comm_t, win);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false);
 
-        AllToAll operation([func, win] (MPI_Comm comm_t, AdvComm* adv) -> int {
-            int rc;
-            MPI_Barrier(adv->get_alias());
-            rc = func(comm_t, win);
-            if(rc != MPI_SUCCESS)
-                replace_comm(adv);
-            return rc;
-        }, false, {first, second});
-
-        MPI_Barrier(translated->get_alias());  //Strange necessity...
+        MPI_Barrier(translated->get_alias());
         rc = translated->perform_operation(operation);
         
         print_info("win_create", comm, rc);
@@ -82,25 +71,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
 
         AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([func, win] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+        LocalOnly operation([func, win] (MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
-            MPI_Barrier(adv->get_alias());
             rc = func(comm_t, win);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false);
 
-        AllToAll operation([func, win] (MPI_Comm comm_t, AdvComm* adv) -> int {
-            int rc;
-            MPI_Barrier(adv->get_alias());
-            rc = func(comm_t, win);
-            if(rc != MPI_SUCCESS)
-                replace_comm(adv);
-            return rc;
-        }, false, {first, second});
-
+        MPI_Barrier(translated->get_alias());
         rc = translated->perform_operation(operation);
         
         print_info("win_allocate", comm, rc);
@@ -131,15 +110,17 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
         WinOpColl func([assert] (MPI_Win win_t, AdvComm* adv) -> int {
             int rc;
-            MPI_Barrier(adv->get_alias());
             rc = PMPI_Win_fence(assert, win_t);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, win_t);
             return rc;
         }, false);
 
         if(comm != NULL)
+        {
+            MPI_Barrier(comm->get_alias());
             rc = comm->perform_operation(func, win);
+        }
         else
         {
             AdvComm* temp = new NoComm(MPI_COMM_SELF);

@@ -14,13 +14,19 @@ class SingleComm : public AdvComm
     public:
         SingleComm(MPI_Comm);
 
-        void fault_manage();
+        void fault_manage(MPI_Comm);
+        void fault_manage(MPI_File);
+        void fault_manage(MPI_Win);
 
-        void result_agreement(int*);
+        void result_agreement(int*, MPI_Comm);
+        void result_agreement(int*, MPI_File);
+        void result_agreement(int*, MPI_Win);
 
         inline void destroy(std::function<int(MPI_Comm*)> destroyer)
         {
             destroyer(&cur_comm);
+            delete files;
+            delete windows;
         }
 
         inline bool add_comm(MPI_Comm comm)
@@ -46,6 +52,8 @@ class SingleComm : public AdvComm
         int perform_operation(FileOp, MPI_File);
         int perform_operation(WinOp, int, MPI_Win);
         int perform_operation(WinOpColl, MPI_Win);
+        int perform_operation(LocalOnly);
+        int perform_operation(CommCreator);
 
     private:
         inline MPI_Comm get_comm() {return cur_comm;};

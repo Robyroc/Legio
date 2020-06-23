@@ -25,7 +25,7 @@ int MPI_Barrier(MPI_Comm comm)
             int rc;
             rc = PMPI_Barrier(comm_t);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false);
 
@@ -33,7 +33,7 @@ int MPI_Barrier(MPI_Comm comm)
             int rc;
             rc = PMPI_Barrier(comm_t);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false);
 
@@ -41,7 +41,7 @@ int MPI_Barrier(MPI_Comm comm)
             int rc;
             rc = PMPI_Barrier(comm_t);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false, {first, second});
 
@@ -72,7 +72,7 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
                 HANDLE_BCAST_FAIL(comm_t);
             }
             rc = PMPI_Bcast(buffer, count, datatype, root, comm_t);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, false);
 
@@ -98,15 +98,16 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
 
         AllToOne first([sendbuf, recvbuf, count, datatype, op] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
+            //check if recvbuf is null, may be useful to malloc
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_t);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, false);
 
         OneToAll second([recvbuf, count, datatype] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
             rc = PMPI_Bcast(recvbuf, count, datatype, root, comm_t);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, false);
 
@@ -114,7 +115,7 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
             int rc;
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm_t);
             if(rc != MPI_SUCCESS)
-                replace_comm(adv);
+                replace_comm(adv, comm_t);
             return rc;
         }, false, {first, second});
 
@@ -145,7 +146,7 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
                 HANDLE_REDUCE_FAIL(comm_t);
             }
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, comm_t);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, false);
 
@@ -179,7 +180,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
                 HANDLE_GATHER_FAIL(comm_t);
             }
             PERFORM_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root_rank, comm_t, total_size, fake_rank, comm);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, true);
 
@@ -212,7 +213,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
                 HANDLE_SCATTER_FAIL(comm_t);
             }
             PERFORM_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root_rank, comm_t, total_size, fake_rank, comm);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
         }, true);
 
@@ -236,21 +237,12 @@ int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatyp
         cur_comms->part_of(comm, &flag);
         AdvComm* translated = cur_comms->translate_into_adv(comm);
 
-        AllToOne first([](int, MPI_Comm, AdvComm*) -> int {return MPI_SUCCESS;}, false);
-        OneToAll second([sendbuf, recvbuf, count, datatype, op] (int, MPI_Comm comm_t, AdvComm* adv) -> int {
+        LocalOnly func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t, AdvComm* adv) -> int {
             int rc;
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
-            agree_and_eventually_replace(&rc, adv);
+            agree_and_eventually_replace(&rc, adv, comm_t);
             return rc;
-        }, false);
-
-
-        AllToAll func([sendbuf, recvbuf, count, datatype, op] (MPI_Comm comm_t, AdvComm* adv) -> int {
-            int rc;
-            rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm_t);
-            agree_and_eventually_replace(&rc, adv);
-            return rc;
-        }, true, {first, second});
+        }, true);
 
         rc = translated->perform_operation(func);
         

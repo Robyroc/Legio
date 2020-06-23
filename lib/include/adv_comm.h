@@ -11,6 +11,8 @@ class AllToAll;
 class FileOp;
 class WinOp;
 class WinOpColl;
+class LocalOnly;
+class CommCreator;
 
 class AdvComm
 {
@@ -40,9 +42,13 @@ class AdvComm
 
         virtual void destroy(std::function<int(MPI_Comm*)>) = 0;
         
-        virtual void fault_manage() = 0;
+        virtual void fault_manage(MPI_Comm) = 0;
+        virtual void fault_manage(MPI_File) = 0;
+        virtual void fault_manage(MPI_Win) = 0;
 
-        virtual void result_agreement(int*) = 0;
+        virtual void result_agreement(int*, MPI_Comm) = 0;
+        virtual void result_agreement(int*, MPI_File) = 0;
+        virtual void result_agreement(int*, MPI_Win) = 0;
 
         virtual bool file_support() = 0;
         virtual bool window_support() = 0;
@@ -62,6 +68,8 @@ class AdvComm
         virtual int perform_operation(FileOp, MPI_File) = 0;
         virtual int perform_operation(WinOp, int, MPI_Win) = 0;
         virtual int perform_operation(WinOpColl, MPI_Win) = 0;
+        virtual int perform_operation(LocalOnly) = 0;
+        virtual int perform_operation(CommCreator) = 0;
 
     private:
         MPI_Group group;

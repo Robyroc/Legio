@@ -54,22 +54,34 @@ void finalization()
     delete cur_comms;
 }
 
-void replace_comm(AdvComm* cur_complex)
+void replace_comm(AdvComm* cur_complex, MPI_Comm problematic)
 {
-    cur_complex->fault_manage();
+    cur_complex->fault_manage(problematic);
 }
 
-void agree_and_eventually_replace(int* rc, AdvComm* cur_complex)
+void replace_comm(AdvComm* cur_complex, MPI_File problematic)
 {
-    int flag = (MPI_SUCCESS==*rc);
-    int* pointer = &flag;
-    
-    cur_complex->result_agreement(pointer);
+    cur_complex->fault_manage(problematic);
+}
 
-    if(!flag && *rc == MPI_SUCCESS)
-        *rc = MPIX_ERR_PROC_FAILED;
-    if(*rc != MPI_SUCCESS)
-        replace_comm(cur_complex);
+void replace_comm(AdvComm* cur_complex, MPI_Win problematic)
+{
+    cur_complex->fault_manage(problematic);
+}
+
+void agree_and_eventually_replace(int* rc, AdvComm* cur_complex, MPI_Comm problematic)
+{
+    cur_complex->result_agreement(rc, problematic);
+}
+
+void agree_and_eventually_replace(int* rc, AdvComm* cur_complex, MPI_File problematic)
+{
+    cur_complex->result_agreement(rc, problematic);
+}
+
+void agree_and_eventually_replace(int* rc, AdvComm* cur_complex, MPI_Win problematic)
+{
+    cur_complex->result_agreement(rc, problematic);
 }
 
 void print_info(std::string method, MPI_Comm comm, int rc)

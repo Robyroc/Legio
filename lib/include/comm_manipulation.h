@@ -17,9 +17,17 @@ bool add_comm(MPI_Comm, SingleComm*);
 
 bool add_comm(MPI_Comm, HierarComm*);
 
-void replace_comm(AdvComm*);
+void replace_comm(AdvComm*, MPI_Comm);
 
-void agree_and_eventually_replace(int*, AdvComm*);
+void replace_comm(AdvComm*, MPI_File);
+
+void replace_comm(AdvComm*, MPI_Win);
+
+void agree_and_eventually_replace(int*, AdvComm*, MPI_Comm);
+
+void agree_and_eventually_replace(int*, AdvComm*, MPI_File);
+
+void agree_and_eventually_replace(int*, AdvComm*, MPI_Win);
 
 void initialization();
 
