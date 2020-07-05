@@ -8,8 +8,9 @@
 #include "structure_handler.h"
 #include "operations.h"
 #include "comm_manipulation.h"
+#include <thread>
 
-#define DIMENSION 5     //MOVE ME
+#define DIMENSION 3     //MOVE ME
 
 class HierarComm : public AdvComm
 {
@@ -57,6 +58,11 @@ class HierarComm : public AdvComm
         MPI_Comm local;
         MPI_Comm global;
         MPI_Comm full_network;
+        MPI_Comm partially_overlapped_own;
+        MPI_Comm partially_overlapped_other;
+        
+        std::thread * shrink_check;
+
         int translate_ranks(int old_rank, MPI_Comm new_comm)
         {
             int source = old_rank, tr_rank;
@@ -69,6 +75,9 @@ class HierarComm : public AdvComm
         {
             return rank / DIMENSION;
         }
+        void local_fault_manage();
+        void global_fault_manage();
+        void full_network_fault_manage();
 };
 
 #endif

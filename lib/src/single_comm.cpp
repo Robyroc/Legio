@@ -175,19 +175,32 @@ int SingleComm::perform_operation(OneToOne op, int other_rank)
 
 int SingleComm::perform_operation(OneToAll op, int root_rank)
 {
-    int new_rank = translate_ranks(root_rank);
-    return op(new_rank, get_comm(), this);
+    int rc = !MPI_SUCCESS;
+    while(rc != MPI_SUCCESS)
+    {
+        int new_rank = translate_ranks(root_rank);
+        rc = op(new_rank, get_comm(), this);
+    }
+    return rc;
 }
 
 int SingleComm::perform_operation(AllToOne op, int root_rank)
 {
-    int new_rank = translate_ranks(root_rank);
-    return op(new_rank, get_comm(), this);
+    int rc = !MPI_SUCCESS;
+    while(rc != MPI_SUCCESS)
+    {
+        int new_rank = translate_ranks(root_rank);
+        rc = op(new_rank, get_comm(), this);
+    }
+    return rc;
 }
 
 int SingleComm::perform_operation(AllToAll op)
 {
-    return op(get_comm(), this);
+    int rc = !MPI_SUCCESS;
+    while(rc != MPI_SUCCESS)
+        rc = op(get_comm(), this);
+    return rc;
 }
 
 int SingleComm::perform_operation(FileOp op, MPI_File file)
@@ -216,5 +229,8 @@ int SingleComm::perform_operation(LocalOnly op)
 
 int SingleComm::perform_operation(CommCreator op)
 {
-    return op(get_comm(), this);
+    int rc = !MPI_SUCCESS;
+    while(rc != MPI_SUCCESS)
+        rc = op(get_comm(), this);
+    return rc;
 }

@@ -21,9 +21,9 @@ void initialization()
 {
     cur_comms = new Multicomm();
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+    MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
     AdvComm* bogus_world = new NoComm(MPI_COMM_WORLD);
     add_comm(MPI_COMM_WORLD, bogus_world);
-    MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
     AdvComm* bogus_self = new NoComm(MPI_COMM_SELF);
     add_comm(MPI_COMM_SELF, bogus_self);
     delete bogus_world; delete bogus_self;
@@ -36,7 +36,13 @@ bool add_comm(MPI_Comm comm, AdvComm* source)
 
 bool add_comm(MPI_Comm comm, NoComm* source)
 {
-    return cur_comms->add_comm<SingleComm>(comm);
+    MPI_Comm alias = source->get_alias();
+    int size;
+    MPI_Comm_size(alias, &size);
+    if(size > 5)
+        return cur_comms->add_comm<HierarComm>(comm);
+    else
+        return cur_comms->add_comm<SingleComm>(comm);
 }
 
 bool add_comm(MPI_Comm comm, SingleComm* source)

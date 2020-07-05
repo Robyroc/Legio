@@ -2,25 +2,102 @@
 #include "mpi.h"
 #include <functional>
 #include "mpi-ext.h"
+#include <thread>
+#include <chrono>
+
+#define PERIOD 20
+
+void change_even_if_unnotified(MPI_Comm* changee, MPI_Comm* local)
+{
+    while(1)
+    {
+        int flag, buf;
+        MPI_Iprobe(0, 77, *local, &flag, MPI_STATUS_IGNORE);
+        if(flag)
+        {
+            PMPI_Recv(&buf, 1, MPI_INT, 0, 77, *local, MPI_STATUS_IGNORE);
+            MPI_Comm icomm;
+            PMPI_Comm_free(changee);
+            MPI_Intercomm_create(*local, 0, MPI_COMM_NULL, 0, 45, &icomm);
+            MPI_Intercomm_merge(icomm, 0, changee);
+            MPI_Comm_set_errhandler(*changee, MPI_ERRORS_RETURN);
+            PMPI_Comm_free(&icomm);
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(PERIOD));
+    }
+}
 
 HierarComm::HierarComm(MPI_Comm comm): AdvComm(comm) 
 {
-    int rank;
+    int rank;               //Rank in alias
+    int group;              //Group of which the process is part
+    int local_rank;         //Rank in local
+    int size;               //Size of alias
+
     MPI_Comm_rank(comm, &rank);
+    group = extract_group(rank);
+    local_rank = rank%DIMENSION;
+    MPI_Comm_size(comm, &size);
 
-    int group = extract_group(rank);
+    if(rank == 0)
+        printf("HIERARCOMM LET'S GO!\n");
 
-    int new_rank = rank%DIMENSION;
+    //Construction of the needed communicators
 
-    PMPI_Comm_dup(comm, &full_network);
+    PMPI_Comm_dup(comm, &full_network);                         //Creation of full_network           
     MPI_Comm_set_errhandler(full_network, MPI_ERRORS_RETURN);
-    PMPI_Comm_split(comm, group, new_rank, &local);
+
+    PMPI_Comm_split(comm, group, local_rank, &local);           //Creation of local
     MPI_Comm_set_errhandler(local, MPI_ERRORS_RETURN);
-    PMPI_Comm_split(comm, new_rank == 0, rank, &global);
-    if(new_rank != 0)
-        MPI_Comm_free(&global);
+
+    PMPI_Comm_split(comm, local_rank == 0, rank, &global);      //Creation of global
+    if(local_rank != 0)
+        PMPI_Comm_free(&global);
     else
         MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
+
+
+    if(rank == 0)                                               //Creation of partially overlapped
+    {
+        if(size <= DIMENSION)
+            PMPI_Comm_dup(local, &partially_overlapped_own);
+        else
+        {
+            MPI_Comm icomm;
+            int remote_leader = size / DIMENSION;
+            MPI_Intercomm_create(MPI_COMM_SELF, 0, global, remote_leader, 45, &icomm);
+            MPI_Intercomm_merge(icomm, 1, &partially_overlapped_other);
+            MPI_Comm_set_errhandler(partially_overlapped_other, MPI_ERRORS_RETURN);
+            PMPI_Comm_free(&icomm);
+            MPI_Intercomm_create(local, 0, global, 1, 46, &icomm);
+            MPI_Intercomm_merge(icomm, 0, &partially_overlapped_own);
+            MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
+            PMPI_Comm_free(&icomm);
+        }
+    }
+    else
+    {
+        MPI_Comm icomm;
+        int remote_leader = ((group+1) * DIMENSION < size ? group + 1 : 0);
+        MPI_Intercomm_create(local, 0, global, remote_leader, 46, &icomm);
+        MPI_Intercomm_merge(icomm, 0, &partially_overlapped_own);
+        MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
+        PMPI_Comm_free(&icomm);
+
+        if(local_rank == 0)
+        {
+            remote_leader = group-1; //cannot underflow since I'm handling 0 separately
+            MPI_Intercomm_create(MPI_COMM_SELF, 0, global, remote_leader, 45, &icomm);
+            MPI_Intercomm_merge(icomm, 1, &partially_overlapped_other);
+            MPI_Comm_set_errhandler(partially_overlapped_other, MPI_ERRORS_RETURN);
+            PMPI_Comm_free(&icomm);
+        }
+        else
+            partially_overlapped_other = MPI_COMM_NULL;
+    }
+
+    //Creation of notifier thread
+    shrink_check = new std::thread(change_even_if_unnotified, &partially_overlapped_own, &local);    
 
     std::function<int(MPI_File, int*)> setter_f = [] (MPI_File f, int* value) -> int {return MPI_SUCCESS;};
 
@@ -58,124 +135,15 @@ void HierarComm::fault_manage(MPI_Comm problematic)
 {
     if(MPI_Comm_c2f(problematic) == MPI_Comm_c2f(local))
     {
-        MPI_Comm new_comm;
-        int old_size, new_size, diff, old_rank, new_rank;
-        MPIX_Comm_shrink(local, &new_comm);
-        MPI_Comm_size(local, &old_size);
-        MPI_Comm_size(new_comm, &new_size);
-        MPI_Comm_rank(local, &old_rank);
-        MPI_Comm_rank(new_comm, &new_rank);
-        diff = old_size - new_size; /* number of deads */
-        if(0 == diff)
-            PMPI_Comm_free(&new_comm);
-        else
-        {
-            MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-            if(old_rank != 0 && new_rank == 0)
-            {
-                // I must join the global group
-                MPI_Comm iglobal;   //global intercommunicator
-                int rank, rank_group;
-                MPI_Comm_rank(get_alias(), &rank);
-                rank_group = extract_group(rank);
-
-                //First we must find the rank of a process within global.
-                //We are sure that the process with the lowest rank alive
-                //will be in global, since its local rank will be 0.
-                //We must also check that such process is not part of this group
-                //since noone in local has a reference to global (master is dead...)
-
-                int total_size, rc = !MPI_SUCCESS, i;
-                MPI_Comm_size(get_alias(), &total_size);
-                for(i = 0; i < total_size && rc != MPI_SUCCESS; i++)
-                {
-                    if(extract_group(i) != rank_group && translate_ranks(i, full_network) != MPI_UNDEFINED)
-                        rc = MPI_Intercomm_create(MPI_COMM_SELF, 0, get_alias(), i, 56, &iglobal);
-                }
-                if(i == total_size)
-                {
-                    PMPI_Comm_free(&global);
-                    //found nothing, all other local groups are dead
-                    MPI_Comm_dup(MPI_COMM_SELF, &global);
-                }
-                else
-                {
-                    PMPI_Comm_free(&global);
-                    MPI_Comm temp_intracomm;
-                    PMPI_Intercomm_merge(iglobal, 0, &temp_intracomm);
-                    //Here a intracommunicator exists, but the ranks are shuffled
-
-                    PMPI_Comm_split(temp_intracomm, 1, rank, &global);
-
-                    PMPI_Comm_free(&temp_intracomm);
-                    PMPI_Comm_free(&iglobal);
-                }
-            }
-            local_replace_comm(new_comm);
-        }
+        local_fault_manage();
     }
     else if(MPI_Comm_c2f(problematic) == MPI_Comm_c2f(full_network))
     {
-        //do nothing, failure handled on demand
+        full_network_fault_manage();
     }
     else if(MPI_Comm_c2f(problematic) == MPI_Comm_c2f(global))
     {
-        MPI_Comm new_comm;
-        int old_size, new_size, diff, old_rank, new_rank, global_rank;
-        MPIX_Comm_shrink(global, &new_comm);
-        MPI_Comm_size(global, &old_size);
-        MPI_Comm_size(new_comm, &new_size);
-        MPI_Comm_rank(global, &old_rank);
-        MPI_Comm_rank(new_comm, &new_rank);
-        MPI_Comm_rank(get_alias(), &global_rank);
-        int rank_group = extract_group(global_rank);
-        diff = old_size - new_size; /* number of deads */
-        if(0 == diff)
-            PMPI_Comm_free(&new_comm);
-        else
-        {
-            MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-
-            //Handle the entrance of the new master, then split to reorder ranks
-            MPI_Group old_group, new_group, diff_group;
-            MPI_Comm_group(global, &old_group);
-            MPI_Comm_group(new_comm, &new_group);
-            MPI_Group_difference(old_group, new_group, &diff_group);
-            int size_group;
-            MPI_Group_size(diff_group, &size_group);
-            if(diff != size_group)
-                printf("HEY!!! THIS ERROR IS DUE TO GROUP, CHECK HIERARCOMM\n");
-            
-            int failee, failee_group;
-            MPI_Group_translate_ranks(diff_group, 1, 0, get_group(), &failee);
-            failee_group = extract_group(failee);
-            int i, rc = !MPI_SUCCESS;
-            MPI_Comm intercomm;
-
-            for(i = failee_group * DIMENSION; i < (failee_group + 1) * DIMENSION && rc != MPI_SUCCESS; i++)
-            {
-                if(translate_ranks(i, full_network) != MPI_UNDEFINED)
-                    rc = MPI_Intercomm_create(new_comm, 0, get_alias(), i, 56, &intercomm);
-            }
-            if(i == (failee_group + 1) * DIMENSION)
-            {
-                //The local rank is completely failed, drop it
-                PMPI_Comm_free(&global);
-                global = new_comm;
-            }
-            else
-            {
-                PMPI_Comm_free(&global);
-                MPI_Comm temp_intracomm;
-                PMPI_Intercomm_merge(intercomm, 0, &temp_intracomm);
-                //Here a intracommunicator exists, but the ranks are shuffled
-
-                PMPI_Comm_split(temp_intracomm, 1, global_rank, &global);
-
-                PMPI_Comm_free(&temp_intracomm);
-                PMPI_Comm_free(&intercomm);
-            }
-        }
+        global_fault_manage();
     }
 }
 
@@ -238,94 +206,197 @@ void HierarComm::check_served(MPI_File file, int* result)
 
 int HierarComm::perform_operation(OneToOne op, int rank)
 {
-    int rc = MPI_SUCCESS;
-    MPI_Comm intercomm;
-    rc = PMPI_Intercomm_create(MPI_COMM_SELF, 0, get_alias(), rank, 46, &intercomm);
-    if(rc != MPI_SUCCESS)
-        return op(MPI_UNDEFINED, get_alias(), this);
-    else
-    {
-        int self_rank, intracomm_rank;
-        MPI_Comm_rank(get_alias(), &self_rank);
-        MPI_Comm intracomm;
-        PMPI_Intercomm_merge(intercomm, self_rank > rank, &intracomm);
-        MPI_Comm_rank(intracomm, &intracomm_rank);
-        return op(!intracomm_rank, intracomm, this);
-    }
+    int new_rank = translate_ranks(rank, full_network);
+    return op(new_rank, full_network, this);
 }
 
 int HierarComm::perform_operation(OneToAll op, int rank) 
 {
-    int root_group = extract_group(rank), this_group, this_rank, this_local_rank;
-    int rc;
-
-    MPI_Comm_rank(get_alias(), &this_rank);
-    this_group = extract_group(this_rank);
-
-    MPI_Comm_rank(local, &this_local_rank);
-
-    if(root_group == this_group)
+    if(!op.isPositional())
     {
-        //root is local
-        int local_rank = translate_ranks(rank, local);
-        rc = op(local_rank, local, this);
-        if(this_local_rank == 0)
+        int root_group = extract_group(rank), this_group, this_rank, this_local_rank;
+        int rc;
+
+        MPI_Comm_rank(get_alias(), &this_rank);
+        this_group = extract_group(this_rank);
+        if(root_group == this_group)
         {
-            //I'm master in this subnet, need to operate on global
-            rc = op(translate_ranks(this_rank, global), global, this);
+            //root is local
+            do
+            {
+                int local_rank = translate_ranks(rank, local);
+                rc = op(local_rank, local, this);
+            } while(rc != MPI_SUCCESS);
+
+            MPI_Comm_rank(local, &this_local_rank);
+            if(this_local_rank == 0)
+            {
+                //I'm master in this subnet, need to operate on global
+                do
+                {
+                    rc = op(translate_ranks(this_rank, global), global, this);
+                } while(rc != MPI_SUCCESS);
+            }
         }
+        else
+        {
+            MPI_Comm_rank(local, &this_local_rank);
+            if(this_local_rank == 0)
+            {
+                //I'm master in this subnet, need to propagate
+                do
+                {
+                    int source_rank = MPI_UNDEFINED;
+                    for(int i = root_group * DIMENSION; i < (root_group + 1) * DIMENSION && source_rank == MPI_UNDEFINED; i++)
+                        source_rank = translate_ranks(i, global);
+                    rc = op(source_rank, global, this);
+                } while(rc != MPI_SUCCESS);
+            }
+
+            //root is in another subnet, need to perform using master as root
+            do
+            {
+                rc = op(0, local, this);
+            } while(rc != MPI_SUCCESS);
+        }
+        return rc;
     }
     else
     {
-        if(this_local_rank == 0)
+        int rc;
+        do
         {
-            //I'm master in this subnet, need to propagate
-            rc = op(translate_ranks(this_rank, global), global, this);
-        }
-        //root is in another subnet, need to perform using master as root
-        rc = op(0, local, this);
+            //Shrink on demand, since it's costly
+            MPI_Comm new_comm;
+            int old_size, new_size, diff;
+            MPIX_Comm_shrink(full_network, &new_comm);
+            MPI_Comm_size(full_network, &old_size);
+            MPI_Comm_size(new_comm, &new_size);
+            diff = old_size - new_size; // number of deads
+            if(0 == diff)
+                PMPI_Comm_free(&new_comm);
+            else
+            {
+                PMPI_Comm_free(&full_network);
+                MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+                full_network = new_comm;
+            }
+            rc = op(translate_ranks(rank, full_network), full_network, this);
+        } while(rc != MPI_SUCCESS);
+        return rc;
     }
-    return rc;
+    
 }
 
 int HierarComm::perform_operation(AllToOne op, int rank) 
 {
-    int root_group = extract_group(rank), this_group, this_rank, this_local_rank;
-    int rc;
-
-    MPI_Comm_rank(get_alias(), &this_rank);
-    this_group = extract_group(this_rank);
-
-    MPI_Comm_rank(local, &this_local_rank);
-
-    if(root_group != this_group)
+    if(!op.isPositional())
     {
-        //root is not local, aggregating to master
-        rc = op(0, local, this);
-        if(this_local_rank == 0)
+        int root_group = extract_group(rank), this_group, this_rank, this_local_rank;
+        int rc;
+
+        MPI_Comm_rank(get_alias(), &this_rank);
+        this_group = extract_group(this_rank);
+
+        if(root_group != this_group)
         {
-            //I'm master in this subnet, must propagate the results
-            rc = op(translate_ranks(this_rank, global), global, this);
+            //root is not local, aggregating to master
+            do
+            {            
+                rc = op(0, local, this);
+            } while(rc != MPI_SUCCESS);
+
+            MPI_Comm_rank(local, &this_local_rank);
+            if(this_local_rank == 0)
+            {
+                //I'm master in this subnet, must propagate the results
+                int dest_rank = MPI_UNDEFINED;
+                for(int i = root_group * DIMENSION; i < (root_group + 1) * DIMENSION && dest_rank == MPI_UNDEFINED; i++)
+                    dest_rank = translate_ranks(i, global);
+                do
+                {
+                    rc = op(dest_rank, global, this);
+                } while(rc != MPI_SUCCESS);
+            }
         }
+        else
+        {
+            MPI_Comm_rank(local, &this_local_rank);
+            if(this_local_rank == 0)
+            {
+                //I'm master, need to receive results
+                do
+                {
+                    rc = op(translate_ranks(this_rank, global), global, this);
+                } while(rc != MPI_SUCCESS);
+            }
+
+            do
+            {
+                int local_rank = translate_ranks(rank, local);
+                rc = op(local_rank, local, this);
+            } while(rc != MPI_SUCCESS);
+        }
+        return rc;
     }
     else
     {
-        if(this_local_rank == 0)
+        int rc;
+        do
         {
-            //I'm master, need to receive results
-            rc = op(translate_ranks(this_rank, global), global, this);
-        }
-        int local_rank = translate_ranks(rank, local);
-        rc = op(local_rank, local, this);
+            //Shrink on demand, since it's costly
+            MPI_Comm new_comm;
+            int old_size, new_size, diff;
+            MPIX_Comm_shrink(full_network, &new_comm);
+            MPI_Comm_size(full_network, &old_size);
+            MPI_Comm_size(new_comm, &new_size);
+            diff = old_size - new_size; /* number of deads */
+            if(0 == diff)
+                PMPI_Comm_free(&new_comm);
+            else
+            {
+                PMPI_Comm_free(&full_network);
+                MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+                full_network = new_comm;
+            }
+            rc = op(translate_ranks(rank, full_network), full_network, this);
+        } while(rc != MPI_SUCCESS);
+        return rc;
     }
-    return rc;
 }
 
 int HierarComm::perform_operation(AllToAll op) 
 {
-    int rc = perform_operation(op.decomp().first, 0);
-    rc |= perform_operation(op.decomp().second, 0);
-    return rc;
+    if(!op.isPositional())
+    {
+        int rc = perform_operation(op.decomp().first, 0);
+        rc |= perform_operation(op.decomp().second, 0);
+        return rc;
+    }
+    else
+    {
+        int rc;
+        do
+        {
+            //Shrink on demand, since it's costly
+            MPI_Comm new_comm;
+            int old_size, new_size, diff;
+            MPIX_Comm_shrink(full_network, &new_comm);
+            MPI_Comm_size(full_network, &old_size);
+            MPI_Comm_size(new_comm, &new_size);
+            diff = old_size - new_size; // number of deads
+            if(0 == diff)
+                PMPI_Comm_free(&new_comm);
+            else
+            {
+                PMPI_Comm_free(&full_network);
+                MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+                full_network = new_comm;
+            }
+            rc = op(full_network, this);
+        } while(rc != MPI_SUCCESS);
+        return rc;
+    }
 }
 
 int HierarComm::perform_operation(FileOp op, MPI_File file) 
@@ -341,22 +412,26 @@ int HierarComm::perform_operation(LocalOnly op)
 
 int HierarComm::perform_operation(CommCreator op)
 {
-    //Shrink on demand, since it's costly
-    MPI_Comm new_comm;
-    int old_size, new_size, diff;
-    MPIX_Comm_shrink(full_network, &new_comm);
-    MPI_Comm_size(full_network, &old_size);
-    MPI_Comm_size(new_comm, &new_size);
-    diff = old_size - new_size; /* number of deads */
-    if(0 == diff)
-        PMPI_Comm_free(&new_comm);
-    else
+    int rc;
+    do
     {
-        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-        full_network = new_comm;
-    }
-
-    return op(full_network, this);
+        //Shrink on demand, since it's costly
+        MPI_Comm new_comm;
+        int old_size, new_size, diff;
+        MPIX_Comm_shrink(full_network, &new_comm);
+        MPI_Comm_size(full_network, &old_size);
+        MPI_Comm_size(new_comm, &new_size);
+        diff = old_size - new_size; // number of deads
+        if(0 == diff)
+            PMPI_Comm_free(&new_comm);
+        else
+        {
+            PMPI_Comm_free(&full_network);
+            MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+            full_network = new_comm;
+        }
+        rc = op(full_network, this);
+    } while(rc != MPI_SUCCESS);
 }
 
 void HierarComm::local_replace_comm(MPI_Comm new_comm) 
@@ -369,3 +444,244 @@ void HierarComm::local_replace_comm(MPI_Comm new_comm)
     PMPI_Comm_free(&local);
     local = new_comm;
 }
+
+void HierarComm::local_fault_manage()
+{
+    MPI_Comm new_comm;                                  //It will substitute local
+    int old_size;                                       //Size of old local
+    int new_size;                                       //Size of shrinked local
+    int old_rank;                                       //Rank in old local
+    int new_rank;                                       //Rank in shrinked local
+
+    MPIX_Comm_shrink(local, &new_comm);
+    MPI_Comm_size(local, &old_size);
+    MPI_Comm_size(new_comm, &new_size);
+    MPI_Comm_rank(local, &old_rank);
+    MPI_Comm_rank(new_comm, &new_rank);
+
+    int diff = old_size - new_size; // number of deads //
+    if(0 == diff)
+        PMPI_Comm_free(&new_comm);                      //Nobody failed, stop;
+    else
+    {
+        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);   //new_comm will become local
+
+        MPI_Group old_group;                            //MPI_Group of failed local
+        MPI_Group new_group;                            //MPI_Group of new local
+        MPI_Group diff_group;                           //Difference of the 2 above
+
+        MPI_Comm_group(global, &old_group);
+        MPI_Comm_group(new_comm, &new_group);
+        MPI_Group_difference(old_group, new_group, &diff_group);
+
+        int failed_rank, source = 0;
+        MPI_Group_translate_ranks(diff_group, 1, &source, old_group, &failed_rank);
+        if(failed_rank == 0)
+        {
+            MPI_Comm temp;
+            MPIX_Comm_shrink(partially_overlapped_own, &temp);
+            PMPI_Comm_free(&partially_overlapped_own);
+            partially_overlapped_own = temp;
+        }
+
+        if(old_rank != 0 && new_rank == 0)
+        {
+            // Master failed, I must join the global group
+            MPI_Comm iglobal;                               //global intercommunicator
+            int rank;                                       //rank in alias 
+            int rank_group;                                 //group of the process
+
+            MPI_Comm_rank(get_alias(), &rank);
+            rank_group = extract_group(rank);
+
+            //The process must use partially_overlapped to join global
+            int partially_overlapped_size;
+            MPI_Comm_size(partially_overlapped_own, &partially_overlapped_size);
+            MPI_Intercomm_create(MPI_COMM_SELF, 0, partially_overlapped_own, partially_overlapped_size - 1, 45, &iglobal);
+            PMPI_Comm_free(&global);
+
+            MPI_Comm temp_intracomm;
+            PMPI_Intercomm_merge(iglobal, 0, &temp_intracomm);
+            //Here a intracommunicator exists, but the ranks are shuffled
+
+            PMPI_Comm_split(temp_intracomm, 1, rank, &global);
+            MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
+
+            PMPI_Comm_free(&temp_intracomm);
+            PMPI_Comm_free(&iglobal);
+
+            //Now i must join another partial overlapping intercomm
+
+        }
+        local_replace_comm(new_comm);
+    }
+}
+
+void HierarComm::global_fault_manage()
+{
+    MPI_Comm new_comm;                                      //Shrinked global communicator
+    int old_size;                                           //Size of old global
+    int new_size;                                           //Size in shrinked global
+    int old_rank;                                           //Rank in old global
+    int new_rank;                                           //Rank in shrinked global
+    int global_rank;                                        //Rank in alias
+    int rank_group;                                         //group of the process
+
+    MPIX_Comm_shrink(global, &new_comm);
+    MPI_Comm_size(global, &old_size);
+    MPI_Comm_size(new_comm, &new_size);
+    MPI_Comm_rank(global, &old_rank);
+    MPI_Comm_rank(new_comm, &new_rank);
+    MPI_Comm_rank(get_alias(), &global_rank);
+    rank_group = extract_group(global_rank);
+    
+    int diff = old_size - new_size; // number of deads
+    if(0 == diff)
+        PMPI_Comm_free(&new_comm);
+    else
+    {
+        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+        //There are 3 cases in which we can be:
+        //The dead process is the one of the previous group;
+        //The dead process is the one of the following group;
+        //The dead process is neither the previous nor the following group.
+        //The first thing to do is identify the case.
+
+        MPI_Group old_group;                                //MPI_Group of old global
+        MPI_Group new_group;                                //MPI_Group of new global
+        MPI_Group diff_group;                               //Difference of the 2 above
+
+        MPI_Comm_group(global, &old_group);
+        MPI_Comm_group(new_comm, &new_group);
+        MPI_Group_difference(old_group, new_group, &diff_group);
+        
+        int failed, source = 0;                             //failed contains the rank of the failed process in global
+        int failed_rank;                                    //rank of the failed process in alias
+        int failed_group;                                   //group of the failed process
+        int next_in_global;                                 //rank of the next process in old global
+        int prev_in_global;                                 //rank of the previous process in old global
+        int message;                                        //used for broadcast communication
+
+        MPI_Group_translate_ranks(diff_group, 1, &source, old_group, &failed);
+        MPI_Group_translate_ranks(diff_group, 1, &source, get_group(), &failed_rank);
+        failed_group = extract_group(failed_rank);
+        next_in_global = (failed + 1) % old_size;           //The rank next in global to the one failed (case 1)
+        prev_in_global = (failed -1 + old_size) % old_size; //The rank prev in global to the one failed (case 2)
+
+        //Note that next_in_global == prev_in_global iff old_size = 2 or old_size = 1
+
+        if(old_rank == next_in_global)
+        {
+            //case 1
+            MPI_Comm temp;
+            MPIX_Comm_shrink(partially_overlapped_other, &temp);
+            PMPI_Comm_free(&partially_overlapped_other);
+            
+            int size_of_partial;
+            MPI_Comm_size(temp, &size_of_partial);
+            if(size_of_partial == 1)
+            {
+                //The whole group is failed, no need to work with intercomm in global
+                message = 0;
+                PMPI_Bcast(&message, 1, MPI_INT, new_rank, new_comm);
+                PMPI_Comm_free(&global);
+                global = new_comm;
+
+                //Need to adjust the other inter
+                int new_other = (new_rank - 1 + new_size) % new_size;
+                MPI_Comm icomm;
+                MPI_Intercomm_create(MPI_COMM_SELF, 0, global, new_other, 45, &icomm);
+                MPI_Intercomm_merge(icomm, 1, &partially_overlapped_other);
+                MPI_Comm_set_errhandler(partially_overlapped_other, MPI_ERRORS_RETURN);
+            }
+            else
+            {
+                message = 1;
+                MPI_Comm icomm, unordered_global;
+                PMPI_Comm_free(&global);
+                PMPI_Bcast(&message, 1, MPI_INT, new_rank, new_comm);
+                MPI_Intercomm_create(new_comm, new_rank, temp, 0, 45, &icomm);
+                MPI_Intercomm_merge(icomm, 0, &unordered_global);
+                PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                PMPI_Comm_free(&icomm);
+                PMPI_Comm_free(&unordered_global);
+                partially_overlapped_other = temp;
+            }
+            PMPI_Comm_free(&temp);
+
+        }
+        if(old_rank == prev_in_global)
+        {
+            //case 2
+            //First thing to do is propagate the failure across the local group
+            int local_size, buf = 1;
+            MPI_Request requests[DIMENSION];
+            MPI_Status status[DIMENSION];
+            MPI_Comm_size(local, &local_size);
+            for(int i = 0; i + 1 < local_size; i++)
+                PMPI_Isend(&buf, 1, MPI_INT, i + 1, 77, local, &(requests[i]));
+            
+            //Then behave like case 3
+            int rank_bcast_source;
+            MPI_Group_translate_ranks(old_group, 1, &next_in_global, new_group, &rank_bcast_source);
+            PMPI_Bcast(&message, 1, MPI_INT, rank_bcast_source, new_comm);
+            if(message == 0)
+            {
+                PMPI_Comm_free(&global);
+                global = new_comm;
+            }
+            else
+            {
+                MPI_Comm icomm, unordered_global;
+                PMPI_Comm_free(&global);
+                MPI_Intercomm_create(new_comm, rank_bcast_source, MPI_COMM_NULL, 0, 45, &icomm);
+                MPI_Intercomm_merge(icomm, 0, &unordered_global);
+                PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                PMPI_Comm_free(&icomm);
+                PMPI_Comm_free(&unordered_global);
+            }
+
+
+            //And now reconstruct partially_overlapped_own
+            int updated_global_rank;                            //Rank in the fixed communicator
+            int updated_global_size;                            //Size of the fixed communicator
+            MPI_Comm_rank(global, &updated_global_rank);
+            MPI_Comm_size(global, &updated_global_size);
+            int new_follower = (updated_global_rank + 1) % updated_global_size;
+
+            PMPI_Waitall(local_size - 1, requests, status);
+
+            PMPI_Comm_free(&partially_overlapped_own);
+            MPI_Comm icomm;
+            MPI_Intercomm_create(local, 0, global, new_follower, 45, &icomm);
+            MPI_Intercomm_merge(icomm, 0, &partially_overlapped_own);
+            MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
+            PMPI_Comm_free(&icomm);
+        }
+        if(old_rank != prev_in_global && old_rank != next_in_global)
+        {
+            //case 3
+            int rank_bcast_source;
+            MPI_Group_translate_ranks(old_group, 1, &next_in_global, new_group, &rank_bcast_source);
+            PMPI_Bcast(&message, 1, MPI_INT, rank_bcast_source, new_comm);
+            if(message == 0)
+            {
+                PMPI_Comm_free(&global);
+                global = new_comm;
+            }
+            else
+            {
+                MPI_Comm icomm, unordered_global;
+                PMPI_Comm_free(&global);
+                MPI_Intercomm_create(new_comm, rank_bcast_source, MPI_COMM_NULL, 0, 45, &icomm);
+                MPI_Intercomm_merge(icomm, 0, &unordered_global);
+                PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                PMPI_Comm_free(&icomm);
+                PMPI_Comm_free(&unordered_global);
+            }
+        }
+    }
+}
+
+void HierarComm::full_network_fault_manage()
+{}
