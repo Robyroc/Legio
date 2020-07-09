@@ -78,6 +78,7 @@ class HierarComm : public AdvComm
         void local_fault_manage();
         void global_fault_manage();
         void full_network_fault_manage();
+        void change_even_if_unnotified(int);
 };
 
 #endif

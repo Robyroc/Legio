@@ -19,7 +19,7 @@ int main(int argc, char** argv)
     send = rank;
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if(rank == 4) raise(SIGINT);
+    if(rank == 3) raise(SIGINT);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     if(rank == 0)
         MPI_Send(&send, 1, MPI_INT, 4, 1, MPI_COMM_WORLD);
     if(rank == 4)
-        MPI_Recv(&received, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, NULL);
+        MPI_Recv(&received, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Finalize();
 
     return MPI_SUCCESS;

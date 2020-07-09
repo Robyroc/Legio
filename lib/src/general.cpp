@@ -17,13 +17,14 @@ Multicomm *cur_comms;
 
 int MPI_Init(int* argc, char *** argv)
 {
+    /*
     int rc = PMPI_Init(argc, argv);
     initialization();
     return rc;
-    /*
+    */
+    
     int provided;
     return MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
-    */
 }
 
 int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
