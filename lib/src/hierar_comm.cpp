@@ -15,14 +15,15 @@ void HierarComm::change_even_if_unnotified(int rank_group)
 {
     int rank;
     MPI_Comm_rank(get_alias(), &rank);
+    print_details("Daemon thread booted up...", rank);
     while(1)
     {
-        print_details("Checking...", rank);
         int flag = 0, buf;
-        MPI_Iprobe(0, 77, local, &flag, MPI_STATUS_IGNORE);
+        if(local != MPI_COMM_NULL)
+            MPI_Iprobe(0, 77, local, &flag, MPI_STATUS_IGNORE);
         if(flag)
         {
-            print_details("Found!!!", rank);
+            print_details("Found a message!!!", rank);
             PMPI_Recv(&buf, 1, MPI_INT, 0, 77, local, MPI_STATUS_IGNORE);
             MPI_Comm icomm, temp;
             MPIX_Comm_shrink(partially_overlapped_own, &temp);
@@ -33,6 +34,7 @@ void HierarComm::change_even_if_unnotified(int rank_group)
             MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
             PMPI_Comm_free(&icomm);
             PMPI_Comm_free(&temp);
+            print_details("Daemon done", rank);
         }
         std::this_thread::sleep_for(std::chrono::seconds(PERIOD));
     }
@@ -147,6 +149,7 @@ HierarComm::HierarComm(MPI_Comm comm): AdvComm(comm)
     };
     
     files = new StructureHandler<MPI_File, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
+    print_status();
 }
 
 void HierarComm::fault_manage(MPI_Comm problematic) 
@@ -181,7 +184,7 @@ void HierarComm::result_agreement(int* rc, MPI_Comm problematic)
 {
     int flag = (MPI_SUCCESS==*rc);
     int* pointer = &flag;
-    
+
     MPIX_Comm_agree(problematic, pointer);
 
     if(!flag && *rc == MPI_SUCCESS)
@@ -247,6 +250,7 @@ int HierarComm::perform_operation(OneToAll op, int rank)
             //root is local
             do
             {
+                PMPI_Barrier(local);            //This Barrier is needed since otherwise consistent error detection may not be reached
                 int local_rank = translate_ranks(rank, local);
                 rc = op(local_rank, local, this);
             } while(rc != MPI_SUCCESS);
@@ -257,6 +261,7 @@ int HierarComm::perform_operation(OneToAll op, int rank)
                 //I'm master in this subnet, need to operate on global
                 do
                 {
+                    PMPI_Barrier(global);
                     int local_rank = translate_ranks(this_rank, global);
                     rc = op(local_rank, global, this);
                 } while(rc != MPI_SUCCESS);
@@ -270,6 +275,7 @@ int HierarComm::perform_operation(OneToAll op, int rank)
                 //I'm master in this subnet, need to propagate
                 do
                 {
+                    PMPI_Barrier(global);
                     int source_rank = MPI_UNDEFINED;
                     for(int i = root_group * DIMENSION; i < (root_group + 1) * DIMENSION && source_rank == MPI_UNDEFINED; i++)
                     {
@@ -365,9 +371,35 @@ int HierarComm::perform_operation(AllToAll op)
 {
     if(!op.isPositional())
     {
-        //Find a decent candidate rather than fixing 0
-        int rc = perform_operation(op.decomp().first, 0);
-        rc |= perform_operation(op.decomp().second, 0);
+        OneToAll half_barrier([] (int root, MPI_Comm comm_t, AdvComm* adv) -> int {
+            int rc;
+            rc = PMPI_Barrier(comm_t);
+            if(rc != MPI_SUCCESS)
+                replace_comm(adv, comm_t);
+            return rc;
+        }, false);
+
+        perform_operation(half_barrier, 0);
+
+        int local_rank;                     //Rank in local
+        MPI_Group global_group;             //MPI_Group of global
+        int pivot_rank;                     //Lowest rank alive
+
+        MPI_Comm_rank(local, &local_rank);
+        if(local_rank == 0)
+        {
+            int source = 0;                 //Lowest rank alive
+            MPI_Comm_group(global, &global_group);
+            MPI_Group_translate_ranks(global_group, 1, &source, get_group(), &pivot_rank);
+            PMPI_Bcast(&pivot_rank, 1, MPI_INT, 0, local);
+        }
+        else
+        {
+            PMPI_Bcast(&pivot_rank, 1, MPI_INT, 0, local);   
+        }
+        
+        int rc = perform_operation(op.decomp().first, pivot_rank);
+        rc |= perform_operation(op.decomp().second, pivot_rank);
         return rc;
     }
     else
@@ -524,6 +556,7 @@ void HierarComm::local_fault_manage()
         local_replace_comm(new_comm);
     }
     print_details("Local failure solved", rank);
+    print_status();
 }
 
 void HierarComm::global_fault_manage()
@@ -590,6 +623,7 @@ void HierarComm::global_fault_manage()
             print_details("Global fix case 1 begin", global_rank);
             //case 1
             MPI_Comm temp;
+            print_details("About to shrink", global_rank);
             MPIX_Comm_shrink(partially_overlapped_other, &temp);
             PMPI_Comm_free(&partially_overlapped_other);
             
@@ -613,14 +647,14 @@ void HierarComm::global_fault_manage()
                 else
                 {
                     int new_other = (new_rank - 1 + new_size) % new_size;
-                    int new_other_rank, source = 0;
+                    int new_other_rank;
                     int new_other_group;
-                    MPI_Group_translate_ranks(new_group, 1, &source, get_group(), &new_other_rank);
+                    MPI_Group_translate_ranks(new_group, 1, &new_other, get_group(), &new_other_rank);
                     new_other_group = extract_group(new_other_rank);
 
                     MPI_Comm icomm;
-                    print_details("Adjusting a par_over, token: " + std::to_string(40 + new_other_group), global_rank);
-                    MPI_Intercomm_create(MPI_COMM_SELF, 0, global, new_other, 40 + new_other_group, &icomm);
+                    print_details("Adjusting a par_over, token: " + std::to_string(50 + new_other_group), global_rank);
+                    MPI_Intercomm_create(MPI_COMM_SELF, 0, global, new_other, 50 + new_other_group, &icomm);
                     MPI_Intercomm_merge(icomm, 1, &partially_overlapped_other);
                     MPI_Comm_set_errhandler(partially_overlapped_other, MPI_ERRORS_RETURN);
                 }
@@ -641,7 +675,6 @@ void HierarComm::global_fault_manage()
                 PMPI_Comm_free(&unordered_global);
                 partially_overlapped_other = temp;
             }
-            PMPI_Comm_free(&temp);
             print_details("Global fix case 1 end", global_rank);
 
         }
@@ -740,6 +773,7 @@ void HierarComm::global_fault_manage()
             print_details("Global fix case 3 end", global_rank);
         }
     }
+    print_status();
 }
 
 void HierarComm::full_network_fault_manage()
@@ -765,5 +799,63 @@ void print_details(std::string details, int rank)
     if(PRINT_DETAILS)
     {
         printf("[%d] %s\n", rank, details.c_str());
+    }
+}
+
+void HierarComm::print_status()
+{
+    if(PRINT_DETAILS)
+    {
+        int global_rank;
+        MPI_Comm_rank(get_alias(), &global_rank);
+        std::string base = "";
+
+        int local_size;
+        MPI_Group local_group;
+        MPI_Comm_group(local, &local_group);
+        MPI_Group_size(local_group, &local_size);
+        for(int i = 0; i < local_size; i++)
+        {
+            int target;
+            MPI_Group_translate_ranks(local_group, 1, &i, get_group(), &target);
+            base += std::to_string(target) + " ";
+        }
+        print_details("Local processes: " + base, global_rank);
+        base = "";
+
+        MPI_Comm_group(partially_overlapped_own, &local_group);
+        MPI_Group_size(local_group, &local_size);
+        for(int i = 0; i < local_size; i++)
+        {
+            int target;
+            MPI_Group_translate_ranks(local_group, 1, &i, get_group(), &target);
+            base += std::to_string(target) + " ";
+        }
+        print_details("Own processes: " + base, global_rank);
+        base = "";
+
+        if(global != MPI_COMM_NULL)
+        {
+            MPI_Comm_group(global, &local_group);
+            MPI_Group_size(local_group, &local_size);
+            for(int i = 0; i < local_size; i++)
+            {
+                int target;
+                MPI_Group_translate_ranks(local_group, 1, &i, get_group(), &target);
+                base += std::to_string(target) + " ";
+            }
+            print_details("Global processes: " + base, global_rank);
+            base = "";
+
+            MPI_Comm_group(partially_overlapped_other, &local_group);
+            MPI_Group_size(local_group, &local_size);
+            for(int i = 0; i < local_size; i++)
+            {
+                int target;
+                MPI_Group_translate_ranks(local_group, 1, &i, get_group(), &target);
+                base += std::to_string(target) + " ";
+            }
+            print_details("Other processes: " + base, global_rank);
+        }
     }
 }
