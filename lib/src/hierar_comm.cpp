@@ -18,9 +18,16 @@ void HierarComm::change_even_if_unnotified(int rank_group)
     print_details("Daemon thread booted up...", rank);
     while(1)
     {
-        int flag = 0, buf;
+        int flag = 0, flag_self = 0, buf;
         if(local != MPI_COMM_NULL)
+        {
+            int local_rank;
+            MPI_Comm_rank(local, &local_rank);
             MPI_Iprobe(0, 77, local, &flag, MPI_STATUS_IGNORE);
+            MPI_Iprobe(local_rank, 78, local, &flag_self, MPI_STATUS_IGNORE);
+        }
+        if(flag_self)
+            return;
         if(flag)
         {
             print_details("Found a message!!!", rank);
@@ -40,7 +47,7 @@ void HierarComm::change_even_if_unnotified(int rank_group)
     }
 }
 
-HierarComm::HierarComm(MPI_Comm comm): AdvComm(comm) 
+HierarComm::HierarComm(MPI_Comm comm): AdvComm(comm)
 {
     int rank;               //Rank in alias
     int group;              //Group of which the process is part
@@ -117,7 +124,8 @@ HierarComm::HierarComm(MPI_Comm comm): AdvComm(comm)
     }
 
     //Creation of notifier thread
-    shrink_check = new std::thread(&HierarComm::change_even_if_unnotified, this, group);    
+    shrink_check = new std::thread(&HierarComm::change_even_if_unnotified, this, group);
+   
 
     std::function<int(MPI_File, int*)> setter_f = [] (MPI_File f, int* value) -> int {return MPI_SUCCESS;};
 
@@ -204,9 +212,18 @@ void HierarComm::destroy(std::function<int(MPI_Comm*)> destroyer)
 {
     int local_rank;
     MPI_Comm_rank(local, &local_rank);
+    print_details("Being destructed", local_rank);
+    PMPI_Send(&local_rank, 1, MPI_INT, local_rank, 78, local);
+    print_details("Waiting for join...", local_rank);
+    shrink_check->join();
+    print_details("Join done, can die freely", local_rank);
     destroyer(&local);
+    destroyer(&partially_overlapped_own);
     if(local_rank == 0)
+    {
         destroyer(&global);
+        destroyer(&partially_overlapped_other);
+    }
     delete files;
 }
 
@@ -462,7 +479,10 @@ void HierarComm::local_fault_manage()
 
     int diff = old_size - new_size; // number of deads //
     if(0 == diff)
+    {
+        print_details("No processes exiting local, strange...", rank);
         PMPI_Comm_free(&new_comm);                      //Nobody failed, stop;
+    }
     else
     {
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);   //new_comm will become local
