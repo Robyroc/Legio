@@ -484,6 +484,7 @@ void HierarComm::local_fault_manage()
             MPIX_Comm_shrink(partially_overlapped_own, &temp);
             PMPI_Comm_free(&partially_overlapped_own);
             partially_overlapped_own = temp;
+            MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
         }
 
         if(old_rank != 0 && new_rank == 0)
@@ -637,6 +638,7 @@ void HierarComm::global_fault_manage()
                 PMPI_Bcast(&message, 1, MPI_INT, new_rank, new_comm);
                 PMPI_Comm_free(&global);
                 global = new_comm;
+                MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
 
                 //Need to adjust the other inter
                 if(new_size == 1)
@@ -671,9 +673,11 @@ void HierarComm::global_fault_manage()
                 MPI_Intercomm_merge(icomm, 0, &unordered_global);
                 print_details("Reordering new global", global_rank);
                 PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
                 PMPI_Comm_free(&icomm);
                 PMPI_Comm_free(&unordered_global);
                 partially_overlapped_other = temp;
+                MPI_Comm_set_errhandler(partially_overlapped_other, MPI_ERRORS_RETURN);
             }
             print_details("Global fix case 1 end", global_rank);
 
@@ -704,6 +708,7 @@ void HierarComm::global_fault_manage()
                     print_details("No new master, shrinking...", global_rank);
                     PMPI_Comm_free(&global);
                     global = new_comm;
+                    MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
                 }
                 else
                 {
@@ -715,6 +720,7 @@ void HierarComm::global_fault_manage()
                     MPI_Intercomm_merge(icomm, 0, &unordered_global);
                     print_details("Reordering new global", global_rank);
                     PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                    MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
                     PMPI_Comm_free(&icomm);
                     PMPI_Comm_free(&unordered_global);
                 }
@@ -756,6 +762,7 @@ void HierarComm::global_fault_manage()
                 print_details("No new master, shrinking...", global_rank);
                 PMPI_Comm_free(&global);
                 global = new_comm;
+                MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
             }
             else
             {
@@ -767,6 +774,7 @@ void HierarComm::global_fault_manage()
                 MPI_Intercomm_merge(icomm, 0, &unordered_global);
                 print_details("Reordering new global", global_rank);
                 PMPI_Comm_split(unordered_global, 0, global_rank, &global);
+                MPI_Comm_set_errhandler(global, MPI_ERRORS_RETURN);
                 PMPI_Comm_free(&icomm);
                 PMPI_Comm_free(&unordered_global);
             }
@@ -789,8 +797,8 @@ void HierarComm::full_network_fault_manage()
     else
     {
         PMPI_Comm_free(&full_network);
-        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
         full_network = new_comm;
+        MPI_Comm_set_errhandler(full_network, MPI_ERRORS_RETURN);
     }
 }
 
