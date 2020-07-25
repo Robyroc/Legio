@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <mutex>
 
 #define PERIOD 5
 #define PRINT_DETAILS 1
@@ -18,32 +19,36 @@ void HierarComm::change_even_if_unnotified(int rank_group)
     print_details("Daemon thread booted up...", rank);
     while(1)
     {
-        int flag = 0, flag_self = 0, buf;
-        if(local != MPI_COMM_NULL)
+        std::unique_lock<std::mutex> lock(mtx);
+        bool timeout = false;
+        const auto res = kill_condition.wait_for(lock, std::chrono::seconds(PERIOD));
+        timeout = res == std::cv_status::timeout;
+        if(timeout)
         {
-            int local_rank;
-            MPI_Comm_rank(local, &local_rank);
-            MPI_Iprobe(0, 77, local, &flag, MPI_STATUS_IGNORE);
-            MPI_Iprobe(local_rank, 78, local, &flag_self, MPI_STATUS_IGNORE);
+            int flag = 0, flag_self = 0, buf;
+            if(local != MPI_COMM_NULL)
+            {
+                int local_rank;
+                MPI_Comm_rank(local, &local_rank);
+                MPI_Iprobe(0, 77, local, &flag, MPI_STATUS_IGNORE);
+            }
+            if(flag)
+            {
+                print_details("Found a message!!!", rank);
+                PMPI_Recv(&buf, 1, MPI_INT, 0, 77, local, MPI_STATUS_IGNORE);
+                MPI_Comm icomm, temp;
+                MPIX_Comm_shrink(partially_overlapped_own, &temp);
+                PMPI_Comm_free(&partially_overlapped_own);
+                print_details("Creating own icomm, token: " + std::to_string(50+rank_group), rank);
+                MPI_Intercomm_create(temp, 0, MPI_COMM_NULL, 0, 50 + rank_group, &icomm);
+                MPI_Intercomm_merge(icomm, 0, &partially_overlapped_own);
+                MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
+                PMPI_Comm_free(&icomm);
+                PMPI_Comm_free(&temp);
+                print_details("Daemon done", rank);
+            }
         }
-        if(flag_self)
-            return;
-        if(flag)
-        {
-            print_details("Found a message!!!", rank);
-            PMPI_Recv(&buf, 1, MPI_INT, 0, 77, local, MPI_STATUS_IGNORE);
-            MPI_Comm icomm, temp;
-            MPIX_Comm_shrink(partially_overlapped_own, &temp);
-            PMPI_Comm_free(&partially_overlapped_own);
-            print_details("Creating own icomm, token: " + std::to_string(50+rank_group), rank);
-            MPI_Intercomm_create(temp, 0, MPI_COMM_NULL, 0, 50 + rank_group, &icomm);
-            MPI_Intercomm_merge(icomm, 0, &partially_overlapped_own);
-            MPI_Comm_set_errhandler(partially_overlapped_own, MPI_ERRORS_RETURN);
-            PMPI_Comm_free(&icomm);
-            PMPI_Comm_free(&temp);
-            print_details("Daemon done", rank);
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(PERIOD));
+        else return;
     }
 }
 
@@ -213,7 +218,10 @@ void HierarComm::destroy(std::function<int(MPI_Comm*)> destroyer)
     int local_rank;
     MPI_Comm_rank(local, &local_rank);
     print_details("Being destructed", local_rank);
-    PMPI_Send(&local_rank, 1, MPI_INT, local_rank, 78, local);
+    {
+        //std::unique_lock<std::mutex> lock(mtx);
+        kill_condition.notify_one();
+    }
     print_details("Waiting for join...", local_rank);
     shrink_check->join();
     print_details("Join done, can die freely", local_rank);
@@ -286,6 +294,10 @@ int HierarComm::perform_operation(OneToAll op, int rank)
         }
         else
         {
+            int done_master = 0;
+
+            pre_ota_check:
+
             MPI_Comm_rank(local, &this_local_rank);
             if(this_local_rank == 0)
             {
@@ -299,12 +311,16 @@ int HierarComm::perform_operation(OneToAll op, int rank)
                         source_rank = translate_ranks(i, global);
                     }
                     rc = op(source_rank, global, this);
+                    done_master = 1;
                 } while(rc != MPI_SUCCESS);
             }
 
             //root is in another subnet, need to perform using master as root
             do
             {
+                MPI_Comm_rank(local, &this_local_rank);
+                if(this_local_rank == 0 && done_master == 0)
+                    goto pre_ota_check;
                 rc = op(0, local, this);
             } while(rc != MPI_SUCCESS);
         }
@@ -355,6 +371,10 @@ int HierarComm::perform_operation(AllToOne op, int rank)
         }
         else
         {
+            int done_master = 0;
+
+            pre_ato_check:
+
             MPI_Comm_rank(local, &this_local_rank);
             if(this_local_rank == 0)
             {
@@ -362,13 +382,18 @@ int HierarComm::perform_operation(AllToOne op, int rank)
                 do
                 {
                     rc = op(translate_ranks(this_rank, global), global, this);
+                    done_master = 1;
                 } while(rc != MPI_SUCCESS);
             }
 
             do
             {
+                MPI_Comm_rank(local, &this_local_rank);
+                if(this_local_rank == 0 && done_master == 0)
+                    goto pre_ato_check;
                 int local_rank = translate_ranks(rank, local);
                 rc = op(local_rank, local, this);
+                
             } while(rc != MPI_SUCCESS);
         }
         return rc;

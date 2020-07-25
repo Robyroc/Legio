@@ -19,14 +19,14 @@ int main(int argc, char** argv)
     send = rank;
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if(rank == 3) raise(SIGINT);
+    if(rank == 0) raise(SIGINT);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     value = rank/(double)size;
 
     if( rank == (size/4) ) raise(SIGINT);
-    MPI_Bcast(&value, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&value, 1, MPI_DOUBLE, 2, MPI_COMM_WORLD);
 
     if( value != 0.0 ) {
         printf("Rank %d / %d: value from %d is wrong: %g\n",  //try what happens without ft

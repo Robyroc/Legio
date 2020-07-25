@@ -17,6 +17,8 @@ extern int len;
 //std::thread * kalive;
 //int temp;
 
+#define BORDER_SIZE 5 //MOVE ME
+
 void initialization()
 {
     cur_comms = new Multicomm();
@@ -39,7 +41,7 @@ bool add_comm(MPI_Comm comm, NoComm* source)
     MPI_Comm alias = source->get_alias();
     int size;
     MPI_Comm_size(alias, &size);
-    if(size > 5)
+    if(size > BORDER_SIZE)
         return cur_comms->add_comm<HierarComm>(comm);
     else
         return cur_comms->add_comm<SingleComm>(comm);

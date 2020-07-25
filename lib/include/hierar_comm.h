@@ -9,6 +9,8 @@
 #include "operations.h"
 #include "comm_manipulation.h"
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #define DIMENSION 3     //MOVE ME
 
@@ -60,7 +62,9 @@ class HierarComm : public AdvComm
         MPI_Comm full_network;
         MPI_Comm partially_overlapped_own;
         MPI_Comm partially_overlapped_other;
-        
+
+        std::mutex mtx;
+        std::condition_variable kill_condition;
         std::thread * shrink_check;
 
         int translate_ranks(int old_rank, MPI_Comm new_comm)

@@ -58,7 +58,13 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
         {
             HANDLE_RECV_FAIL(comm_t);
         }
-        return PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+        int rc = PMPI_Recv(buf, count, datatype, other_t, tag, comm_t, status);
+        if(rc != MPI_SUCCESS)
+        {
+            HANDLE_RECV_FAIL(comm_t);
+        }
+        else
+            return rc;
     }, false);
 
     rc = translated->perform_operation(func, source);
@@ -67,7 +73,6 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
     if(!flag)
         delete translated;
-
     return rc;
 }
 
