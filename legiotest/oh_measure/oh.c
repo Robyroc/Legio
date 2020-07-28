@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+int print_to_file(double, int, int, FILE*, char*);
+
 int main(int argc, char** argv)
 {
     int rank, size;
@@ -12,18 +14,25 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    FILE* file_p;
+
+    if(rank == 0)
+    {
+        file_p = fopen("output.csv", "w");
+    }
+
     MPI_Comm bogus;
     double start = MPI_Wtime();
     MPI_Comm_dup(MPI_COMM_WORLD, &bogus);
     double end = MPI_Wtime();
+    print_to_file(end-start, rank, size, file_p, "dup");
 
-    printf("<%d> Time to dup: %f\n", rank, end-start);
     /*
     start = MPI_Wtime();
     MPI_Comm_free(&bogus);
     end = MPI_Wtime();
 
-    printf("<%d> Time to free: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "free");
     */
     
     MPI_Comm bogus2;
@@ -31,27 +40,27 @@ int main(int argc, char** argv)
     PMPI_Comm_dup(MPI_COMM_WORLD, &bogus2);
     end = MPI_Wtime();
 
-    printf("<%d> Time to dup original: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "dup original");
     /*
     start = MPI_Wtime();
     PMPI_Comm_free(&bogus2);
     end = MPI_Wtime();
 
-    printf("<%d> Time to free original: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "free original");
     */
     int value = rank;
     start = MPI_Wtime();
     MPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to bcast: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "bcast");
 
     value = rank;
     start = MPI_Wtime();
     PMPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to bcast original: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "bcast original");
 
     value = rank;
     int in_value;
@@ -59,26 +68,26 @@ int main(int argc, char** argv)
     MPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to reduce: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "reduce");
 
     value = rank;
     start = MPI_Wtime();
     PMPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to reduce original: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "reduce original");
 
     start = MPI_Wtime();
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to barrier: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "barrier");
 
     start = MPI_Wtime();
     PMPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to barrier original: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size, file_p, "barrier original");
 
     if(rank == 3)
         raise(SIGINT);
@@ -87,7 +96,7 @@ int main(int argc, char** argv)
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to repair: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size-1, file_p, "repair");
 
     if(rank == 1)
         raise(SIGINT);
@@ -96,9 +105,25 @@ int main(int argc, char** argv)
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    printf("<%d> Time to repair second: %f\n", rank, end-start);
+    print_to_file(end-start, rank, size-2, file_p, "repair again");
+
+    if(rank == 0)
+        fclose(file_p);
 
     MPI_Finalize();
 
     return MPI_SUCCESS;
+}
+
+int print_to_file(double result, int rank, int size, FILE* file_p, char* to_be_printed)
+{
+    double send_buf = result;
+    double recv_buf;
+    MPI_Reduce(&send_buf, &recv_buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if(rank == 0)
+    {
+        recv_buf /= size;
+        fprintf(file_p, "%s, %f,\n", to_be_printed, recv_buf);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 }
