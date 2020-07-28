@@ -10,6 +10,7 @@
 
 
 int VERBOSE = 1;
+int PRINT_TIMES = 1;
 
 char errstr[MPI_MAX_ERROR_STRING];
 int len;
@@ -30,7 +31,13 @@ int MPI_Init(int* argc, char *** argv)
 int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
 {
     int rc = PMPI_Init_thread(argc, argv, required, provided);
+    double start = MPI_Wtime();
     initialization();
+    double end = MPI_Wtime();
+
+    if(PRINT_TIMES && VERBOSE)
+        printf("Initialization OH: %f\n", end-start);
+
     //kalive_thread();
     return rc;
 }
