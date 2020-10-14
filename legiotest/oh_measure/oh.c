@@ -99,6 +99,48 @@ int main(int argc, char** argv)
 
     print_to_file(end-start, rank, size, file_p, "barrier original");
 
+    MPI_File fh;
+    MPI_File_open(MPI_COMM_WORLD, "text.txt", MPI_MODE_RDWR | MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE, MPI_INFO_NULL, &fh );
+
+    MPI_File fh2;
+    PMPI_File_open(MPI_COMM_WORLD, "text2.txt", MPI_MODE_RDWR | MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE, MPI_INFO_NULL, &fh2 );
+
+    char buffer = 'a';
+
+    start = MPI_Wtime();
+    for(int i = 0; i < MULT; i++)
+        MPI_File_write_at_all(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+    end = MPI_Wtime();
+
+    print_to_file(end-start, rank, size, file_p, "write_at_all");
+
+
+    start = MPI_Wtime();
+    for(int i = 0; i < MULT; i++)
+        PMPI_File_write_at_all(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+    end = MPI_Wtime();
+
+    print_to_file(end-start, rank, size, file_p, "write_at_all original");
+
+    start = MPI_Wtime();
+    for(int i = 0; i < MULT; i++)
+        MPI_File_read_at_all(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+    end = MPI_Wtime();
+
+    print_to_file(end-start, rank, size, file_p, "read_at_all");
+
+    start = MPI_Wtime();
+    for(int i = 0; i < MULT; i++)
+        PMPI_File_read_at_all(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+    end = MPI_Wtime();
+
+    print_to_file(end-start, rank, size, file_p, "read_at_all original");
+
+    MPI_File_close(&fh);
+    PMPI_File_close(&fh2);
+
+    PMPI_Barrier(MPI_COMM_WORLD);
+
     if(rank == 0)
         raise(SIGINT);
     
