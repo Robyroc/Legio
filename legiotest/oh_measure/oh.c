@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 
     FILE* file_p;
 
-    if(rank == 0)
+    if(rank == 1)
     {
         file_p = fopen("output.csv", "w");
     }
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 
     print_to_file(end-start, rank, size, file_p, "barrier original");
 
-    if(rank == 3)
+    if(rank == 0)
         raise(SIGINT);
     
     start = MPI_Wtime();
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 
     print_to_file(end-start, rank, size-1, file_p, "repair");
 
-    if(rank == 1)
+    if(rank == 2)
         raise(SIGINT);
     
     start = MPI_Wtime();
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 
     print_to_file(end-start, rank, size-2, file_p, "repair again");
 
-    if(rank == 0)
+    if(rank == 1)
         fclose(file_p);
 
     MPI_Finalize();
@@ -129,8 +129,8 @@ int print_to_file(double result, int rank, int size, FILE* file_p, char* to_be_p
 {
     double send_buf = result;
     double recv_buf;
-    MPI_Reduce(&send_buf, &recv_buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if(rank == 0)
+    MPI_Reduce(&send_buf, &recv_buf, 1, MPI_DOUBLE, MPI_SUM, 1, MPI_COMM_WORLD);
+    if(rank == 1)
     {
         recv_buf /= size;
         fprintf(file_p, "%s, %f,\n", to_be_printed, recv_buf);
