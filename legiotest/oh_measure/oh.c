@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#define MULT 1000
+
 int print_to_file(double, int, int, FILE*, char*);
 
 int main(int argc, char** argv)
@@ -23,7 +25,8 @@ int main(int argc, char** argv)
 
     MPI_Comm bogus;
     double start = MPI_Wtime();
-    MPI_Comm_dup(MPI_COMM_WORLD, &bogus);
+    for(int i = 0; i < MULT; i++)
+        MPI_Comm_dup(MPI_COMM_WORLD, &bogus);
     double end = MPI_Wtime();
     print_to_file(end-start, rank, size, file_p, "dup");
 
@@ -37,7 +40,8 @@ int main(int argc, char** argv)
     
     MPI_Comm bogus2;
     start = MPI_Wtime();
-    PMPI_Comm_dup(MPI_COMM_WORLD, &bogus2);
+    for(int i = 0; i < MULT; i++)
+        PMPI_Comm_dup(MPI_COMM_WORLD, &bogus2);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "dup original");
@@ -50,14 +54,16 @@ int main(int argc, char** argv)
     */
     int value = rank;
     start = MPI_Wtime();
-    MPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        MPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "bcast");
 
     value = rank;
     start = MPI_Wtime();
-    PMPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        PMPI_Bcast(&value, 1, MPI_INT, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "bcast original");
@@ -65,26 +71,30 @@ int main(int argc, char** argv)
     value = rank;
     int in_value;
     start = MPI_Wtime();
-    MPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        MPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "reduce");
 
     value = rank;
     start = MPI_Wtime();
-    PMPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        PMPI_Reduce(&value, &in_value, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "reduce original");
 
     start = MPI_Wtime();
-    MPI_Barrier(MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "barrier");
 
     start = MPI_Wtime();
-    PMPI_Barrier(MPI_COMM_WORLD);
+    for(int i = 0; i < MULT; i++)
+        PMPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
     print_to_file(end-start, rank, size, file_p, "barrier original");
