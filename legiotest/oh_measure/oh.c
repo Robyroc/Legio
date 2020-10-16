@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define MULT 1000
+#define MULT 100
 
 int print_to_file(double, int, int, FILE*, char*);
 
@@ -136,8 +136,8 @@ int main(int argc, char** argv)
 
     print_to_file(end-start, rank, size, file_p, "read_at_all original");
 
-    MPI_File_close(&fh);
-    PMPI_File_close(&fh2);
+    //MPI_File_close(&fh);
+    //PMPI_File_close(&fh2);
 
     PMPI_Barrier(MPI_COMM_WORLD);
 
@@ -169,6 +169,7 @@ int main(int argc, char** argv)
 
 int print_to_file(double result, int rank, int size, FILE* file_p, char* to_be_printed)
 {
+    MPI_Barrier(MPI_COMM_WORLD);
     double send_buf = result;
     double recv_buf;
     MPI_Reduce(&send_buf, &recv_buf, 1, MPI_DOUBLE, MPI_SUM, 1, MPI_COMM_WORLD);
