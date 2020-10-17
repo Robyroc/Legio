@@ -109,32 +109,32 @@ int main(int argc, char** argv)
 
     start = MPI_Wtime();
     for(int i = 0; i < MULT; i++)
-        MPI_File_write_at_all(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+        MPI_File_write_at(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
     end = MPI_Wtime();
 
-    print_to_file(end-start, rank, size, file_p, "write_at_all");
+    print_to_file(end-start, rank, size, file_p, "write_at");
 
 
     start = MPI_Wtime();
     for(int i = 0; i < MULT; i++)
-        PMPI_File_write_at_all(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+        PMPI_File_write_at(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
     end = MPI_Wtime();
 
-    print_to_file(end-start, rank, size, file_p, "write_at_all original");
+    print_to_file(end-start, rank, size, file_p, "write_at original");
 
     start = MPI_Wtime();
     for(int i = 0; i < MULT; i++)
-        MPI_File_read_at_all(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+        MPI_File_read_at(fh, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
     end = MPI_Wtime();
 
-    print_to_file(end-start, rank, size, file_p, "read_at_all");
+    print_to_file(end-start, rank, size, file_p, "read_at");
 
     start = MPI_Wtime();
     for(int i = 0; i < MULT; i++)
-        PMPI_File_read_at_all(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+        PMPI_File_read_at(fh2, rank, &buffer, 1, MPI_CHAR, MPI_STATUS_IGNORE);
     end = MPI_Wtime();
 
-    print_to_file(end-start, rank, size, file_p, "read_at_all original");
+    print_to_file(end-start, rank, size, file_p, "read_at original");
 
     //MPI_File_close(&fh);
     //PMPI_File_close(&fh2);
@@ -172,11 +172,15 @@ int print_to_file(double result, int rank, int size, FILE* file_p, char* to_be_p
     MPI_Barrier(MPI_COMM_WORLD);
     double send_buf = result;
     double recv_buf;
+    double recv_buf2;
+    double recv_buf3;
     MPI_Reduce(&send_buf, &recv_buf, 1, MPI_DOUBLE, MPI_SUM, 1, MPI_COMM_WORLD);
+    MPI_Reduce(&send_buf, &recv_buf2, 1, MPI_DOUBLE, MPI_MAX, 1, MPI_COMM_WORLD);
+    MPI_Reduce(&send_buf, &recv_buf3, 1, MPI_DOUBLE, MPI_MAX, 1, MPI_COMM_WORLD);
     if(rank == 1)
     {
         recv_buf /= size;
-        fprintf(file_p, "%s, %f,\n", to_be_printed, recv_buf);
+        fprintf(file_p, "%s, %f, %f, %f\n", to_be_printed, recv_buf, recv_buf2, recv_buf3);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 }

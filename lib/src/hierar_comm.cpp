@@ -458,7 +458,7 @@ int HierarComm::perform_operation(AllToAll op)
 int HierarComm::perform_operation(FileOp op, MPI_File file) 
 {
     MPI_File translated = translate_structure(file);
-    int rc = op(file, this);
+    int rc = op(translated, this);
 }
 
 int HierarComm::perform_operation(LocalOnly op)
