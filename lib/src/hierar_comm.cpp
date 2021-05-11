@@ -240,9 +240,19 @@ void HierarComm::add_structure(MPI_File file, std::function<int(MPI_Comm, MPI_Fi
     files->add(MPI_File_c2f(file), file, func);
 }
 
+void HierarComm::add_structure(MPI_Win win, std::function<int(MPI_Comm, MPI_Win*)> func)
+{
+    windows->add_general(win, func);
+}
+
 void HierarComm::remove_structure(MPI_File file) 
 {
     files->remove(file);
+}
+
+void HierarComm::remove_structure(MPI_Win win)
+{
+    windows->remove(win);
 }
 
 MPI_File HierarComm::translate_structure(MPI_File file) 
@@ -250,9 +260,19 @@ MPI_File HierarComm::translate_structure(MPI_File file)
     return files->translate(file);
 }
 
+MPI_Win HierarComm::translate_structure(MPI_Win win)
+{
+    return windows->translate(win);
+}
+
 void HierarComm::check_served(MPI_File file, int* result) 
 {
     files->part_of(file, result);
+}
+
+void HierarComm::check_served(MPI_Win win, int* result)
+{
+    windows->part_of(win, result);
 }
 
 int HierarComm::perform_operation(OneToOne op, int rank)
@@ -458,7 +478,29 @@ int HierarComm::perform_operation(AllToAll op)
 int HierarComm::perform_operation(FileOp op, MPI_File file) 
 {
     MPI_File translated = translate_structure(file);
-    int rc = op(translated, this);
+    return op(translated, this);
+}
+
+int HierarComm::perform_operation(WinOp op, int root_rank, MPI_Win win)
+{
+    int rc;
+    do
+    {
+        rc = PMPI_Barrier(full_network);
+        if(rc != MPI_SUCCESS)
+        {
+            full_network_fault_manage();
+        }
+    } while (rc != MPI_SUCCESS);
+    int new_rank = translate_ranks(root_rank, full_network);
+    MPI_Win translated = translate_structure(win);
+    return op(new_rank, translated, this);
+}
+
+int HierarComm::perform_operation(WinOpColl op, MPI_Win win)
+{
+    MPI_Win translated = translate_structure(win);
+    return op(translated, this);
 }
 
 int HierarComm::perform_operation(LocalOnly op)
@@ -473,6 +515,7 @@ int HierarComm::perform_operation(CommCreator op)
     {
         rc = op(full_network, this);
     } while(rc != MPI_SUCCESS);
+    return rc;
 }
 
 void HierarComm::local_replace_comm(MPI_Comm new_comm) 
@@ -844,6 +887,7 @@ void HierarComm::full_network_fault_manage()
         PMPI_Comm_free(&full_network);
         full_network = new_comm;
         MPI_Comm_set_errhandler(full_network, MPI_ERRORS_RETURN);
+        windows->replace(new_comm);
     }
 }
 
