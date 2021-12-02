@@ -16,9 +16,25 @@ void initialization()
 {
     cur_comms = new Multicomm();
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    cur_comms->add_comm(MPI_COMM_WORLD);
+    cur_comms->add_comm(
+        MPI_COMM_WORLD,
+        MPI_COMM_NULL,
+        [](MPI_Comm a, MPI_Comm* dest) -> int 
+        {
+            *dest = MPI_COMM_WORLD;
+            MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
+            return MPI_SUCCESS;
+        });
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
-    cur_comms->add_comm(MPI_COMM_SELF);
+    cur_comms->add_comm(
+        MPI_COMM_SELF,
+        MPI_COMM_NULL,
+        [](MPI_Comm a, MPI_Comm* dest) -> int
+        {
+            *dest = MPI_COMM_SELF;
+            MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
+            return MPI_SUCCESS;
+        });
 }
 
 void finalization()

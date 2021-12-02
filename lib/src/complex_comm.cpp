@@ -2,7 +2,13 @@
 #include "mpi.h"
 #include "structure_handler.h"
 
-ComplexComm::ComplexComm(MPI_Comm comm, int id):cur_comm(comm), alias_id(id)
+ComplexComm::ComplexComm(MPI_Comm comm, int id, int parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, int second_parent)
+    :cur_comm(comm),
+    alias_id(id),
+    generator(generator),
+    parent(parent),
+    inter_generator(inter_generator),
+    second_parent(second_parent)
 {
     int keyval;
     MPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN, &keyval, (void*)0);
@@ -124,4 +130,27 @@ MPI_Group ComplexComm::get_group()
 MPI_Comm ComplexComm::get_alias()
 {
     return MPI_Comm_f2c(alias_id);
+}
+
+ComplexComm ComplexComm::regenerate(MPI_Comm comm, MPI_Comm second_comm = MPI_COMM_NULL)
+{
+    MPI_Comm new_comm;
+    int rc;
+    if(generator == nullptr)
+        rc = inter_generator(comm, second_comm, &new_comm);
+    else
+        rc = generator(comm, &new_comm);
+    return ComplexComm(new_comm, alias_id, parent, generator, inter_generator);
+}
+
+void ComplexComm::destroy(std::function<int(MPI_Comm*)> destructor)
+{
+    this->destructor = destructor;
+    destructor(&cur_comm);
+}
+
+void ComplexComm::reapply_destruction()
+{
+    if(destructor != nullptr)
+        destructor(&cur_comm);
 }

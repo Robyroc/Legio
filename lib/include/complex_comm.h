@@ -30,9 +30,14 @@ class ComplexComm
         MPI_File translate_structure(MPI_File);
         void check_served(MPI_Win, int*);
         void check_served(MPI_File, int*);
-        ComplexComm(MPI_Comm, int);
+        ComplexComm(MPI_Comm, int, int, std::function<int(MPI_Comm, MPI_Comm*)>, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> = nullptr, int = 0);
         MPI_Group get_group();
         MPI_Comm get_alias();
+        void destroy(std::function<int(MPI_Comm*)>);
+        int get_parent() {return parent;}
+        ComplexComm regenerate(MPI_Comm, MPI_Comm);
+        void reapply_destruction();
+        int get_parent_id() {return parent;}
 
     private:
         MPI_Comm cur_comm;
@@ -40,6 +45,11 @@ class ComplexComm
         StructureHandler<MPI_Win, MPI_Comm> * windows;
         StructureHandler<MPI_File, MPI_Comm> * files;
         int alias_id;
+        std::function<int(MPI_Comm, MPI_Comm*)> generator;
+        std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator;
+        std::function<int(MPI_Comm*)> destructor;
+        int parent;
+        int second_parent;
 };
 
 #endif

@@ -33,6 +33,7 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/structure_handler.h"
     "${LIBRARY_HDR_PATH}/multicomm.h"
+    "${LIBRARY_HDR_PATH}/intercomm_utils.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 
@@ -47,6 +48,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
+    "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
 )
 
 

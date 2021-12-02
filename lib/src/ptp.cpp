@@ -80,6 +80,36 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     return rc;
 }
 
+int MPI_Sendrecv(const void *sendbuf, int sendcount, MPI_Datatype sendtype, int dest, int sendtag, void *recvbuf, int recvcount, MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status *status)
+{
+    int rc, flag;
+    cur_comms->part_of(comm, &flag);
+    ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    if(flag)
+    {
+        int source_rank, dest_rank;
+        translate_ranks(source, translated, &source_rank);
+        translate_ranks(dest, translated, &dest_rank);
+        if(source_rank == MPI_UNDEFINED)
+        {
+            HANDLE_RECV_FAIL(cur_complex->get_comm());
+        }
+        rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest_rank, sendtag, recvbuf, recvcount, recvtype, source_rank, recvtag, translated->get_comm(), status);
+    }
+    else
+        rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status);
+    recv_handling:
+    if(VERBOSE)
+    {
+        int rank, size;
+        PMPI_Comm_size(comm, &size);
+        PMPI_Comm_rank(comm, &rank);
+        MPI_Error_string(rc, errstr, &len);
+        printf("Rank %d / %d: sendrecv done (error: %s)\n", rank, size, errstr);
+    }
+    return rc;
+}
+
 int any_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status * status)
 {
     int rc, flag;

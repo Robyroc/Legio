@@ -42,7 +42,7 @@ comm,MPI_Comm_compare,NO,medium,handling alias between comm
 intercom,MPI_Comm_connect,NO,?,
 errors,MPI_Comm_create_errhandler,NO,?,errorhandler usage shall be wrapped
 attr,MPI_Comm_create_keyval,-,,
-comm,MPI_Comm_create_group,NO,medium,manage strange collectivity
+comm,MPI_Comm_create_group,YES,,
 comm,MPI_Comm_create,YES,,
 attr,MPI_Comm_delete_attr,-,,
 comm,MPI_Comm_disconnect,YES,,
@@ -198,8 +198,8 @@ info,MPI_Info_set,-,,
 general,MPI_Init,YES,,
 general,MPI_Initialized,NO,,
 general,MPI_Init_thread,YES,,
-intercom,MPI_Intercomm_create,?,,
-intercom,MPI_Intercomm_merge,?,,
+intercom,MPI_Intercomm_create,YES,,
+intercom,MPI_Intercomm_merge,YES,,
 async,MPI_Iprobe,NO,medium,request handling
 async,MPI_Irecv,NO,medium,request handling
 async,MPI_Irsend,NO,medium,request handling
@@ -264,7 +264,7 @@ collective,MPI_Scatterv,NO,hard,analyze vector is complex computationally
 async,MPI_Iscatterv,NO,hard,request handling
 async,MPI_Send_init,NO,medium,request handling
 ptp,MPI_Send,YES,,
-ptp,MPI_Sendrecv,NO,easy,
+ptp,MPI_Sendrecv,YES,,
 ptp,MPI_Sendrecv_replace,NO,easy,save old value in case of something bad happens
 async,MPI_Ssend_init,NO,medium,request handling
 ptp,MPI_Ssend,NO,easy,

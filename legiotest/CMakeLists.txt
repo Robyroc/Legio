@@ -11,6 +11,6 @@ add_subdirectory(osc)
 
 add_subdirectory(ptp)
 
-
+add_subdirectory(intercomm)
 
 
