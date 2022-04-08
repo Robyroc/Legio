@@ -30,25 +30,29 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/comm_manipulation.h"
     "${LIBRARY_HDR_PATH}/complex_comm.h"
     "${LIBRARY_HDR_PATH}/configuration.h"
-    "${LIBRARY_HDR_PATH}/legio.h"
-    "${LIBRARY_HDR_PATH}/structure_handler.h"
-    "${LIBRARY_HDR_PATH}/multicomm.h"
     "${LIBRARY_HDR_PATH}/intercomm_utils.h"
+    "${LIBRARY_HDR_PATH}/legio.h"
+    "${LIBRARY_HDR_PATH}/multicomm.h"
+    "${LIBRARY_HDR_PATH}/request_handler.h"
+    "${LIBRARY_HDR_PATH}/struct_selector.h"
+    "${LIBRARY_HDR_PATH}/structure_handler.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 
 set(LIBRARY_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBRARY_SOURCES
-    "${LIBRARY_SRC_PATH}/coll.cpp" 
+    "${LIBRARY_SRC_PATH}/async.cpp"
+    "${LIBRARY_SRC_PATH}/coll.cpp"
     "${LIBRARY_SRC_PATH}/comm_manipulation.cpp"
     "${LIBRARY_SRC_PATH}/complex_comm.cpp"
     "${LIBRARY_SRC_PATH}/fileio.cpp"
     "${LIBRARY_SRC_PATH}/general.cpp"
+    "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
     "${LIBRARY_SRC_PATH}/legio.c"
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
-    "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
+    "${LIBRARY_SRC_PATH}/request_handler.cpp"
 )
 
 

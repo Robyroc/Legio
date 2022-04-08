@@ -62,31 +62,13 @@ void Multicomm::part_of(MPI_Comm checked, int* result)
     *result = (res != comms_order.end());
 }
 
-bool Multicomm::add_file(ComplexComm* comm, MPI_File file, std::function<int(MPI_Comm, MPI_File*)> func)
-{
-    int id = MPI_Comm_c2f(comm->get_alias());
-    auto res = file_map.insert({MPI_File_c2f(file), id});
-    if(res.second) 
-        comm->add_structure(file, func);
-    return res.second;
-}
-
-bool Multicomm::add_window(ComplexComm* comm, MPI_Win win, std::function<int(MPI_Comm, MPI_Win *)> func)
-{
-    int id = MPI_Comm_c2f(comm->get_alias());
-    auto res = window_map.insert({MPI_Win_c2f(win), id});
-    if(res.second)
-        comm->add_structure(win, func);
-    return res.second;
-}
-
 void Multicomm::remove_window(MPI_Win* win)
 {
-    ComplexComm* translated = get_complex_from_win(*win);
+    ComplexComm* translated = get_complex_from_structure(*win);
     if(translated != NULL)
     {
         translated->remove_structure(*win);
-        window_map.erase(MPI_Win_c2f(*win));
+        maps[handle_selector<MPI_Win>::get()].erase(MPI_Win_c2f(*win));
     }
     else
         PMPI_Win_free(win);
@@ -94,55 +76,23 @@ void Multicomm::remove_window(MPI_Win* win)
 
 void Multicomm::remove_file(MPI_File* file)
 {
-    ComplexComm* translated = get_complex_from_file(*file);
+    ComplexComm* translated = get_complex_from_structure(*file);
     if(translated != NULL)
     {
         translated->remove_structure(*file);
-        file_map.erase(MPI_File_c2f(*file));
+        maps[handle_selector<MPI_File>::get()].erase(MPI_File_c2f(*file));
     }
     else
         PMPI_File_close(file);
 }
 
-ComplexComm* Multicomm::get_complex_from_win(MPI_Win win)
+void Multicomm::remove_request(MPI_Request* req)
 {
-    std::unordered_map<int, int>::iterator res = window_map.find(MPI_Win_c2f(win));
-    if(res != window_map.end())
+    ComplexComm* translated = get_complex_from_structure(*req);
+    if(translated != NULL)
     {
-        std::unordered_map<int, int>::iterator res2 = comms_order.find(res->second);
-        if(res2 != comms_order.end())
-            return &(comms.find(res2->second)->second);
-        else
-        {
-            printf("IMPOSSIBLE BEHAVIOUR!!!\n");
-            return NULL;
-        }
-    }
-    else
-    {
-        printf("WIN NOT MAPPED\n");
-        return NULL;
-    }
-}
-
-ComplexComm* Multicomm::get_complex_from_file(MPI_File file)
-{
-    std::unordered_map<int, int>::iterator res = file_map.find(MPI_File_c2f(file));
-    if(res != file_map.end())
-    {
-        std::unordered_map<int, int>::iterator res2 = comms_order.find(res->second);
-        if(res2 != comms_order.end())
-            return &(comms.find(res2->second)->second);
-        else
-        {
-            printf("IMPOSSIBLE BEHAVIOUR!!!\n");
-            return NULL;
-        }
-    }
-    else
-    {
-        printf("FILE NOT MAPPED\n");
-        return NULL;
+        translated->remove_structure(*req);
+        maps[handle_selector<MPI_Request>::get()].erase(c2f<MPI_Request>(*req));
     }
 }
 

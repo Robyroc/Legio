@@ -14,8 +14,8 @@ class StructureHandler
         T translate(T);
         void remove(T);
         void part_of(T, int*);
-        void replace(U);
-    private:
+        virtual void replace(U);
+    protected:
         std::function<int(T,int*)> attribute_set;
         std::function<int(T,int*, int*)> attribute_get;
         std::function<int(T*)> destroyer;
