@@ -123,7 +123,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
                 *newcomm = temp;
             else
             {
-                MPI_Comm_disconnect(&temp);
+                MPI_Comm_free(&temp);
                 *newcomm = MPI_COMM_NULL;
             }
             return rc;
