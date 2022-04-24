@@ -6,6 +6,7 @@
 #include "mpi.h"
 #include <functional>
 #include "struct_selector.h"
+#include <stdio.h>
 
 class ComplexComm;
 
@@ -39,9 +40,10 @@ class Multicomm
             std::unordered_map<int, int>::iterator res = maps[handle_selector<MPI_T>::get()].find(c2f<MPI_T>(elem));
             if(res != maps[handle_selector<MPI_T>::get()].end())
             {
-                std::unordered_map<int, int>::iterator res2 = comms_order.find(res->second);
-                if(res2 != comms_order.end())
-                    return &(comms.find(res2->second)->second);
+                //std::unordered_map<int, int>::iterator res2 = comms_order.find(res->second);
+                auto res2 = comms.find(res->second);
+                if(res2 != comms.end())
+                    return &(res2->second);
                 else
                 {
                     printf("IMPOSSIBLE BEHAVIOUR!!!\n");
@@ -59,8 +61,8 @@ class Multicomm
     private:
         std::map<int, ComplexComm> comms;
         std::array<std::unordered_map<int,int>, 3> maps;
-        std::unordered_map<int, int> comms_order;
-        int size;
+        //std::unordered_map<int, int> comms_order;
+        //int size;
 };
 
 #endif

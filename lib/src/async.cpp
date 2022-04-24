@@ -7,6 +7,7 @@
 #include "complex_comm.h"
 #include "multicomm.h"
 #include <string.h>
+#include <stdlib.h>
 
 extern Multicomm *cur_comms;
 extern int VERBOSE;

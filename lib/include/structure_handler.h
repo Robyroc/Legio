@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <unordered_map>
+#include <stdio.h>
 
 template <typename T, typename U>
 class StructureHandler
