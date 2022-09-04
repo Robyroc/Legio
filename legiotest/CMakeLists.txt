@@ -20,3 +20,5 @@ add_subdirectory(intercomm)
 add_subdirectory(request)
 
 add_subdirectory(noncoll_oh)
+
+add_subdirectory(restart)
