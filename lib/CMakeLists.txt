@@ -34,6 +34,7 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/multicomm.h"
     "${LIBRARY_HDR_PATH}/request_handler.h"
+    "${LIBRARY_HDR_PATH}/restart.h"
     "${LIBRARY_HDR_PATH}/struct_selector.h"
     "${LIBRARY_HDR_PATH}/structure_handler.h"
 )
@@ -53,6 +54,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
     "${LIBRARY_SRC_PATH}/request_handler.cpp"
+    "${LIBRARY_SRC_PATH}/restart.cpp"
 )
 
 

@@ -7,9 +7,11 @@
 #include "complex_comm.h"
 #include "multicomm.h"
 #include "intercomm_utils.h"
+#include "restart.h"
+#include <thread>
 
 
-int VERBOSE = 0;
+int VERBOSE = 1;
 
 char errstr[MPI_MAX_ERROR_STRING];
 int len;
@@ -17,19 +19,32 @@ Multicomm *cur_comms;
 
 int MPI_Init(int* argc, char *** argv)
 {
+    /*
     int rc = PMPI_Init(argc, argv);
     initialization();
     return rc;
-    /*
-    int provided;
-    return MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
     */
+    int provided; 
+    
+    int rc = PMPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+    initialization(argc, argv);
+
+    std::thread repair(loop_repair_failures);
+    repair.detach();
+
+    //kalive_thread();
+    return rc;
 }
 
 int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
 {
     int rc = PMPI_Init_thread(argc, argv, required, provided);
-    initialization();
+    initialization(argc, argv);
+
+    printf("Starting failure repairing thread...");
+
+    std::thread repair(loop_repair_failures);
+
     //kalive_thread();
     return rc;
 }
@@ -41,6 +56,35 @@ int MPI_Finalize()
     finalization();
     //return PMPI_Finalize();
     return MPI_SUCCESS;
+}
+
+int MPI_Comm_rank(MPI_Comm comm, int *rank)
+{
+    int rc, flag;
+    cur_comms->part_of(comm, &flag);
+    if(flag) {
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        rc = PMPI_Comm_rank(translated->get_comm(), rank);
+    }
+    else
+        rc = PMPI_Comm_rank(comm, rank);
+
+    return rc;
+}
+
+
+int MPI_Comm_size(MPI_Comm comm, int *size)
+{
+    int rc, flag;
+    cur_comms->part_of(comm, &flag);
+    if(flag) {
+        ComplexComm* translated = cur_comms->translate_into_complex(comm);  
+        rc = PMPI_Comm_size(translated->get_comm(), size);
+    }
+    else
+        rc = PMPI_Comm_size(comm, size);
+
+    return rc;
 }
 
 int MPI_Abort(MPI_Comm comm, int errorcode)
@@ -171,7 +215,6 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
             comm,
             [group, tag] (MPI_Comm source, MPI_Comm *dest) -> int 
             {
-                //TODO update me
                 int rc = PMPI_Comm_create_group(source, group, tag, dest);
                 MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
                 return rc;

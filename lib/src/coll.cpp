@@ -17,25 +17,28 @@ int MPI_Barrier(MPI_Comm comm)
     while(1)
     {
         int rc, flag;
+        int rank, size;
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
-        if(flag)
+        if(flag) {
             rc = PMPI_Barrier(translated->get_comm());
-        else
+        }
+        else 
             rc = PMPI_Barrier(comm);
         if (VERBOSE)
         {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &size);
+            MPI_Comm_rank(comm, &rank);
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: barrier done (error: %s)\n", rank, size, errstr);
         }
         
         if(rc == MPI_SUCCESS || !flag)
             return rc;
-        else
+        else {
             replace_comm(translated);
+            return MPI_SUCCESS;
+        }
     }
 }
 

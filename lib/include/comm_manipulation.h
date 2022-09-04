@@ -11,7 +11,7 @@ void agree_and_eventually_replace(int*, ComplexComm*);
 
 int MPI_Barrier(ComplexComm* comm);
 
-void initialization();
+void initialization(int * argc, char *** argv);
 
 void finalization();
 

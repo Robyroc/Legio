@@ -107,6 +107,9 @@ void ComplexComm::replace_comm(MPI_Comm comm)
 
 MPI_Group ComplexComm::get_group()
 {
+    MPI_Group group;
+    MPI_Comm_group(get_comm(), &group);
+
     return group;
 }
 

@@ -5,6 +5,7 @@
 #include <map>
 #include "mpi.h"
 #include <functional>
+#include <vector>
 #include "struct_selector.h"
 #include <stdio.h>
 
@@ -58,6 +59,9 @@ class Multicomm
         }
 
         void change_comm(ComplexComm*, MPI_Comm);
+        bool respawned;
+        std::vector<int> to_respawn;
+        std::vector<ComplexComm> supported_comms;
     private:
         std::map<int, ComplexComm> comms;
         std::array<std::unordered_map<int,int>, 3> maps;

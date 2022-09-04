@@ -38,7 +38,7 @@ ComplexComm* Multicomm::translate_into_complex(MPI_Comm input)
     }
     */
     auto res = comms.find(MPI_Comm_c2f(input));
-    if(res == comms.end())
+    if (res == comms.end())
     {
         if(input != MPI_COMM_NULL)
             printf("THIS SHOULDN'T HAVE HAPPENED, USE part_of BEFORE TRANSLATE.\n");
