@@ -9,6 +9,7 @@
 #include "intercomm_utils.h"
 #include "restart.h"
 #include <thread>
+#include <shared_mutex>
 
 
 int VERBOSE = 1;
@@ -16,6 +17,8 @@ int VERBOSE = 1;
 char errstr[MPI_MAX_ERROR_STRING];
 int len;
 Multicomm *cur_comms;
+
+extern std::shared_timed_mutex failure_mtx;
 
 int MPI_Init(int* argc, char *** argv)
 {
@@ -75,6 +78,12 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
 
 int MPI_Comm_size(MPI_Comm comm, int *size)
 {
+    // If not respawned, use alias to get the size
+    if (!cur_comms->respawned) {
+        return PMPI_Comm_size(comm, size);
+    }
+
+    // If respawned, use the new group
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     if(flag) {
@@ -109,6 +118,7 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
 
 int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -152,6 +162,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 
 int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -179,6 +190,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 
 int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *newcomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
@@ -227,6 +239,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
 
 int MPI_Comm_disconnect(MPI_Comm * comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_disconnect(a);};
     cur_comms->remove(*comm, func);
     func(comm);
@@ -235,6 +248,7 @@ int MPI_Comm_disconnect(MPI_Comm * comm)
 
 int MPI_Comm_free(MPI_Comm* comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_free(a);};
     cur_comms->remove(*comm, func);
     func(comm);
@@ -243,6 +257,7 @@ int MPI_Comm_free(MPI_Comm* comm)
 
 int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -286,6 +301,8 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
 
 int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_comm, int remote_leader, int tag, MPI_Comm *newintercomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
+
     while(1)
     {
         int rc, flag, own_rank;
@@ -364,6 +381,8 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
 
 int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
+
     while(1)
     {
         int rc, flag;
@@ -407,6 +426,8 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm)
 
 int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info info, int root, MPI_Comm comm, MPI_Comm *intercomm, int array_of_errcodes[])
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
+
     while(1)
     {
         int rc, flag;
@@ -451,6 +472,8 @@ int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info inf
 
 int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
+
     while(1)
     {
         int rc, flag;
@@ -482,6 +505,8 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
 
 int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
+
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);

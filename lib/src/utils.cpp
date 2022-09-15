@@ -1,5 +1,6 @@
 #include <string>
 #include <algorithm>
+#include <shared_mutex>
 
 char* get_command_line_option(int argc, char ** argv, const std::string & option)
 {

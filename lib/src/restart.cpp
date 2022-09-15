@@ -7,7 +7,7 @@
 #include <functional>
 #include <chrono>
 #include <string>
-#include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <condition_variable>
 #include <algorithm>
@@ -17,7 +17,9 @@
 //#include <thread>
 
 extern Multicomm *cur_comms;
-std::mutex failure_mtx;
+// Failure mutex is locked in shared mode when accessing normal MPI operations
+// When a restart operation is started, we need to lock it exclusively
+std::shared_timed_mutex failure_mtx;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
@@ -56,14 +58,12 @@ void repair_failure() {
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank;
     ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
 
-    // Ensure every process is in the failure routine
-    PMPI_Barrier(world->get_comm());
-
     MPIX_Comm_failure_ack(world->get_comm());
     who_failed(world->get_comm(), &failed, ranks);
     PMPI_Comm_rank(world->get_comm(), &rank);
 
     if (failed == 0) {
+        // We already repaired, let's exit!
         return;
     }
 
@@ -183,7 +183,7 @@ void initialize_comm(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *newcomm)
         MPI_Comm_group(comm, &base_group);
         fixup_group(group, base_group, &new_group);
 
-        MPI_Comm_create_group(comm, group, tag, newcomm);
+        MPI_Comm_create_group(comm, new_group, tag, newcomm);
         ComplexComm complex_comm = *cur_comms->translate_into_complex(*newcomm);
         cur_comms->supported_comms.push_back(complex_comm);
         if (VERBOSE)
@@ -208,7 +208,10 @@ void loop_repair_failures()
         ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
         MPI_Comm_rank(world->get_comm(), &rank);
         MPI_Comm_set_errhandler(world->get_comm(), MPI_ERRORS_RETURN);
-        PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, cur_comms->translate_into_complex(MPI_COMM_WORLD)->get_comm(), &status);
+        if (world->get_comm() == MPI_COMM_NULL) {
+            return;
+        }
+        PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world->get_comm(), &status);
 
         printf("%d buf \n", buf);
         // TODO Check if actually necessary

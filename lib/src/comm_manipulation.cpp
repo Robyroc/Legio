@@ -8,13 +8,13 @@
 #include "legio.c"
 #include <sstream>
 #include <numeric>
-#include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <iostream>
 //#include <thread>
 
 extern Multicomm *cur_comms;
-extern std::mutex failure_mtx;
+extern std::shared_timed_mutex failure_mtx;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;

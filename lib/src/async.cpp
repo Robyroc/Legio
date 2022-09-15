@@ -8,14 +8,18 @@
 #include "multicomm.h"
 #include <string.h>
 #include <stdlib.h>
+#include <shared_mutex>
 
 extern Multicomm *cur_comms;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
 
+extern std::shared_timed_mutex failure_mtx;
+
 int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
@@ -66,6 +70,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 
 int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
@@ -110,6 +115,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc;
     MPI_Request old = *request;
     ComplexComm* comm = cur_comms->get_complex_from_structure(*request);
@@ -134,6 +140,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
 
 int MPI_Test(MPI_Request* request, int *flag, MPI_Status *status)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc;
     ComplexComm* comm = cur_comms->get_complex_from_structure(*request);
     if(comm != NULL)
@@ -160,6 +167,7 @@ int MPI_Test(MPI_Request* request, int *flag, MPI_Status *status)
 
 int MPI_Request_free(MPI_Request *request)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     cur_comms->remove_request(request);
     return PMPI_Request_free(request);
 }

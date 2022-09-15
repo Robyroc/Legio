@@ -6,14 +6,18 @@
 #include "configuration.h"
 #include "complex_comm.h"
 #include "multicomm.h"
+#include <shared_mutex>
 
 extern Multicomm *cur_comms;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
 
+extern std::shared_timed_mutex failure_mtx;
+
 int MPI_Barrier(MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -44,6 +48,7 @@ int MPI_Barrier(MPI_Comm comm)
 
 int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -83,6 +88,7 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 
 int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -109,6 +115,7 @@ int MPI_Allreduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype da
 
 int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
@@ -148,6 +155,7 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
 
 int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, actual_root, total_size, fake_rank, flag;
@@ -195,6 +203,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 
 int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, actual_root, total_size, fake_rank, flag;
@@ -242,6 +251,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
 
 int MPI_Scan(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
 {
+    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
