@@ -55,7 +55,8 @@ class ComplexComm
         MPI_Group get_group();
         MPI_Comm get_alias();
         void destroy(std::function<int(MPI_Comm*)>);
-        int get_parent() {return parent;}
+        int get_parent() {return parent;};
+        int get_alias_id() {return alias_id;}
         ComplexComm regenerate(MPI_Comm, MPI_Comm);
         void reapply_destruction();
 

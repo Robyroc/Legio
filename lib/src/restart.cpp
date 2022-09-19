@@ -2,6 +2,7 @@
 #include "mpi-ext.h"
 #include "comm_manipulation.h"
 #include "complex_comm.h"
+#include "respawned_multicomm.h"
 #include "multicomm.h"
 #include "legio.h"
 #include <functional>
@@ -14,6 +15,7 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 //#include <thread>
 
 extern Multicomm *cur_comms;
@@ -25,32 +27,6 @@ extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
 
 #define PERIOD 1
-
-// TODO Add logging
-
-
-void fixup_group(MPI_Group comm_group, MPI_Group new_world, MPI_Group *new_group) {
-    int size;
-    MPI_Group_size(comm_group, &size);
-    int world_ranks[size];
-
-    std::vector<int> old_group_ranks, new_group_ranks;
-    for (int i = 0; i < size; i++)
-        old_group_ranks.push_back(i);
-    MPI_Group_translate_ranks(comm_group, size, old_group_ranks.data(), new_world, world_ranks);
-
-    for (int i = 0; i < size && world_ranks[i] > 0; i++) {
-        new_group_ranks.push_back(world_ranks[i]);
-    }
-
-
-    PMPI_Group_incl(
-        new_world,
-        new_group_ranks.size(),
-        new_group_ranks.data(),
-        new_group
-    );
-}
 
 
 void repair_failure() {
@@ -106,6 +82,8 @@ void repair_failure() {
         if (rank > ranks[i]) {
             rank--;
         }
+
+        cur_comms->add_failed_ranks(ranks[i]);
     }
 
     // Set the new list of comms to respawn
@@ -134,7 +112,7 @@ void repair_failure() {
         }
         sprintf(newargv[3], "%s", ss.str().c_str());
         newargv[4] = NULL;
-
+        // TODO Add list of failed ranks
 
         argvs.push_back(newargv);
         program_names.push_back(program_invocation_name);
@@ -149,19 +127,13 @@ void repair_failure() {
     cur_comms->change_comm(cur_comms->translate_into_complex(MPI_COMM_WORLD), new_world);
 
     // Regenerate the supported comms
-    for (auto comm: cur_comms->supported_comms) {
-        MPI_Group comm_group = comm.get_group(), new_group;
-        MPI_Comm new_comm;
-        int new_size;
-        fixup_group(comm.get_group(), world->get_group(), &new_group);
-
-        MPI_Group_size(new_group, &new_size);
-        if (new_size == 0) {
-            continue;
-        }
-        PMPI_Comm_create_group(world->get_comm(), new_group, 0, &new_comm);
-        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-        comm.replace_comm(new_comm);
+    for (auto entry: cur_comms->supported_comms) {
+        ComplexComm* comm = cur_comms->translate_into_complex(entry.second.get_alias());
+        // TODO Regenrate the communicators by recreating the group completely from the initial ranks
+        // TODO Change the supported comm updating the failed ranks
+        // TODO Replace the complex comm
+        // TODO If group has size 0, continue
+        // MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
     }
 
     if (VERBOSE)
@@ -173,24 +145,55 @@ void repair_failure() {
     }
 }
 
-void initialize_comm(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *newcomm) {
+// Initialize a communicator starting from MPI_COMM_WORLD ranks
+void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
+    MPI_Group group_world, new_group;
     if (!cur_comms->respawned) {
-        MPI_Comm_create_group(comm, group, tag, newcomm);
+        MPI_Comm_group( MPI_COMM_WORLD , &group_world);
+        MPI_Group_incl(group_world, len, ranks, &new_group);
+        MPI_Comm_create_group(MPI_COMM_WORLD, new_group, 1, newcomm);
         ComplexComm complex_comm = *cur_comms->translate_into_complex(*newcomm);
-        // cur_comms->supported_comms.push_back(complex_comm);
+        
+        SupportedComm* supported_comm = new SupportedComm(*newcomm);
+        cur_comms->supported_comms.insert({complex_comm.get_alias_id(), *supported_comm});
     } else {
-        MPI_Group base_group, new_group;
-        MPI_Comm_group(comm, &base_group);
-        fixup_group(group, base_group, &new_group);
+        MPI_Comm world = cur_comms->translate_into_complex(MPI_COMM_WORLD)->get_comm();
+        RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
+        // Remove from the group the failed ranks
+        std::set<int> world_failed_ranks = respawned_comms->get_failed_ranks();
+        std::vector<int> input_ranks, remaining_ranks, failed_ranks, remaining_ranks_transformed, failed_ranks_transformed;
+        input_ranks.insert(input_ranks.begin(), ranks, ranks+n);
 
-        MPI_Comm_create_group(comm, new_group, tag, newcomm);
+        std::set_difference(input_ranks.begin(), input_ranks.end(), world_failed_ranks.begin(), world_failed_ranks.end(), std::inserter(remaining_ranks, remaining_ranks.begin()));
+        std::set_intersection(input_ranks.begin(), input_ranks.end(), world_failed_ranks.begin(), world_failed_ranks.end(), std::inserter(failed_ranks, failed_ranks.begin()));
+
+        for (int i = 0; i < n; i++) {
+            int current_rank = ranks[i];
+
+            if (std::count(world_failed_ranks.begin(), world_failed_ranks.end(), current_rank) == 0) {
+                // Not failed rank, should be added
+                current_rank = current_rank - std::count_if(failed_ranks.begin(), failed_ranks.end(), [current_rank] (int failed_rank) {
+                        return failed_rank < current_rank;
+                });
+                remaining_ranks_transformed.push_back(current_rank);
+            }
+            else {
+                failed_ranks_transformed.push_back(i);
+            }
+        }
+
+        MPI_Comm_group(world , &group_world);
+        MPI_Group_incl(group_world, remaining_ranks_transformed.size(), remaining_ranks_transformed.data(), &new_group);
+        MPI_Comm_create_group(world, new_group, 1, newcomm);
+
         ComplexComm complex_comm = *cur_comms->translate_into_complex(*newcomm);
-        cur_comms->supported_comms.push_back(complex_comm);
+        RespawnedSupportedComm* supported_comm = new RespawnedSupportedComm(*newcomm, failed_ranks_transformed);
+        respawned_comms->supported_comms.insert({complex_comm.get_alias_id(), *supported_comm});
         if (VERBOSE)
         {
             int rank, size;
-            MPI_Comm_size(MPI_COMM_WORLD, &size);
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            PMPI_Comm_size(world, &size);
+            PMPI_Comm_rank(world, &rank);
             printf("Rank %d / %d: completed group restoration.\n", rank, size);
         }
     }
@@ -206,21 +209,19 @@ void loop_repair_failures()
         int buf, length;
         MPI_Status status;
         ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
-        MPI_Comm_rank(world->get_comm(), &rank);
+        PMPI_Comm_rank(world->get_comm(), &rank);
         MPI_Comm_set_errhandler(world->get_comm(), MPI_ERRORS_RETURN);
         if (world->get_comm() == MPI_COMM_NULL) {
             return;
         }
         PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world->get_comm(), &status);
 
-        printf("%d buf \n", buf);
-        // TODO Check if actually necessary
         if (buf == LEGIO_FAILURE_REPAIR_VALUE) {
             if (VERBOSE)
                 {
                     int rank, size;
-                    MPI_Comm_size(MPI_COMM_WORLD, &size);
-                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                    PMPI_Comm_size(world->get_comm(), &size);
+                    PMPI_Comm_rank(world->get_comm(), &rank);
                     printf("Rank %d / %d: received failure notification from %d.\n", size, rank, status.MPI_SOURCE); fflush(stdout);
                 }
             failure_mtx.lock();
@@ -255,8 +256,8 @@ void restart(int rank)
 void MPI_Comm_translate_ranks( MPI_Comm comm1 , int n , const int ranks1[] , MPI_Comm comm2 , int ranks2[]) {
     MPI_Group group1, group2;
 
-    MPI_Comm_group(comm1, &group1);
-    MPI_Comm_group(comm2, &group2);
+    PMPI_Comm_group(comm1, &group1);
+    PMPI_Comm_group(comm2, &group2);
 
     MPI_Group_translate_ranks(group1, n, ranks1, group2, ranks2);
 }

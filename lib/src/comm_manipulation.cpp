@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include "complex_comm.h"
+#include "respawned_multicomm.h"
 #include "multicomm.h"
 #include "utils.cpp"
 #include "restart.h"
@@ -30,14 +31,16 @@ extern int len;
 // Dopo fare le chiamate dara' un'errore di MPI_COMM_NULL -> fara' una recv su MPI_COMM_WORLD da chiunque
 void initialization(int* argc, char *** argv)
 {
-    cur_comms = new Multicomm();
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
         
     if (command_line_option_exists(*argc, *argv, "--respawned")) {
+        cur_comms = new RespawnedMulticomm();
         cur_comms->respawned = true;
     }
     else {
+        cur_comms = new Multicomm();
         cur_comms->respawned = false;
+        // TODO Parse failed ranks and add them here
     }
 
     char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
@@ -87,17 +90,10 @@ void finalization()
     delete cur_comms;
 }
 
-void translate_ranks(int root, ComplexComm* comm, int* tr_rank)
-{
-    MPI_Group tr_group;
-    int source = root;
-    MPI_Comm_group(comm->get_comm(), &tr_group);
-    MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, tr_rank);
-}
-
 void replace_comm(ComplexComm* cur_complex)
 {
     MPI_Comm new_comm, world;
+    MPI_Group group;
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, current_rank;
 
     ComplexComm *world_complex = cur_comms->translate_into_complex(MPI_COMM_WORLD);
@@ -112,8 +108,8 @@ void replace_comm(ComplexComm* cur_complex)
         if (VERBOSE)
         {
             int rank, size;
-            MPI_Comm_size(MPI_COMM_WORLD, &size);
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_size(world_complex->get_comm(), &size);
+            MPI_Comm_rank(world_complex->get_comm(), &rank);
             printf("[is_respawned: %d] Detected failure in rank %d / %d.\n", is_respawned(), rank, size);
         }
         // TODO(Performance): skip communication with thread if only not-to-restart process
@@ -123,24 +119,22 @@ void replace_comm(ComplexComm* cur_complex)
         std::vector<int> not_failed_group_ranks, new_group_ranks;
 
         // Communicate to all not failed ranks that they must start restart procedure
+        PMPI_Comm_group(world_complex->get_comm(), &group);
         PMPI_Group_excl(world_complex->get_group(), failed, ranks, &not_failed_group);
         PMPI_Group_size(not_failed_group, &not_failed_size);
-        int ranks[not_failed_size];
-        for (int i = 0; i < not_failed_size; i++)
-                not_failed_group_ranks.push_back(i);
-        MPI_Group_translate_ranks(not_failed_group , not_failed_size , not_failed_group_ranks.data() , world_complex->get_group() , ranks);
-        PMPI_Comm_rank(world_complex->get_comm(), &current_rank);
+        PMPI_Comm_create_group(world_complex->get_comm(), not_failed_group, 1, &not_failed_comm);
+        PMPI_Comm_rank(not_failed_comm, &current_rank);
         for (int i = 0; i < not_failed_size; i++) {
-            if (ranks[i] == current_rank)
+            if (i == current_rank)
                 continue;
             if (VERBOSE)
                 {
                     int rank, size;
-                    PMPI_Comm_size(world_complex->get_comm(), &size);
-                    PMPI_Comm_rank(world_complex->get_comm(), &rank);
+                    PMPI_Comm_size(not_failed_comm, &size);
+                    PMPI_Comm_rank(not_failed_comm, &rank);
                     printf("Rank %d / %d sending failure notification to rank %d .\n", rank, size, ranks[i]); fflush(stdout);
                 }
-            PMPI_Send(&buf, 1, MPI_INT, ranks[i], LEGIO_FAILURE_TAG, world_complex->get_comm());
+            PMPI_Send(&buf, 1, MPI_INT, i, LEGIO_FAILURE_TAG, not_failed_comm);
         }
         failure_mtx.lock();
         repair_failure();

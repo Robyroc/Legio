@@ -6,6 +6,7 @@
 #include "configuration.h"
 #include "complex_comm.h"
 #include "multicomm.h"
+#include "respawned_multicomm.h"
 #include "intercomm_utils.h"
 #include "restart.h"
 #include <thread>
@@ -63,16 +64,22 @@ int MPI_Finalize()
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank)
 {
-    int rc, flag;
-    cur_comms->part_of(comm, &flag);
-    if(flag) {
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
-        rc = PMPI_Comm_rank(translated->get_comm(), rank);
+    // If not respawned, use alias to get the rank
+    if (!cur_comms->respawned) {
+        return PMPI_Comm_rank(comm, rank);
     }
-    else
-        rc = PMPI_Comm_rank(comm, rank);
+    else {
+        RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
+        auto supported_comms = respawned_comms->supported_comms;
+        auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
-    return rc;
+        if (found_comm == supported_comms.end()) {
+            return PMPI_Comm_rank(comm, rank);
+        }
+        else {
+            return found_comm->second.rank();
+        }
+    }
 }
 
 
@@ -82,18 +89,18 @@ int MPI_Comm_size(MPI_Comm comm, int *size)
     if (!cur_comms->respawned) {
         return PMPI_Comm_size(comm, size);
     }
+    else {
+        RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
+        auto supported_comms = respawned_comms->supported_comms;
+        auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
-    // If respawned, use the new group
-    int rc, flag;
-    cur_comms->part_of(comm, &flag);
-    if(flag) {
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);  
-        rc = PMPI_Comm_size(translated->get_comm(), size);
+        if (found_comm == supported_comms.end()) {
+            return PMPI_Comm_size(comm, size);
+        }
+        else {
+            return found_comm->second.size();
+        }
     }
-    else
-        rc = PMPI_Comm_size(comm, size);
-
-    return rc;
 }
 
 int MPI_Abort(MPI_Comm comm, int errorcode)
@@ -314,7 +321,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
         if(flag)
         {
             int local_root;
-            translate_ranks(local_leader, translated, &local_root);
+            cur_comms->translate_ranks(local_leader, translated, &local_root);
             if(own_rank == local_leader)
             {
                 MPI_Group remote_group, shrink_group;
@@ -434,7 +441,7 @@ int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info inf
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
         int root_rank = root;
-        translate_ranks(root, translated, &root_rank);
+        cur_comms->translate_ranks(root, translated, &root_rank);
         if(flag)
             rc = PMPI_Comm_spawn(command, argv, maxprocs, info, root_rank, translated->get_comm(), intercomm, array_of_errcodes);
         else

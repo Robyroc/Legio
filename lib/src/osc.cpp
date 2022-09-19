@@ -151,7 +151,7 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
     {
         MPI_Win translated = comm->translate_structure(win);
         int new_rank;
-        translate_ranks(target_rank, comm, &new_rank);
+        cur_comms->translate_ranks(target_rank, comm, &new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
             HANDLE_GET_FAIL(comm->get_comm());
@@ -182,7 +182,7 @@ int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datat
     {
         MPI_Win translated = comm->translate_structure(win);
         int new_rank;
-        translate_ranks(target_rank, comm, &new_rank);
+        cur_comms->translate_ranks(target_rank, comm, &new_rank);
         if(new_rank == MPI_UNDEFINED)
         {
             HANDLE_PUT_FAIL(comm->get_comm());

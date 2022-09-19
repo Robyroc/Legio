@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 #include "struct_selector.h"
+#include "supported_comm.h"
 #include <stdio.h>
 
 class ComplexComm;
@@ -59,10 +60,19 @@ class Multicomm
         }
 
         void change_comm(ComplexComm*, MPI_Comm);
+        virtual void translate_ranks(int, ComplexComm*, int*);
         bool respawned;
         std::vector<int> to_respawn;
-        std::vector<ComplexComm> supported_comms;
+        std::map<int, SupportedComm> supported_comms;
+        void add_failed_ranks(int failed_rank) {
+            failed_ranks.insert(failed_rank);
+        }
+        std::set<int> get_failed_ranks() {
+            return failed_ranks;
+        }
+
     private:
+        std::set<int> failed_ranks = {};
         std::map<int, ComplexComm> comms;
         std::array<std::unordered_map<int,int>, 3> maps;
         //std::unordered_map<int, int> comms_order;

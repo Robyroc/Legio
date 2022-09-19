@@ -57,7 +57,7 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
         if(flag)
         {
             int root_rank;
-            translate_ranks(root, translated, &root_rank);
+            cur_comms->translate_ranks(root, translated, &root_rank);
             if(root_rank == MPI_UNDEFINED)
             {
                 HANDLE_BCAST_FAIL(translated->get_comm());
@@ -124,7 +124,7 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
         if(flag)
         {
             int root_rank;
-            translate_ranks(root, translated, &root_rank);
+            cur_comms->translate_ranks(root, translated, &root_rank);
             if(root_rank == MPI_UNDEFINED)
             {
                 HANDLE_REDUCE_FAIL(translated.get_comm());
@@ -167,7 +167,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
         if(flag)
         {
             actual_comm = translated->get_comm();
-            translate_ranks(root, translated, &actual_root);
+            cur_comms->translate_ranks(root, translated, &actual_root);
             if(actual_root == MPI_UNDEFINED)
             {
                 HANDLE_GATHER_FAIL(actual_comm);
@@ -215,7 +215,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void*
         if(flag)
         {
             actual_comm = translated->get_comm();
-            translate_ranks(root, translated, &actual_root);
+            cur_comms->translate_ranks(root, translated, &actual_root);
             if(actual_root == MPI_UNDEFINED)
             {
                 HANDLE_SCATTER_FAIL(actual_comm);

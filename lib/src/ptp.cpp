@@ -29,7 +29,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
         if(flag)
         {
             int dest_rank;
-            translate_ranks(dest, translated, &dest_rank);
+            cur_comms->translate_ranks(dest, translated, &dest_rank);
             if(dest_rank == MPI_UNDEFINED)
             {
                 HANDLE_SEND_FAIL(cur_complex->get_comm());
@@ -66,7 +66,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     if(flag)
     {
         int source_rank;
-        translate_ranks(source, translated, &source_rank);
+        cur_comms->translate_ranks(source, translated, &source_rank);
         if(source_rank == MPI_UNDEFINED)
         {
             HANDLE_RECV_FAIL(cur_complex->get_comm());
@@ -97,8 +97,8 @@ int MPI_Sendrecv(const void *sendbuf, int sendcount, MPI_Datatype sendtype, int 
     if(flag)
     {
         int source_rank, dest_rank;
-        translate_ranks(source, translated, &source_rank);
-        translate_ranks(dest, translated, &dest_rank);
+        cur_comms->translate_ranks(source, translated, &source_rank);
+        cur_comms->translate_ranks(dest, translated, &dest_rank);
         if(source_rank == MPI_UNDEFINED)
         {
             HANDLE_RECV_FAIL(cur_complex->get_comm());
