@@ -41,7 +41,8 @@ int MPI_Barrier(MPI_Comm comm)
             return rc;
         else {
             replace_comm(translated);
-            return MPI_SUCCESS;
+            if(rc == MPI_SUCCESS)
+                return rc;
         }
     }
 }

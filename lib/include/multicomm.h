@@ -5,7 +5,7 @@
 #include <map>
 #include "mpi.h"
 #include <functional>
-#include <vector>
+#include <set>
 #include "struct_selector.h"
 #include "supported_comm.h"
 #include <stdio.h>

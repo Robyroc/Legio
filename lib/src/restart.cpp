@@ -15,7 +15,6 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
 //#include <thread>
 
 extern Multicomm *cur_comms;
@@ -27,6 +26,8 @@ extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
 
 #define PERIOD 1
+
+// TODO Better structure for the ranks of each sub-communicator related to world and extract helper functions
 
 
 void repair_failure() {
@@ -71,6 +72,7 @@ void repair_failure() {
         cur_comms->change_comm(cur_comms->translate_into_complex(MPI_COMM_WORLD), tmp_world);
         return;
     }
+    std::set<int> past_failed_ranks = cur_comms->get_failed_ranks();
     for (i = 0; i < failed && std::find(cur_comms->to_respawn.begin(), cur_comms->to_respawn.end(), ranks[i]) == cur_comms->to_respawn.end(); i++) {
         std::transform(failed_to_respawn.begin(), failed_to_respawn.end(), failed_to_respawn.begin(), [&ranks](int &i) {
             if (i > ranks[i])
@@ -83,6 +85,7 @@ void repair_failure() {
             rank--;
         }
 
+        // TODO This rank is related only to the current world. We need the higher-level one! Find + use it!
         cur_comms->add_failed_ranks(ranks[i]);
     }
 
@@ -96,8 +99,8 @@ void repair_failure() {
     std::vector<MPI_Info> infos;                
     for (auto to_respawn : failed_to_respawn) {
 
-        char ** newargv = (char **) malloc(sizeof(char *)*5);
-        for (i = 0; i<5; i++) {
+        char ** newargv = (char **) malloc(sizeof(char *)*6);
+        for (i = 0; i<6; i++) {
             newargv[i] = (char *) malloc(sizeof(char)*20);
         }
         sprintf(newargv[0], "--respawned");
@@ -108,11 +111,22 @@ void repair_failure() {
         std::ostringstream ss;
         for (auto x : cur_comms->to_respawn) {
             ss << separator << x;
-        separator = ",";
+            separator = ",";
         }
         sprintf(newargv[3], "%s", ss.str().c_str());
-        newargv[4] = NULL;
-        // TODO Add list of failed ranks
+        if (cur_comms->get_failed_ranks().size() != 0) {
+            newargv[4] = NULL;
+        } else {
+            sprintf(newargv[4], "--failed-ranks");
+            std::string separator_failed_ranks;
+            std::ostringstream ss_failed_ranks;
+            for (auto x : cur_comms->get_failed_ranks()) {
+                ss_failed_ranks << separator_failed_ranks << x;
+                separator_failed_ranks = ",";
+            }
+            sprintf(newargv[4], "%s", ss_failed_ranks.str().c_str());
+        }
+        newargv[5] = NULL;
 
         argvs.push_back(newargv);
         program_names.push_back(program_invocation_name);
@@ -129,11 +143,15 @@ void repair_failure() {
     // Regenerate the supported comms
     for (auto entry: cur_comms->supported_comms) {
         ComplexComm* comm = cur_comms->translate_into_complex(entry.second.get_alias());
+        MPI_Group current_group;
+        MPI_Comm new_comm;
+        int size_group;
+
         // TODO Regenrate the communicators by recreating the group completely from the initial ranks
         // TODO Change the supported comm updating the failed ranks
         // TODO Replace the complex comm
         // TODO If group has size 0, continue
-        // MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+        MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
     }
 
     if (VERBOSE)
@@ -148,20 +166,25 @@ void repair_failure() {
 // Initialize a communicator starting from MPI_COMM_WORLD ranks
 void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
     MPI_Group group_world, new_group;
+    std::set<int> current_world_ranks;
     if (!cur_comms->respawned) {
         MPI_Comm_group( MPI_COMM_WORLD , &group_world);
+        for (int i = 0; i < n; i++) {
+            current_world_ranks.insert(ranks[i]);
+        }
         MPI_Group_incl(group_world, len, ranks, &new_group);
         MPI_Comm_create_group(MPI_COMM_WORLD, new_group, 1, newcomm);
         ComplexComm complex_comm = *cur_comms->translate_into_complex(*newcomm);
         
-        SupportedComm* supported_comm = new SupportedComm(*newcomm);
+        SupportedComm* supported_comm = new SupportedComm(*newcomm, current_world_ranks);
         cur_comms->supported_comms.insert({complex_comm.get_alias_id(), *supported_comm});
     } else {
         MPI_Comm world = cur_comms->translate_into_complex(MPI_COMM_WORLD)->get_comm();
         RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
         // Remove from the group the failed ranks
         std::set<int> world_failed_ranks = respawned_comms->get_failed_ranks();
-        std::vector<int> input_ranks, remaining_ranks, failed_ranks, remaining_ranks_transformed, failed_ranks_transformed;
+        std::vector<int> input_ranks, remaining_ranks, failed_ranks, remaining_ranks_transformed;
+        std::set<int> failed_ranks_transformed;
         input_ranks.insert(input_ranks.begin(), ranks, ranks+n);
 
         std::set_difference(input_ranks.begin(), input_ranks.end(), world_failed_ranks.begin(), world_failed_ranks.end(), std::inserter(remaining_ranks, remaining_ranks.begin()));
@@ -176,9 +199,10 @@ void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
                         return failed_rank < current_rank;
                 });
                 remaining_ranks_transformed.push_back(current_rank);
+                current_world_ranks.insert(current_rank);
             }
             else {
-                failed_ranks_transformed.push_back(i);
+                failed_ranks_transformed.insert(i);
             }
         }
 
@@ -187,7 +211,7 @@ void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
         MPI_Comm_create_group(world, new_group, 1, newcomm);
 
         ComplexComm complex_comm = *cur_comms->translate_into_complex(*newcomm);
-        RespawnedSupportedComm* supported_comm = new RespawnedSupportedComm(*newcomm, failed_ranks_transformed);
+        RespawnedSupportedComm* supported_comm = new RespawnedSupportedComm(*newcomm, current_world_ranks, failed_ranks_transformed);
         respawned_comms->supported_comms.insert({complex_comm.get_alias_id(), *supported_comm});
         if (VERBOSE)
         {

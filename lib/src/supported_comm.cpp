@@ -13,14 +13,17 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#include <set>
 
-SupportedComm::SupportedComm(MPI_Comm alias) {
+SupportedComm::SupportedComm(MPI_Comm alias, std::set<int> current_world_ranks) {
     alias = alias;
+    current_world_ranks = current_world_ranks;
 }
 
-RespawnedSupportedComm::RespawnedSupportedComm(MPI_Comm alias, std::vector<int> failed_ranks)
+RespawnedSupportedComm::RespawnedSupportedComm(MPI_Comm alias, std::set<int> current_world_ranks, std::set<int> failed_ranks)
 {
     alias = alias;
+    current_world_ranks = current_world_ranks;
     failed_ranks = failed_ranks;
 }
 
@@ -39,15 +42,11 @@ int RespawnedSupportedComm::size() {
     MPI_Comm_rank(get_alias(), &rank);
 
     // Reconstruct the original rank by iterating over the ranks of the original comunicator
-    for (i = 0; i < size; i++) {
-        if (std::find(failed_ranks.begin(), failed_ranks.end(), i) != failed_ranks.end()) {
-            // Rank is failed, skip it
-        }
-        else {
+    while (rank != 0) {
+        if (std::find(failed_ranks.begin(), failed_ranks.end(), i) == failed_ranks.end()) {
+            // Rank is not failed, count it
             rank--;
         }
-        if (rank == 0)
-            break;
     }
 
     return i;

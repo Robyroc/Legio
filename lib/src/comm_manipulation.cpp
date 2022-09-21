@@ -35,6 +35,17 @@ void initialization(int* argc, char *** argv)
         
     if (command_line_option_exists(*argc, *argv, "--respawned")) {
         cur_comms = new RespawnedMulticomm();
+        char* possibly_null_failed_ranks = get_command_line_option(*argc, *argv, "--to-respawn");
+        if (possibly_null_failed_ranks != 0) {
+            std::string raw_failed_ranks = possibly_null_failed_ranks;
+            std::stringstream ss( raw_failed_ranks );
+            while( ss.good() )
+            {
+                std::string substr;
+                getline( ss, substr, ',' );
+                cur_comms->add_failed_ranks(stoi(substr));
+            }
+        }
         cur_comms->respawned = true;
     }
     else {

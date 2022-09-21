@@ -42,7 +42,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
             int new_rank;
             MPI_Comm_group(comm, &old_group);
             MPI_Comm_group(actual, &new_group);
-            MPI_Group_cur_comms->translate_ranks(old_group, 1, &dest, new_group, &new_rank);
+            MPI_Group_translate_ranks(old_group, 1, &dest, new_group, &new_rank);
             if(new_rank == MPI_UNDEFINED)
                 return MPI_ERR_PROC_FAILED;
             else return PMPI_Isend(tempbuf, count, datatype, new_rank, tag, actual, request);
