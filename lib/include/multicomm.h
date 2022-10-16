@@ -20,7 +20,8 @@ class Multicomm
         ComplexComm* translate_into_complex(MPI_Comm);
         void remove(MPI_Comm, std::function<int(MPI_Comm*)>);
         void part_of(MPI_Comm, int*);
-        Multicomm();
+        Multicomm(int size);
+        Multicomm() = default;
 
         template<class MPI_T>
         bool add_structure(ComplexComm* comm, MPI_T elem, std::function<int(MPI_Comm, MPI_T*)> func)
@@ -58,21 +59,42 @@ class Multicomm
                 return NULL;
             }
         }
+        ComplexComm* get_comm_by_c2f(int c2f) {
+            return &comms.find(c2f)->second;
+        }
 
         void change_comm(ComplexComm*, MPI_Comm);
-        virtual void translate_ranks(int, ComplexComm*, int*);
-        bool respawned;
+        bool respawned = false;
         std::vector<int> to_respawn;
         std::map<int, SupportedComm> supported_comms;
-        void add_failed_ranks(int failed_rank) {
-            failed_ranks.insert(failed_rank);
+        std::vector<Rank> get_ranks() {
+            return ranks;
         }
-        std::set<int> get_failed_ranks() {
-            return failed_ranks;
+        void set_failed_rank(int world_rank) {
+            ranks.at(world_rank).failed = true;
+            for (auto &supported_comm : supported_comms) {
+                (supported_comm.second).set_failed(world_rank);
+            }
         }
+        virtual void translate_ranks(int, ComplexComm*, int*);
 
+        // Shift a translated rank considering the failed ranks inside the world
+        int untranslate_world_rank(int translated) {
+            // 1 2 3 4
+            // 1 x 3 4
+            // 2 = translated -> needs to become three
+            int i = 0, source = 0;
+            while (i < translated) {
+                source++;
+                if (!ranks.at(i).failed)
+                    i++;
+            }
+            
+            return source;
+        }
+    protected:
+        std::vector<Rank> ranks;
     private:
-        std::set<int> failed_ranks = {};
         std::map<int, ComplexComm> comms;
         std::array<std::unordered_map<int,int>, 3> maps;
         //std::unordered_map<int, int> comms_order;

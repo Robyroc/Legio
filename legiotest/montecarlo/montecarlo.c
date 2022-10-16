@@ -34,6 +34,9 @@ int main(int argc, char** argv) {
  
    MPI_Reduce(&processNumberInCircle, &totalNumberInCircle, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
+   // TODO Reduce 0, elimina rank 0 -> respawna
+   // TODO Reduce ad alberto, respawn di entrambe le root
+
    MPI_Reduce(&numProcessTosses, &totalPerfTosses, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
    
    if (myRank == 0) {

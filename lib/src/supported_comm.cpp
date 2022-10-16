@@ -2,7 +2,7 @@
 #include "mpi-ext.h"
 #include "supported_comm.h"
 #include "complex_comm.h"
-#include "respawned_multicomm.h"
+#include "respawn_multicomm.h"
 #include <functional>
 #include <chrono>
 #include <string>
@@ -15,46 +15,38 @@
 #include <sstream>
 #include <set>
 
-SupportedComm::SupportedComm(MPI_Comm alias, std::set<int> current_world_ranks) {
-    alias = alias;
-    current_world_ranks = current_world_ranks;
+extern Multicomm *cur_comms;
+
+Rank::Rank(int number, bool failed) {
+    number = number;
+    failed = failed;
 }
 
-RespawnedSupportedComm::RespawnedSupportedComm(MPI_Comm alias, std::set<int> current_world_ranks, std::set<int> failed_ranks)
-{
+SupportedComm::SupportedComm(MPI_Comm alias, std::vector<Rank> world_ranks) {
     alias = alias;
-    current_world_ranks = current_world_ranks;
-    failed_ranks = failed_ranks;
+    world_ranks = world_ranks;
 }
 
 int RespawnedSupportedComm::size() {
-    int size;
-    MPI_Comm_size( get_alias() , &size);
-
-    return size + failed_ranks.size();
+    return world_ranks.size();
 }
 
 
-
-int RespawnedSupportedComm::size() {
-    int rank, i;
+int RespawnedSupportedComm::rank() {
+    int rank, dest;
     int size = RespawnedSupportedComm::size();
     MPI_Comm_rank(get_alias(), &rank);
 
-    // Reconstruct the original rank by iterating over the ranks of the original comunicator
-    while (rank != 0) {
-        if (std::find(failed_ranks.begin(), failed_ranks.end(), i) == failed_ranks.end()) {
-            // Rank is not failed, count it
-            rank--;
-        }
-    }
-
-    return i;
+    cur_comms->translate_ranks(rank, cur_comms->translate_into_complex(alias), &dest);
+    return dest;
 }
 
-
-int RespawnedSupportedComm::get_failed_ranks_before(int rank) {
-    return std::count_if(failed_ranks.begin(), failed_ranks.end(), [rank] (int failed_rank) {
-        return failed_rank < rank;
-    });
+int SupportedComm::get_failed_ranks_before(int rank) {
+    int failed = 0;
+    for (int i = 0; i < rank; i++) {
+        if (world_ranks.at(i).failed)
+            i++;
+    }
+    // Cache it and clean the cache after
+    return failed;
 }

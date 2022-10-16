@@ -6,7 +6,7 @@
 #include "configuration.h"
 #include "complex_comm.h"
 #include "multicomm.h"
-#include "respawned_multicomm.h"
+#include "respawn_multicomm.h"
 #include "intercomm_utils.h"
 #include "restart.h"
 #include <thread>
@@ -69,7 +69,7 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
         return PMPI_Comm_rank(comm, rank);
     }
     else {
-        RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
+        RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
         auto supported_comms = respawned_comms->supported_comms;
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
@@ -90,7 +90,7 @@ int MPI_Comm_size(MPI_Comm comm, int *size)
         return PMPI_Comm_size(comm, size);
     }
     else {
-        RespawnedMulticomm* respawned_comms = dynamic_cast<RespawnedMulticomm*>(cur_comms);
+        RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
         auto supported_comms = respawned_comms->supported_comms;
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
@@ -224,7 +224,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
         PMPI_Comm_size(comm, &size);
         PMPI_Comm_rank(comm, &rank);
         MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: comm_create_group done (error: %s)\n", rank, size, errstr);
+        printf("Rank %d / %d: comm_create_group done (error: %s)\n", rank, size, errstr); fflush(stdout);
     }
     if(flag && rc == MPI_SUCCESS)
     {

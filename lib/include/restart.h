@@ -7,10 +7,11 @@
 #include <condition_variable>
 
 
-void initialize_comm(MPI_Comm, MPI_Group, int, MPI_Comm*);
+void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm);
 void loop_repair_failures();
 void repair_failure();
 void restart(int);
 bool is_respawned();
+// TODO(low-priority) Add callback for restart
 
 #endif

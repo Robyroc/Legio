@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include "complex_comm.h"
-#include "respawned_multicomm.h"
+#include "respawn_multicomm.h"
 #include "multicomm.h"
 #include "utils.cpp"
 #include "restart.h"
@@ -32,26 +32,30 @@ extern int len;
 void initialization(int* argc, char *** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+    int size;
+    std::vector<int> failed;
         
     if (command_line_option_exists(*argc, *argv, "--respawned")) {
-        cur_comms = new RespawnedMulticomm();
-        char* possibly_null_failed_ranks = get_command_line_option(*argc, *argv, "--to-respawn");
-        if (possibly_null_failed_ranks != 0) {
-            std::string raw_failed_ranks = possibly_null_failed_ranks;
-            std::stringstream ss( raw_failed_ranks );
+        // Parse size
+        char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
+        if (possibly_null_failed != 0) {
+            std::string raw_failed = possibly_null_failed;
+            std::stringstream ss( raw_failed );
             while( ss.good() )
             {
                 std::string substr;
                 getline( ss, substr, ',' );
-                cur_comms->add_failed_ranks(stoi(substr));
+                cur_comms->set_failed_rank(stoi(substr));
             }
         }
+
+        cur_comms = new RespawnMulticomm(size, failed);
         cur_comms->respawned = true;
     }
     else {
-        cur_comms = new Multicomm();
+        PMPI_Comm_size(MPI_COMM_WORLD, &size);
+        cur_comms = new Multicomm(size);
         cur_comms->respawned = false;
-        // TODO Parse failed ranks and add them here
     }
 
     char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
@@ -123,7 +127,7 @@ void replace_comm(ComplexComm* cur_complex)
             MPI_Comm_rank(world_complex->get_comm(), &rank);
             printf("[is_respawned: %d] Detected failure in rank %d / %d.\n", is_respawned(), rank, size);
         }
-        // TODO(Performance): skip communication with thread if only not-to-restart process
+        // TODO(low-priority): skip communication with thread if only not-to-restart process
         MPI_Group not_failed_group;
         MPI_Comm not_failed_comm;
         int buf = LEGIO_FAILURE_PING_VALUE, not_failed_size;

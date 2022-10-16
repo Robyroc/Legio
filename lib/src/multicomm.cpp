@@ -5,8 +5,12 @@
 #include "mpi.h"
 #include <functional>
 
-Multicomm::Multicomm()
-{}
+Multicomm::Multicomm(int size){ 
+    // Initialize ranks
+    for (int i = 0; i < size; i++) {
+        ranks.push_back(Rank(i, false));
+    }
+};
 
 int Multicomm::add_comm(MPI_Comm added, MPI_Comm parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, MPI_Comm second_parent)
 {
@@ -110,4 +114,14 @@ void Multicomm::remove_request(MPI_Request* req)
 void Multicomm::change_comm(ComplexComm* current, MPI_Comm newcomm)
 {
     current->replace_comm(newcomm);
+}
+
+
+// Translate ranks from source (current ranks) to destination (alias-related ranks)
+void Multicomm::translate_ranks(int source_rank, ComplexComm* comm, int* dest_rank)
+{
+    MPI_Group tr_group;
+    int source = source_rank;
+    MPI_Comm_group(comm->get_comm(), &tr_group);
+    MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, dest_rank);
 }

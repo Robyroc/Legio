@@ -7,32 +7,43 @@
 #include <set>
 #include <functional>
 
+class Rank
+{
+    public:
+        Rank(int number, bool failed);
+        bool failed;
+        // The rank based on MPI_COMM_WORLD
+        int number;
+};
+
 class SupportedComm
 {
     public:
+        SupportedComm(MPI_Comm comm, std::vector<Rank> world_ranks);
+        int get_failed_ranks_before(int rank);
         MPI_Comm get_alias() {return alias;};
-        SupportedComm(MPI_Comm comm, std::set<int> current_world_ranks);
 
-        std::set<int> get_current_world_ranks() {
-            return current_world_ranks;
+        std::vector<Rank> get_current_world_ranks() {
+            return world_ranks;
+        }
+        void set_failed(int world_rank) {
+            for (auto &rank : world_ranks)
+                if (rank.number == world_rank) {
+                    rank.failed = true;
+                    break;
+                }
         }
 
-    private:
         MPI_Comm alias;
-        std::set<int> current_world_ranks;
+        // Ordered vector with the world ranks
+        std::vector<Rank> world_ranks;
 };
 
-class RespawnedSupportedComm : SupportedComm
+class RespawnedSupportedComm : public SupportedComm
 {
     public:
         int size();
         int rank();
-        int get_failed_ranks_before(int rank);
-        RespawnedSupportedComm(MPI_Comm comm, std::set<int> current_world_ranks, std::set<int> failed_ranks);
-
-    private:
-        std::set<int> failed_ranks;
-
 };
 
 #endif
