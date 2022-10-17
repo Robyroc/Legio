@@ -32,31 +32,26 @@ extern int len;
 void initialization(int* argc, char *** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    int size;
+    int size, rank;
     std::vector<int> failed;
-
-    printf("INITIALIZATION\n\n");fflush(stdout);
         
     if (command_line_option_exists(*argc, *argv, "--respawned")) {
-            printf("RESPAWNED OPTION\n\n");fflush(stdout);
 
-        char* rank = get_command_line_option(*argc, *argv, "--size");
-        size = std::stoi(rank);
+        size = std::stoi(get_command_line_option(*argc, *argv, "--size"));
         char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
         if (possibly_null_failed != 0) {
-            printf("%s", possibly_null_failed); fflush(stdout);
             std::string raw_failed = possibly_null_failed;
             std::stringstream ss( raw_failed );
             while( ss.good() )
             {
                 std::string substr;
                 getline( ss, substr, ',' );
-                std::cout << substr; fflush(stdout);
                 cur_comms->set_failed_rank(std::stoi(substr));
             }
         }
 
-        cur_comms = new RespawnMulticomm(size, failed);
+        rank = std::stoi(get_command_line_option(*argc, *argv, "--rank"));
+        cur_comms = new RespawnMulticomm(size, rank, failed);
         cur_comms->respawned = true;
     }
     else {
@@ -67,13 +62,11 @@ void initialization(int* argc, char *** argv)
 
     char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
     if (possibly_null_to_respawn != 0) {
-                    printf("TO RESPAWN OPTION\n\n");fflush(stdout);
 
         std::string raw_to_respawn = possibly_null_to_respawn;
         std::stringstream ss( raw_to_respawn );
         while( ss.good() )
         {
-                        printf("%s", possibly_null_to_respawn); fflush(stdout);
             std::string substr;
             
             getline( ss, substr, ',' );
@@ -165,7 +158,6 @@ void replace_comm(ComplexComm* cur_complex)
         }
         failure_mtx.unlock_shared();
         failure_mtx.lock();
-        printf("Inside the lock"); fflush(stdout);
         repair_failure();
         failure_mtx.unlock();
     }
