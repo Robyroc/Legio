@@ -12,9 +12,10 @@
 class RespawnMulticomm : public Multicomm
 {
     public:
-        RespawnMulticomm(int size, std::vector<int> failed);
+        RespawnMulticomm(int size, int rank, std::vector<int> failed);
         std::map<int, RespawnedSupportedComm> supported_comms;
         virtual void translate_ranks(int, ComplexComm*, int*);
+        int rank;
 };
 
 #endif

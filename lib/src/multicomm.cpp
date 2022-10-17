@@ -14,15 +14,25 @@ Multicomm::Multicomm(int size){
 
 int Multicomm::add_comm(MPI_Comm added, MPI_Comm parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, MPI_Comm second_parent)
 {
-    int id = MPI_Comm_c2f(added);
-    MPI_Comm temp;
-    PMPI_Comm_dup(added, &temp);
-    MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
-    //std::pair<int, int> order_adding(id, size++);
-    std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id, MPI_Comm_c2f(parent), generator, inter_generator, MPI_Comm_c2f(second_parent)));
-    auto res = comms.insert(adding);
-    //comms_order.insert(order_adding);
-    return res.second;
+    if (!respawned) {
+        int id = MPI_Comm_c2f(added);
+        MPI_Comm temp;
+        PMPI_Comm_dup(added, &temp);
+        MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
+        //std::pair<int, int> order_adding(id, size++);
+        std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id, MPI_Comm_c2f(parent), generator, inter_generator, MPI_Comm_c2f(second_parent)));
+        auto res = comms.insert(adding);
+        //comms_order.insert(order_adding);
+        return res.second;
+    }
+    else {
+        int id = MPI_Comm_c2f(added);
+        //std::pair<int, int> order_adding(id, size++);
+        std::pair<int, ComplexComm> adding(id, ComplexComm(added, id, MPI_Comm_c2f(parent), generator, inter_generator, MPI_Comm_c2f(second_parent)));
+        auto res = comms.insert(adding);
+        //comms_order.insert(order_adding);
+        return res.second;
+    }
 }
 
 ComplexComm* Multicomm::translate_into_complex(MPI_Comm input)
@@ -122,6 +132,25 @@ void Multicomm::translate_ranks(int source_rank, ComplexComm* comm, int* dest_ra
 {
     MPI_Group tr_group;
     int source = source_rank;
-    MPI_Comm_group(comm->get_comm(), &tr_group);
-    MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, dest_rank);
+    int failed_ranks = 0;
+    auto res = supported_comms.find(comm->get_alias_id());
+    if( res == supported_comms.end() && comm->get_alias() != MPI_COMM_WORLD) {
+        MPI_Group tr_group;
+        int source = source_rank;
+        MPI_Comm_group(comm->get_comm(), &tr_group);
+        MPI_Group_translate_ranks(comm->get_group(), 1, &source, tr_group, dest_rank);
+        return;
+    }
+    else if (comm->get_alias() == MPI_COMM_WORLD) {
+        for (int i = 0; i < source_rank; i++) {
+            if (ranks.at(i).failed)
+                failed_ranks++;
+        }
+        *dest_rank = source_rank - failed_ranks;
+    }
+    else {
+        SupportedComm respawned_comm = res->second;
+        failed_ranks = respawned_comm.get_failed_ranks_before(source_rank);
+        *dest_rank = source_rank - failed_ranks;
+    }
 }

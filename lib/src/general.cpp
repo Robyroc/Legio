@@ -73,12 +73,16 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
         auto supported_comms = respawned_comms->supported_comms;
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
+        if (comm == MPI_COMM_WORLD) {
+            *rank = respawned_comms->rank;
+        }
         if (found_comm == supported_comms.end()) {
             return PMPI_Comm_rank(comm, rank);
         }
         else {
-            return found_comm->second.rank();
+            *rank = found_comm->second.rank();
         }
+        return MPI_SUCCESS;
     }
 }
 
@@ -94,12 +98,17 @@ int MPI_Comm_size(MPI_Comm comm, int *size)
         auto supported_comms = respawned_comms->supported_comms;
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
-        if (found_comm == supported_comms.end()) {
+        if (comm == MPI_COMM_WORLD) {
+            *size = respawned_comms->get_ranks().size();
+        }
+        else if (found_comm == supported_comms.end()) {
             return PMPI_Comm_size(comm, size);
         }
         else {
-            return found_comm->second.size();
+            printf("CHECK RESPAWN SIZE!!!\n\n"); fflush(stdout);
+            *size = found_comm->second.size();
         }
+        return MPI_SUCCESS;
     }
 }
 
@@ -226,7 +235,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
         MPI_Error_string(rc, errstr, &len);
         printf("Rank %d / %d: comm_create_group done (error: %s)\n", rank, size, errstr); fflush(stdout);
     }
-    if(flag && rc == MPI_SUCCESS)
+    if(flag && rc == MPI_SUCCESS && *newcomm != MPI_COMM_NULL)
     {
         MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
         cur_comms->add_comm(
