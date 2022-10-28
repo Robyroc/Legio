@@ -116,10 +116,11 @@ void replace_comm(ComplexComm* cur_complex)
     MPI_Comm new_comm, world;
     MPI_Group group;
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, current_rank;
+    std::set<int> failed_ranks_set;
 
     ComplexComm *world_complex = cur_comms->translate_into_complex(MPI_COMM_WORLD);
-    MPIX_Comm_failure_ack(cur_complex->get_comm());
-    who_failed(cur_complex->get_comm(), &failed, ranks);
+    MPIX_Comm_failure_ack(world_complex->get_comm());
+    who_failed(world_complex->get_comm(), &failed, ranks);
 
     if(0 == failed) {
         PMPI_Comm_free(&new_comm);
@@ -133,7 +134,9 @@ void replace_comm(ComplexComm* cur_complex)
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             printf("[is_respawned: %d] Detected failure in rank %d / %d.\n", is_respawned(), rank, size);
         }
-        // TODO(low-priority): skip communication with thread if only not-to-restart process
+        for (i = 0; i < failed; i++) {
+            failed_ranks_set.insert(ranks[i]);
+        }
         MPI_Group world_group, not_failed_group;
         MPI_Comm not_failed_comm;
         int buf = LEGIO_FAILURE_PING_VALUE, not_failed_size;
@@ -145,19 +148,23 @@ void replace_comm(ComplexComm* cur_complex)
         // PMPI_Group_size(not_failed_group, &not_failed_size);
         // PMPI_Comm_create_group(world_complex->get_comm(), not_failed_group, 1, &not_failed_comm);
         // PMPI_Comm_rank(not_failed_comm, &current_rank);
-        // for (int i = 0; i < not_failed_size; i++) {
-        //     printf("NOT FAILED SIZE %d\nCURRENT RANK %d\n", not_failed_size, current_rank); fflush(stdout);
-        //     if (i == current_rank)
-        //         continue;
-        //     if (VERBOSE)
-        //         {
-        //             int rank, size;
-        //             MPI_Comm_size(MPI_COMM_WORLD, &size);
-        //             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        //             printf("Rank %d / %d sending failure notification to not failed rank (new index %d) .\n", rank, size, i); fflush(stdout);
-        //         }
-        //     PMPI_Send(&buf, 1, MPI_INT, i, LEGIO_FAILURE_TAG, not_failed_comm);
-        // }
+        int ranks_comm_size, cur_rank;
+        PMPI_Comm_size(world_complex->get_comm(), &ranks_comm_size);
+        PMPI_Comm_rank(world_complex->get_comm(), &cur_rank);
+
+        for (int i = 0; i < ranks_comm_size; i++) {
+            if (i == cur_rank || failed_ranks_set.find(i) != failed_ranks_set.end())
+                continue;
+            
+            if (VERBOSE)
+                {
+                    int rank, size;
+                    MPI_Comm_size(MPI_COMM_WORLD, &size);
+                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                    printf("Rank %d / %d sending failure notification to not failed rank (new index %d) .\n", rank, size, i); fflush(stdout);
+                }
+            PMPI_Send(&buf, 1, MPI_INT, i, LEGIO_FAILURE_TAG, world_complex->get_comm());
+        }
         failure_mtx.lock();
         repair_failure();
         failure_mtx.unlock();

@@ -1,7 +1,13 @@
 #include "complex_comm.h"
 #include "mpi.h"
+#include <mutex>
 #include "structure_handler.h"
 #include "request_handler.h"
+#include "restart.h"
+
+
+extern std::mutex change_world_mtx;
+
 
 ComplexComm::ComplexComm(MPI_Comm comm, int id, int parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, int second_parent)
     :cur_comm(comm),
@@ -91,6 +97,9 @@ MPI_Comm ComplexComm::get_comm()
 
 void ComplexComm::replace_comm(MPI_Comm comm)
 {
+    if (get_alias() == MPI_COMM_WORLD) {
+        change_world_mtx.lock();
+    }
     get_handler<MPI_Win>()->replace(comm);
     //windows->replace(comm);
     get_handler<MPI_File>()->replace(comm);
@@ -103,6 +112,9 @@ void ComplexComm::replace_comm(MPI_Comm comm)
     PMPI_Info_free(&info);
     PMPI_Comm_free(&cur_comm);
     cur_comm = comm;
+    if (get_alias() == MPI_COMM_WORLD) {
+        change_world_mtx.unlock();
+    }
 }
 
 MPI_Group ComplexComm::get_group()

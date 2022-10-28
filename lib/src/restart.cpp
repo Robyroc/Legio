@@ -10,6 +10,7 @@
 #include <chrono>
 #include <string>
 #include <shared_mutex>
+#include <mutex>
 #include <thread>
 #include <condition_variable>
 #include <algorithm>
@@ -23,6 +24,7 @@ extern Multicomm *cur_comms;
 // Failure mutex is locked in shared mode when accessing normal MPI operations
 // When a restart operation is started, we need to lock it exclusively
 std::shared_timed_mutex failure_mtx;
+std::mutex change_world_mtx;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
@@ -38,12 +40,12 @@ void repair_failure() {
     ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
 
     // Ensure all failed ranks are acked
-    // MPIX_Comm_agree(world->get_comm(), &flag);
     // MPIX_Comm_revoke(world->get_comm());
+    MPIX_Comm_agree(world->get_comm(), &flag);
     MPIX_Comm_failure_ack(world->get_comm());
     who_failed(world->get_comm(), &failed, ranks);
 
-    PMPI_Comm_rank(world->get_comm(), &rank);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     if (failed == 0) {
         // We already repaired, let's exit!
@@ -288,30 +290,41 @@ void loop_repair_failures()
     while(1)
     {
         
-        int buf, length;
+        int length;
         MPI_Status status;
+        MPI_Comm world_comm;
+        change_world_mtx.lock();
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
-        PMPI_Comm_rank(world->get_comm(), &rank);
-        MPI_Comm_set_errhandler(world->get_comm(), MPI_ERRORS_RETURN);
-        if (world->get_comm() == MPI_COMM_NULL) {
+        world_comm = world->get_comm();
+        MPI_Comm_set_errhandler(world_comm, MPI_ERRORS_RETURN);
+        if (world_comm == MPI_COMM_NULL) {
+            change_world_mtx.unlock();
             return;
         }
-        PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world->get_comm(), &status);
-
-        if (buf == LEGIO_FAILURE_REPAIR_VALUE) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        printf("Probing from rank %d\n", rank);
+        int flag = 0, flag_self = 0, buf;
+        int local_rank;
+        PMPI_Iprobe(MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &flag, MPI_STATUS_IGNORE);
+        change_world_mtx.unlock();
+        if(flag)
+        {
+            failure_mtx.lock();
+            printf("\n\n\nFOUND SOMETHING TO REPAIR THROUGH THREAD!\n");
+            PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &status);
             int rank, size;
-            PMPI_Comm_size(world->get_comm(), &size);
-            PMPI_Comm_rank(world->get_comm(), &rank);
+            MPI_Comm_size(MPI_COMM_WORLD, &size);
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             if (VERBOSE)
                 {
                     printf("Rank %d / %d: received failure notification from %d.\n", size, rank, status.MPI_SOURCE); fflush(stdout);
                 }
             printf("Trying to lock in the thread, rank: %d\n", rank); fflush(stdout);
-            // failure_mtx.lock();
             printf("Locked in the thread, rank: %d\n", rank); fflush(stdout);
             repair_failure();
             printf("Repaired failure in the thread, rank: %d\n", rank); fflush(stdout);   
-            // failure_mtx.unlock();
+            failure_mtx.unlock();
         }
     }
 }

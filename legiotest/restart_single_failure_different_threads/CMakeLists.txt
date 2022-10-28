@@ -1,0 +1,5 @@
+add_executable(legio_restart_single_failure_different_threads restart_single_failure_different_threads.cpp)
+
+target_link_libraries(legio_restart_single_failure_different_threads PUBLIC legio)
+
+linkMPI(legio_restart_single_failure_different_threads)

@@ -33,8 +33,8 @@ int MPI_Init(int* argc, char *** argv)
     int rc = PMPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
     initialization(argc, argv);
 
-    // std::thread repair(loop_repair_failures);
-    // repair.detach();
+    std::thread repair(loop_repair_failures);
+    repair.detach();
 
     //kalive_thread();
     return rc;
@@ -45,7 +45,7 @@ int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
     int rc = PMPI_Init_thread(argc, argv, required, provided);
     initialization(argc, argv);
 
-    printf("Starting failure repairing thread...");
+    printf("Starting failure repairing thread...\n");
 
     // std::thread repair(loop_repair_failures);
 
