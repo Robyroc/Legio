@@ -22,12 +22,10 @@ int main(int argc, char** argv)
     first_ranks[1] = 1;
     first_ranks[2] = 2;
 
-    printf("\nSetup done for rank: %d\n", rank); fflush(stdout);
+    printf("\n\nSetup done for rank: %d\n", rank); fflush(stdout);
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_size(world_group, &world_group_size);
     initialize_comm(3, first_ranks, &first_comm);
-
-    MPI_Barrier(first_comm);
     
     if (is_respawned() && rank == 0) {
         int rankk;
@@ -55,8 +53,8 @@ int main(int argc, char** argv)
         MPI_Barrier(first_comm);
         printf("\n[rank 2] Original after second barrier\n"); fflush(stdout);
         }
+    MPI_Barrier(MPI_COMM_WORLD);
     int cur_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &cur_rank);
-    printf("Last barrier, rank: %d", cur_rank); fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
+    printf("Last barrier done, rank: %d", cur_rank); fflush(stdout);
     }

@@ -28,7 +28,7 @@ int MPI_Barrier(MPI_Comm comm)
         failure_mtx.lock_shared(); 
         if(flag) {
             int actual_size_comm, rankk;
-            MPI_Comm_size(translated->get_comm(), &actual_size_comm);
+            MPI_Comm_size(comm, &actual_size_comm);
             MPI_Comm_rank(comm, &rankk);
             printf("\nBarrier with actual size %d from rank %d\n", actual_size_comm, rankk); fflush(stdout);
             rc = PMPI_Barrier(translated->get_comm());

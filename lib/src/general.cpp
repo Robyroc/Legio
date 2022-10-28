@@ -78,7 +78,6 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
             *rank = respawned_comms->rank;
         }
         else if (found_comm == supported_comms.end()) {
-            printf("RESPAWNED BUT NOT FOUND COMM, SHOULD NEVER HAPPEN!\n"); fflush(stdout);
             return PMPI_Comm_rank(comm, rank);
         }
         else {
