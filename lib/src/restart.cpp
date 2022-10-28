@@ -302,12 +302,11 @@ void loop_repair_failures()
             change_world_mtx.unlock();
             return;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         printf("Probing from rank %d\n", rank);
         int flag = 0, flag_self = 0, buf;
         int local_rank;
         PMPI_Iprobe(MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &flag, MPI_STATUS_IGNORE);
-        change_world_mtx.unlock();
         if(flag)
         {
             failure_mtx.lock();
@@ -320,12 +319,13 @@ void loop_repair_failures()
                 {
                     printf("Rank %d / %d: received failure notification from %d.\n", size, rank, status.MPI_SOURCE); fflush(stdout);
                 }
-            printf("Trying to lock in the thread, rank: %d\n", rank); fflush(stdout);
-            printf("Locked in the thread, rank: %d\n", rank); fflush(stdout);
+            change_world_mtx.unlock();
+            failure_mtx.lock();
             repair_failure();
-            printf("Repaired failure in the thread, rank: %d\n", rank); fflush(stdout);   
             failure_mtx.unlock();
         }
+        else
+            change_world_mtx.unlock();
     }
 }
 
