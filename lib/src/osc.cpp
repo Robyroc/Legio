@@ -18,8 +18,6 @@ extern std::shared_timed_mutex failure_mtx;
 
 int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm, MPI_Win *win)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag;
@@ -62,8 +60,6 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
 
 int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm, void *baseptr, MPI_Win *win)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag;
@@ -112,8 +108,6 @@ int MPI_Win_free(MPI_Win *win)
 
 int MPI_Win_fence(int assert, MPI_Win win)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc;
@@ -143,8 +137,6 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
 int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     int rc;
     ComplexComm* comm = cur_comms->get_complex_from_structure(win); 
     if(comm != NULL)
@@ -174,8 +166,6 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
 
 int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     int rc;
     ComplexComm* comm = cur_comms->get_complex_from_structure(win); 
     if(comm != NULL)

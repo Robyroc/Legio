@@ -1,0 +1,5 @@
+add_executable(legio_restart_single_failure restart_single_failure.cpp)
+
+target_link_libraries(legio_restart_single_failure PUBLIC legio)
+
+linkMPI(legio_restart_single_failure)

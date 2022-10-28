@@ -66,14 +66,15 @@ class Multicomm
         void change_comm(ComplexComm*, MPI_Comm);
         bool respawned = false;
         std::vector<int> to_respawn;
-        std::map<int, SupportedComm> supported_comms;
+        std::map<int, int> supported_comms;
+        std::vector<SupportedComm> supported_comms_vector;
         std::vector<Rank> get_ranks() {
             return ranks;
         }
         void set_failed_rank(int world_rank) {
             ranks.at(world_rank).failed = true;
             for (auto &supported_comm : supported_comms) {
-                (supported_comm.second).set_failed(world_rank);
+                supported_comms_vector[supported_comm.second].set_failed(world_rank);
             }
         }
         virtual void translate_ranks(int, ComplexComm*, int*);
@@ -83,11 +84,11 @@ class Multicomm
             // 1 2 3 4
             // 1 x 3 4
             // 2 = translated -> needs to become three
-            int i = 0, source = 0;
-            while (i < translated) {
-                source++;
-                if (!ranks.at(i).failed)
-                    i++;
+            int i = 0, source = translated;
+            while (i <= translated) {
+                if (ranks.at(i).failed)
+                    source++;
+                i++;
             }
             
             return source;

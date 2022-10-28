@@ -21,4 +21,9 @@ add_subdirectory(request)
 
 add_subdirectory(noncoll_oh)
 
-add_subdirectory(restart)
+add_subdirectory(restart_single_failure)
+
+add_subdirectory(restart_double_failure_no_respawn)
+
+add_subdirectory(restart_double_failure_both_respawn)
+

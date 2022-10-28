@@ -149,7 +149,7 @@ void Multicomm::translate_ranks(int source_rank, ComplexComm* comm, int* dest_ra
         *dest_rank = source_rank - failed_ranks;
     }
     else {
-        SupportedComm respawned_comm = res->second;
+        SupportedComm respawned_comm = supported_comms_vector[res->second];
         failed_ranks = respawned_comm.get_failed_ranks_before(source_rank);
         *dest_rank = source_rank - failed_ranks;
     }

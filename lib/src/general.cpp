@@ -33,8 +33,8 @@ int MPI_Init(int* argc, char *** argv)
     int rc = PMPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
     initialization(argc, argv);
 
-    std::thread repair(loop_repair_failures);
-    repair.detach();
+    // std::thread repair(loop_repair_failures);
+    // repair.detach();
 
     //kalive_thread();
     return rc;
@@ -47,7 +47,7 @@ int MPI_Init_thread(int* argc, char *** argv, int required, int* provided)
 
     printf("Starting failure repairing thread...");
 
-    std::thread repair(loop_repair_failures);
+    // std::thread repair(loop_repair_failures);
 
     //kalive_thread();
     return rc;
@@ -74,9 +74,11 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
         if (comm == MPI_COMM_WORLD) {
+            printf("Getting rank from saved, %d\n", respawned_comms->rank);fflush(stdout);
             *rank = respawned_comms->rank;
         }
-        if (found_comm == supported_comms.end()) {
+        else if (found_comm == supported_comms.end()) {
+            printf("RESPAWNED BUT NOT FOUND COMM, SHOULD NEVER HAPPEN!\n"); fflush(stdout);
             return PMPI_Comm_rank(comm, rank);
         }
         else {
@@ -105,7 +107,6 @@ int MPI_Comm_size(MPI_Comm comm, int *size)
             return PMPI_Comm_size(comm, size);
         }
         else {
-            printf("CHECK RESPAWN SIZE!!!\n\n"); fflush(stdout);
             *size = found_comm->second.size();
         }
         return MPI_SUCCESS;
@@ -134,16 +135,17 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
 
 int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        failure_mtx.lock_shared(); 
         if(flag)
             rc = PMPI_Comm_dup(translated->get_comm(), newcomm);
         else
             rc = PMPI_Comm_dup(comm, newcomm);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -178,11 +180,11 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 
 int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
+        failure_mtx.lock_shared(); 
         if(flag)
         {
             int rank;
@@ -197,19 +199,23 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
                 MPI_Comm_free(&temp);
                 *newcomm = MPI_COMM_NULL;
             }
+            failure_mtx.unlock_shared(); 
             return rc;
         }
-        else
-            return PMPI_Comm_create(comm, group, newcomm);
+        else {
+            rc = PMPI_Comm_create(comm, group, newcomm);
+            failure_mtx.unlock_shared(); 
+            return rc;
+        }
     }
 }
 
 int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *newcomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    failure_mtx.lock_shared(); 
     if(flag)
     {
         MPI_Group first_clean, second_clean;
@@ -219,6 +225,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
         MPI_Group_size(second_clean, &size_second);
         if (size_first != size_second)
         {
+            printf("\n\n FAILED!!!!\n\n");
             rc = MPI_ERR_PROC_FAILED;
             *newcomm = MPI_COMM_NULL;
         }
@@ -227,6 +234,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
     }
     else
         rc = PMPI_Comm_create_group(comm, group, tag, newcomm);
+    failure_mtx.unlock_shared(); 
     if(VERBOSE)
     {
         int rank, size;
@@ -255,7 +263,6 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
 
 int MPI_Comm_disconnect(MPI_Comm * comm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_disconnect(a);};
     cur_comms->remove(*comm, func);
     func(comm);
@@ -264,7 +271,6 @@ int MPI_Comm_disconnect(MPI_Comm * comm)
 
 int MPI_Comm_free(MPI_Comm* comm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     std::function<int(MPI_Comm*)> func = [](MPI_Comm * a){return PMPI_Comm_free(a);};
     cur_comms->remove(*comm, func);
     func(comm);
@@ -273,16 +279,17 @@ int MPI_Comm_free(MPI_Comm* comm)
 
 int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     while(1)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        failure_mtx.lock_shared(); 
         if(flag)
             rc = PMPI_Comm_split(translated->get_comm(), color, key, newcomm);
         else
             rc = PMPI_Comm_split(comm, color, key, newcomm);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -317,8 +324,6 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
 
 int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_comm, int remote_leader, int tag, MPI_Comm *newintercomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag, own_rank;
@@ -327,6 +332,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
         //MPI_Barrier(local_comm);
         MPI_Comm remote_comm = MPI_COMM_NULL;
         ComplexComm* translated = cur_comms->translate_into_complex(local_comm);
+        failure_mtx.lock_shared(); 
         if(flag)
         {
             int local_root;
@@ -353,6 +359,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
         }
         else
             rc = PMPI_Intercomm_create(local_comm, local_leader, peer_comm, remote_leader, tag, newintercomm);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -397,17 +404,17 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
 
 int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag;
         cur_comms->part_of(intercomm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(intercomm);
+        failure_mtx.lock_shared(); 
         if(flag)
             rc = PMPI_Intercomm_merge(translated->get_comm(), high, newintracomm);
         else
             rc = PMPI_Intercomm_merge(intercomm, high, newintracomm);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -442,8 +449,6 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm)
 
 int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info info, int root, MPI_Comm comm, MPI_Comm *intercomm, int array_of_errcodes[])
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag;
@@ -451,10 +456,12 @@ int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info inf
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
         int root_rank = root;
         cur_comms->translate_ranks(root, translated, &root_rank);
+        failure_mtx.lock_shared(); 
         if(flag)
             rc = PMPI_Comm_spawn(command, argv, maxprocs, info, root_rank, translated->get_comm(), intercomm, array_of_errcodes);
         else
             rc = PMPI_Comm_spawn(command, argv, maxprocs, info, root, comm, intercomm, array_of_errcodes);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -488,17 +495,17 @@ int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info inf
 
 int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     while(1)
     {
         int rc, flag;
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
+        failure_mtx.lock_shared(); 
         if(flag)
             rc = PMPI_Comm_set_info(translated->get_comm(), info);
         else
             rc = PMPI_Comm_set_info(comm, info);
+        failure_mtx.unlock_shared(); 
         if(VERBOSE)
         {
             int rank, size;
@@ -521,15 +528,15 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
 
 int MPI_Comm_get_info(MPI_Comm comm, MPI_Info * info_used)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    failure_mtx.lock_shared(); 
     if(flag)
         rc = PMPI_Comm_get_info(translated->get_comm(), info_used);
     else
         rc = PMPI_Comm_get_info(comm, info_used);
+    failure_mtx.unlock_shared(); 
     if(VERBOSE)
     {
         int rank, size;

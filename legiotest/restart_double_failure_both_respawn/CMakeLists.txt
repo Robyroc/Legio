@@ -1,0 +1,5 @@
+add_executable(legio_restart_double_failure_both_respawn restart_double_failure_both_respawn.cpp)
+
+target_link_libraries(legio_restart_double_failure_both_respawn PUBLIC legio)
+
+linkMPI(legio_restart_double_failure_both_respawn)

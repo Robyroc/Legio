@@ -19,7 +19,6 @@ extern std::shared_timed_mutex failure_mtx;
 
 int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
@@ -29,6 +28,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
     void* tempbuf = malloc(size*count);
     memcpy(tempbuf, buf, size*count);
     std::function<int(MPI_Comm, MPI_Request*)> func;
+    failure_mtx.lock_shared(); 
     if(flag)
     {
         int dest_rank;
@@ -52,6 +52,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
     else
         rc = PMPI_Isend(buf, count, datatype, dest, tag, comm, request);
     send_handling:
+    failure_mtx.unlock_shared(); 
     if (VERBOSE)
     {
         int rank, size;
@@ -70,11 +71,11 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 
 int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
     std::function<int(MPI_Comm, MPI_Request*)> func;
+    failure_mtx.lock_shared(); 
     if(flag)
     {
         int source_rank;
@@ -98,6 +99,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
     else
         rc = PMPI_Irecv(buf, count, datatype, source, tag, comm, request);
     recv_handling:
+    failure_mtx.unlock_shared(); 
     if (VERBOSE)
     {
         int rank, size;
@@ -115,10 +117,10 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc;
     MPI_Request old = *request;
     ComplexComm* comm = cur_comms->get_complex_from_structure(*request);
+    failure_mtx.lock_shared(); 
     if(comm != NULL)
     {
         MPI_Request translated = comm->translate_structure(*request);
@@ -126,6 +128,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
     }
     else
         rc = PMPI_Wait(request, status);
+    failure_mtx.unlock_shared(); 
     if (VERBOSE)
     {
         int rank, size;
@@ -140,9 +143,9 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
 
 int MPI_Test(MPI_Request* request, int *flag, MPI_Status *status)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     int rc;
     ComplexComm* comm = cur_comms->get_complex_from_structure(*request);
+    failure_mtx.lock_shared(); 
     if(comm != NULL)
     {
         MPI_Request translated = comm->translate_structure(*request);
@@ -150,6 +153,7 @@ int MPI_Test(MPI_Request* request, int *flag, MPI_Status *status)
     }
     else
         rc = PMPI_Test(request, flag, status);
+    failure_mtx.unlock_shared(); 
     if (VERBOSE)
     {
         int rank, size;
@@ -167,7 +171,6 @@ int MPI_Test(MPI_Request* request, int *flag, MPI_Status *status)
 
 int MPI_Request_free(MPI_Request *request)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
     cur_comms->remove_request(request);
     return PMPI_Request_free(request);
 }

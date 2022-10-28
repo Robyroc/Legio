@@ -19,8 +19,6 @@ int any_recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status*);
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     int i, rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
@@ -55,14 +53,13 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status * status)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
     if(source == MPI_ANY_SOURCE)
         return any_recv(buf, count, datatype, source, tag, comm, status);
 
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    failure_mtx.lock_shared(); 
     if(flag)
     {
         int source_rank;
@@ -76,6 +73,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     else
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated->get_comm(), status);
     recv_handling:
+    failure_mtx.unlock_shared(); 
     if(VERBOSE)
     {
         int rank, size;
@@ -89,11 +87,11 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
 int MPI_Sendrecv(const void *sendbuf, int sendcount, MPI_Datatype sendtype, int dest, int sendtag, void *recvbuf, int recvcount, MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status *status)
 {
-    std::shared_lock<std::shared_timed_mutex> lock(failure_mtx);
-
+    
     int rc, flag;
     cur_comms->part_of(comm, &flag);
     ComplexComm* translated = cur_comms->translate_into_complex(comm);
+    failure_mtx.lock_shared(); 
     if(flag)
     {
         int source_rank, dest_rank;
@@ -108,6 +106,7 @@ int MPI_Sendrecv(const void *sendbuf, int sendcount, MPI_Datatype sendtype, int 
     else
         rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status);
     recv_handling:
+    failure_mtx.unlock_shared(); 
     if(VERBOSE)
     {
         int rank, size;
