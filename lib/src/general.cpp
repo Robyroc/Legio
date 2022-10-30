@@ -74,7 +74,7 @@ int MPI_Comm_rank(MPI_Comm comm, int *rank)
         auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
         if (comm == MPI_COMM_WORLD) {
-            printf("Getting rank from saved, %d\n", respawned_comms->rank);fflush(stdout);
+            //printf("Getting rank from saved, %d\n", respawned_comms->rank);fflush(stdout);
             *rank = respawned_comms->rank;
         }
         else if (found_comm == supported_comms.end()) {

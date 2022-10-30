@@ -41,7 +41,6 @@ void repair_failure() {
 
     // Ensure all failed ranks are acked
     // MPIX_Comm_revoke(world->get_comm());
-    MPIX_Comm_agree(world->get_comm(), &flag);
     MPIX_Comm_failure_ack(world->get_comm());
     who_failed(world->get_comm(), &failed, ranks);
 
@@ -69,7 +68,7 @@ void repair_failure() {
     }
 
     MPI_Comm tmp_intracomm, tmp_intercomm, tmp_world, new_world;
-    PMPI_Comm_size(world->get_comm(), &rank);
+    //PMPI_Comm_size(world->get_comm(), &rank);
     PMPIX_Comm_shrink(world->get_comm(), &tmp_world);
     PMPI_Comm_size(tmp_world, &new_size);
     
@@ -253,7 +252,7 @@ void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
 
         MPI_Comm_group(complex->get_comm(), &group_world);
         PMPI_Group_incl(group_world, ranks_in_comm_translated.size(), ranks_in_comm_translated.data(), &new_group);
-        printf("Rank %d is re-creating the comm", rank);
+        printf("Rank %d is re-creating the comm\n", rank);
         PMPI_Comm_create(complex->get_comm(), new_group, &new_comm);
 
 
@@ -289,7 +288,7 @@ void loop_repair_failures()
     
     while(1)
     {
-        
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         int length;
         MPI_Status status;
         MPI_Comm world_comm;
@@ -302,22 +301,21 @@ void loop_repair_failures()
             change_world_mtx.unlock();
             return;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        printf("Probing from rank %d\n", rank);
+        //printf("Probing from rank %d\n", rank);
         int flag = 0, flag_self = 0, buf;
         int local_rank;
         PMPI_Iprobe(MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &flag, MPI_STATUS_IGNORE);
         if(flag)
         {
-            failure_mtx.lock();
-            printf("\n\n\nFOUND SOMETHING TO REPAIR THROUGH THREAD!\n");
-            PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &status);
+            //failure_mtx.lock();
             int rank, size;
             MPI_Comm_size(MPI_COMM_WORLD, &size);
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            printf("\n\n\n%d FOUND SOMETHING TO REPAIR THROUGH THREAD!\n", rank);
+            PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &status);
             if (VERBOSE)
                 {
-                    printf("Rank %d / %d: received failure notification from %d.\n", size, rank, status.MPI_SOURCE); fflush(stdout);
+                    printf("Rank %d / %d: received failure notification from %d.\n", rank, size, status.MPI_SOURCE); fflush(stdout);
                 }
             change_world_mtx.unlock();
             failure_mtx.lock();
