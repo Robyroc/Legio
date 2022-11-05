@@ -9,13 +9,9 @@
 extern std::mutex change_world_mtx;
 
 
-ComplexComm::ComplexComm(MPI_Comm comm, int id, int parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, int second_parent)
+ComplexComm::ComplexComm(MPI_Comm comm, int id)
     :cur_comm(comm),
-    alias_id(id),
-    generator(generator),
-    parent(parent),
-    inter_generator(inter_generator),
-    second_parent(second_parent)
+    alias_id(id)
 {    
     std::function<int(MPI_Win, int*)> setter_w = [](MPI_Win w, int* value) -> int {return MPI_SUCCESS;};
 
@@ -125,27 +121,4 @@ MPI_Group ComplexComm::get_group()
 MPI_Comm ComplexComm::get_alias()
 {
     return MPI_Comm_f2c(alias_id);
-}
-
-ComplexComm ComplexComm::regenerate(MPI_Comm comm, MPI_Comm second_comm = MPI_COMM_NULL)
-{
-    MPI_Comm new_comm;
-    int rc;
-    if(generator == nullptr)
-        rc = inter_generator(comm, second_comm, &new_comm);
-    else
-        rc = generator(comm, &new_comm);
-    return ComplexComm(new_comm, alias_id, parent, generator, inter_generator);
-}
-
-void ComplexComm::destroy(std::function<int(MPI_Comm*)> destructor)
-{
-    this->destructor = destructor;
-    destructor(&cur_comm);
-}
-
-void ComplexComm::reapply_destruction()
-{
-    if(destructor != nullptr)
-        destructor(&cur_comm);
 }

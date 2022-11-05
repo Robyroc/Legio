@@ -257,15 +257,7 @@ void initialize_comm(int n, const int *ranks, MPI_Comm *newcomm) {
 
 
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-        cur_comms->add_comm(
-            new_comm,
-            MPI_COMM_WORLD,
-            [new_group] (MPI_Comm source, MPI_Comm *dest) -> int 
-            {
-                int rc = PMPI_Comm_create_group(source, new_group, 1, dest);
-                MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                return rc;
-            });
+        cur_comms->add_comm(new_comm);
 
         if (VERBOSE)
         {

@@ -159,15 +159,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(
-                    *newcomm,
-                    comm,
-                    [](MPI_Comm source, MPI_Comm* dest) -> int
-                    {
-                        int rc = PMPI_Comm_dup(source, dest);
-                        MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                        return rc;
-                    });
+                bool result = cur_comms->add_comm(*newcomm);
                 if(result)
                     return rc;
             }
@@ -245,15 +237,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm *new
     if(flag && rc == MPI_SUCCESS && *newcomm != MPI_COMM_NULL)
     {
         MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-        cur_comms->add_comm(
-            *newcomm,
-            comm,
-            [group, tag] (MPI_Comm source, MPI_Comm *dest) -> int 
-            {
-                int rc = PMPI_Comm_create_group(source, group, tag, dest);
-                MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                return rc;
-            });
+        cur_comms->add_comm(*newcomm);
         return rc;
     }
     else
@@ -303,15 +287,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(
-                    *newcomm,
-                    comm,
-                    [color, key] (MPI_Comm source, MPI_Comm *dest) -> int
-                    {
-                        int rc = PMPI_Comm_split(source, color, key, dest);
-                        MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                        return rc;
-                    });
+                bool result = cur_comms->add_comm(*newcomm);
                 if(result)
                     return rc;
             }
@@ -376,22 +352,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_co
                 MPI_Comm_group(local_comm, &local_group);
                 MPI_Comm_group(peer_comm, &remote_group);
                 MPI_Comm_set_errhandler(*newintercomm, MPI_ERRORS_RETURN);
-                int result = cur_comms->add_comm(
-                    *newintercomm,
-                    local_comm,
-                    nullptr,
-                    [local_leader, remote_leader, tag, local_group, remote_group] (MPI_Comm source1, MPI_Comm source2, MPI_Comm *dest) -> int
-                    {
-                        MPI_Group source1_group, source2_group;
-                        MPI_Comm_group(source1, &source1_group);
-                        MPI_Comm_group(source2, &source2_group);
-                        int rank_1, rank_2;
-                        MPI_Group_translate_ranks(local_group, 1, &local_leader, source1_group, &rank_1);
-                        MPI_Group_translate_ranks(remote_group, 1, &remote_leader, source2_group, &rank_2);
-                        int rc = PMPI_Intercomm_create(source1, rank_1, source2, rank_2, tag, dest);
-                        MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                        return rc;
-                    }, peer_comm);
+                int result = cur_comms->add_comm(*newintercomm);
                 if(result)
                     return rc;
             }
@@ -428,15 +389,7 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm)
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newintracomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(
-                    *newintracomm,
-                    intercomm,
-                    [high](MPI_Comm source, MPI_Comm* dest) -> int
-                    {
-                        int rc = PMPI_Intercomm_merge(source, high, dest);
-                        MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                        return rc;
-                    });
+                bool result = cur_comms->add_comm(*newintracomm);
                 if(result)
                     return rc;
             }
@@ -475,16 +428,7 @@ int MPI_Comm_spawn(const char *command, char *argv[], int maxprocs, MPI_Info inf
             if(rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*intercomm, MPI_ERRORS_RETURN);
-                bool result = cur_comms->add_comm(
-                    *intercomm,
-                    comm,
-                    [root_rank, command, argv, maxprocs, info] (MPI_Comm source, MPI_Comm *dest) -> int
-                    {
-                        int* array_of_errcodes;
-                        int rc = PMPI_Comm_spawn(command, argv, maxprocs, info, root_rank, source, dest, array_of_errcodes);
-                        MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-                        return rc;
-                    });
+                bool result = cur_comms->add_comm(*intercomm);
                 if(result)
                     return rc;
             }

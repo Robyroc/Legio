@@ -12,45 +12,27 @@ Multicomm::Multicomm(int size){
     }
 };
 
-int Multicomm::add_comm(MPI_Comm added, MPI_Comm parent, std::function<int(MPI_Comm, MPI_Comm*)> generator, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator, MPI_Comm second_parent)
+int Multicomm::add_comm(MPI_Comm added)
 {
     if (!respawned) {
         int id = MPI_Comm_c2f(added);
         MPI_Comm temp;
         PMPI_Comm_dup(added, &temp);
         MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
-        //std::pair<int, int> order_adding(id, size++);
-        std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id, MPI_Comm_c2f(parent), generator, inter_generator, MPI_Comm_c2f(second_parent)));
+        std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id));
         auto res = comms.insert(adding);
-        //comms_order.insert(order_adding);
         return res.second;
     }
     else {
         int id = MPI_Comm_c2f(added);
-        //std::pair<int, int> order_adding(id, size++);
-        std::pair<int, ComplexComm> adding(id, ComplexComm(added, id, MPI_Comm_c2f(parent), generator, inter_generator, MPI_Comm_c2f(second_parent)));
+        std::pair<int, ComplexComm> adding(id, ComplexComm(added, id));
         auto res = comms.insert(adding);
-        //comms_order.insert(order_adding);
         return res.second;
     }
 }
 
 ComplexComm* Multicomm::translate_into_complex(MPI_Comm input)
 {
-    /*
-    std::unordered_map<int, int>::iterator res = comms_order.find(MPI_Comm_c2f(input));
-    if(res == comms_order.end())
-    {
-        if(input != MPI_COMM_NULL)
-            printf("THIS SHOULDN'T HAVE HAPPENED, USE part_of BEFORE TRANSLATE.\n");
-        return NULL;
-    }
-    else
-    {
-        std::map<int, ComplexComm>::iterator res2 = comms.find(res->second);
-        return &(res2->second);
-    }
-    */
     auto res = comms.find(MPI_Comm_c2f(input));
     if (res == comms.end())
     {
@@ -68,10 +50,8 @@ void Multicomm::remove(MPI_Comm removed, std::function<int(MPI_Comm*)> destroyer
     //std::unordered_map<int, int>::iterator res = comms_order.find(id);
     if(res != comms.end())
     {
-        //std::map<int, ComplexComm>::iterator res2 = comms.find(res->second);
-
-        res->second.destroy(destroyer);
-
+        MPI_Comm target = res->second.get_comm();
+        //destroyer(&target);
         //Removed deletion since it may be useful for the recreation of the following comms
         comms.erase(id); 
     }

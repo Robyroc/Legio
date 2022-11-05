@@ -15,7 +15,7 @@ class ComplexComm;
 class Multicomm
 {
     public:
-        int add_comm(MPI_Comm, MPI_Comm, std::function<int(MPI_Comm, MPI_Comm*)>, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> = nullptr, MPI_Comm = MPI_COMM_NULL);
+        int add_comm(MPI_Comm);
         int add_comm(ComplexComm);
         ComplexComm* translate_into_complex(MPI_Comm);
         void remove(MPI_Comm, std::function<int(MPI_Comm*)>);
@@ -96,10 +96,8 @@ class Multicomm
     protected:
         std::vector<Rank> ranks;
     private:
-        std::map<int, ComplexComm> comms;
+        std::unordered_map<int, ComplexComm> comms;
         std::array<std::unordered_map<int,int>, 3> maps;
-        //std::unordered_map<int, int> comms_order;
-        //int size;
 };
 
 #endif

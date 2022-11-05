@@ -4,9 +4,9 @@
 #include "complex_comm.h"
 #include "respawn_multicomm.h"
 #include "multicomm.h"
-#include "utils.cpp"
+#include "utils.h"
 #include "restart.h"
-#include "legio.c"
+#include "legio.h"
 #include <sstream>
 #include <numeric>
 #include <shared_mutex>
@@ -19,33 +19,35 @@ extern std::shared_timed_mutex failure_mtx;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
-//std::thread * kalive;
-//int temp;
+// std::thread * kalive;
+// int temp;
 
 // Far capire al processo respawnato il communicatore
-// Necessario 
+// Necessario
 // Quando il processo viene spawnato, sa il suo rank ma non sa i comunicatori
 // Sa mpi_comm_world, e mpi comm self
 // Assumiamo di salvarci un sottogruppo di cur_comms con solo i dati dei comm che ci interessano
 // Dopo il restart duplica mpi_comm_self per creare comm da sostituire (con alternativa MPI_COMM_NULL)
 // Dopo fare le chiamate dara' un'errore di MPI_COMM_NULL -> fara' una recv su MPI_COMM_WORLD da chiunque
-void initialization(int* argc, char *** argv)
+void initialization(int *argc, char ***argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
     int size, rank;
     std::vector<int> failed;
-        
-    if (command_line_option_exists(*argc, *argv, "--respawned")) {
+
+    if (command_line_option_exists(*argc, *argv, "--respawned"))
+    {
 
         size = std::stoi(get_command_line_option(*argc, *argv, "--size"));
-        char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
-        if (possibly_null_failed != 0) {
+        char *possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
+        if (possibly_null_failed != 0)
+        {
             std::string raw_failed = possibly_null_failed;
-            std::stringstream ss( raw_failed );
-            while( ss.good() )
+            std::stringstream ss(raw_failed);
+            while (ss.good())
             {
                 std::string substr;
-                getline( ss, substr, ',' );
+                getline(ss, substr, ',');
                 cur_comms->set_failed_rank(std::stoi(substr));
             }
         }
@@ -55,53 +57,41 @@ void initialization(int* argc, char *** argv)
         cur_comms = new RespawnMulticomm(size, rank, failed);
         cur_comms->respawned = true;
     }
-    else {
+    else
+    {
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         cur_comms = new Multicomm(size);
         cur_comms->respawned = false;
     }
 
-    char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
-    if (possibly_null_to_respawn != 0) {
+    char *possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
+    if (possibly_null_to_respawn != 0)
+    {
 
         std::string raw_to_respawn = possibly_null_to_respawn;
-        std::stringstream ss( raw_to_respawn );
-        while( ss.good() )
+        std::stringstream ss(raw_to_respawn);
+        while (ss.good())
         {
             std::string substr;
-            
-            getline( ss, substr, ',' );
-                            std::cout << substr; fflush(stdout);
+
+            getline(ss, substr, ',');
+            std::cout << substr;
+            fflush(stdout);
             cur_comms->to_respawn.push_back(std::stoi(substr));
         }
     }
-    else {
+    else
+    {
         cur_comms->to_respawn = {};
     }
 
-    cur_comms->add_comm(
-        MPI_COMM_SELF,
-        MPI_COMM_NULL,
-        [](MPI_Comm a, MPI_Comm* dest) -> int
-        {
-            *dest = MPI_COMM_SELF;
-            MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-            return MPI_SUCCESS;
-        });
-    cur_comms->add_comm(
-        MPI_COMM_WORLD,
-        MPI_COMM_NULL,
-        [](MPI_Comm a, MPI_Comm* dest) -> int 
-        {
-            *dest = MPI_COMM_WORLD;
-            MPI_Comm_set_errhandler(*dest, MPI_ERRORS_RETURN);
-            return MPI_SUCCESS;
-        }
-    );
+    cur_comms->add_comm(MPI_COMM_SELF);
+    cur_comms->add_comm(MPI_COMM_WORLD);
 
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
-    if (cur_comms->respawned) {
-        char* rank = get_command_line_option(*argc, *argv, "--rank");
+    if (cur_comms->respawned)
+    {
+        char *rank = get_command_line_option(*argc, *argv, "--rank");
         restart(atoi(rank));
     }
 }
@@ -111,7 +101,7 @@ void finalization()
     delete cur_comms;
 }
 
-void replace_comm(ComplexComm* cur_complex)
+void replace_comm(ComplexComm *cur_complex)
 {
     MPI_Comm new_comm, world;
     MPI_Group group;
@@ -122,11 +112,12 @@ void replace_comm(ComplexComm* cur_complex)
     MPIX_Comm_failure_ack(world_complex->get_comm());
     who_failed(world_complex->get_comm(), &failed, ranks);
 
-    if(0 == failed) {
+    if (0 == failed)
+    {
         PMPI_Comm_free(&new_comm);
     }
     else
-    {    
+    {
         if (VERBOSE)
         {
             int rank, size;
@@ -134,7 +125,8 @@ void replace_comm(ComplexComm* cur_complex)
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             printf("[is_respawned: %d] Detected failure in rank %d / %d.\n", is_respawned(), rank, size);
         }
-        for (i = 0; i < failed; i++) {
+        for (i = 0; i < failed; i++)
+        {
             failed_ranks_set.insert(ranks[i]);
         }
         MPI_Group world_group, not_failed_group, cur_group, to_be_notified_group;
@@ -149,11 +141,11 @@ void replace_comm(ComplexComm* cur_complex)
         PMPI_Group_difference(not_failed_group, cur_group, &to_be_notified_group);
         PMPI_Group_size(to_be_notified_group, &notify_size);
         PMPI_Comm_rank(world_complex->get_comm(), &cur_rank);
-        if(notify_size > 0)
+        if (notify_size > 0)
         {
-            MPI_Request* requests = (MPI_Request*) malloc(sizeof(MPI_Request)*notify_size);
-            MPI_Status* statuses = (MPI_Status*) malloc(sizeof(MPI_Status)*notify_size);
-            for(int i = 0; i < notify_size; i++)
+            MPI_Request *requests = (MPI_Request *)malloc(sizeof(MPI_Request) * notify_size);
+            MPI_Status *statuses = (MPI_Status *)malloc(sizeof(MPI_Status) * notify_size);
+            for (int i = 0; i < notify_size; i++)
             {
                 int target_rank;
                 MPI_Group_translate_ranks(to_be_notified_group, 1, &i, world_group, &target_rank);
@@ -162,18 +154,19 @@ void replace_comm(ComplexComm* cur_complex)
                     int rank, size;
                     MPI_Comm_size(MPI_COMM_WORLD, &size);
                     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                    printf("Rank %d / %d sending failure notification to not failed rank %d.\n", rank, size, target_rank); fflush(stdout);
+                    printf("Rank %d / %d sending failure notification to not failed rank %d.\n", rank, size, target_rank);
+                    fflush(stdout);
                 }
-                PMPI_Issend(&buf, 1, MPI_INT, target_rank, LEGIO_FAILURE_TAG, world_complex->get_comm(),&(requests[i]));
+                PMPI_Issend(&buf, 1, MPI_INT, target_rank, LEGIO_FAILURE_TAG, world_complex->get_comm(), &(requests[i]));
             }
             MPI_Waitall(notify_size, requests, statuses);
             free(requests);
             free(statuses);
         }
 
-        //PMPI_Group_size(not_failed_group, &not_failed_size);
-        //PMPI_Comm_create_group(world_complex->get_comm(), not_failed_group, 1, &not_failed_comm);
-        // PMPI_Comm_rank(not_failed_comm, &current_rank);
+        // PMPI_Group_size(not_failed_group, &not_failed_size);
+        // PMPI_Comm_create_group(world_complex->get_comm(), not_failed_group, 1, &not_failed_comm);
+        //  PMPI_Comm_rank(not_failed_comm, &current_rank);
         /*
         int ranks_comm_size, cur_rank;
         PMPI_Comm_size(world_complex->get_comm(), &ranks_comm_size);
@@ -182,7 +175,7 @@ void replace_comm(ComplexComm* cur_complex)
         for (int i = 0; i < ranks_comm_size; i++) {
             if (i == cur_rank || failed_ranks_set.find(i) != failed_ranks_set.end())
                 continue;
-            
+
             if (VERBOSE)
                 {
                     int rank, size;
@@ -199,13 +192,13 @@ void replace_comm(ComplexComm* cur_complex)
     }
 }
 
-void agree_and_eventually_replace(int* rc, ComplexComm* cur_complex)
+void agree_and_eventually_replace(int *rc, ComplexComm *cur_complex)
 {
-    int flag = (MPI_SUCCESS==*rc);
+    int flag = (MPI_SUCCESS == *rc);
     MPIX_Comm_agree(cur_complex->get_comm(), &flag);
-    if(!flag && *rc == MPI_SUCCESS)
+    if (!flag && *rc == MPI_SUCCESS)
         *rc = MPIX_ERR_PROC_FAILED;
-    if(*rc != MPI_SUCCESS)
+    if (*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
 }
 /*

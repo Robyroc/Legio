@@ -51,25 +51,16 @@ class ComplexComm
 
         void replace_comm(MPI_Comm);
         MPI_Comm get_comm();
-        ComplexComm(MPI_Comm, int, int, std::function<int(MPI_Comm, MPI_Comm*)>, std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> = nullptr, int = 0);
+        ComplexComm(MPI_Comm, int);
         MPI_Group get_group();
         MPI_Comm get_alias();
-        void destroy(std::function<int(MPI_Comm*)>);
-        int get_parent() {return parent;};
         int get_alias_id() {return alias_id;}
-        ComplexComm regenerate(MPI_Comm, MPI_Comm);
-        void reapply_destruction();
 
     private:
         handlers struct_handlers;
         MPI_Comm cur_comm;
         MPI_Group group;
         int alias_id;
-        std::function<int(MPI_Comm, MPI_Comm*)> generator;
-        std::function<int(MPI_Comm, MPI_Comm, MPI_Comm*)> inter_generator;
-        std::function<int(MPI_Comm*)> destructor;
-        int parent;
-        int second_parent;
         template<class MPI_T>
         inline StructureHandler<MPI_T, MPI_Comm> * get_handler(void){
             return std::get<handle_selector<MPI_T>::get()>(struct_handlers);

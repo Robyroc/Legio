@@ -33,12 +33,13 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/intercomm_utils.h"
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/multicomm.h"
-    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
     "${LIBRARY_HDR_PATH}/request_handler.h"
+    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
     "${LIBRARY_HDR_PATH}/restart.h"
     "${LIBRARY_HDR_PATH}/struct_selector.h"
     "${LIBRARY_HDR_PATH}/structure_handler.h"
     "${LIBRARY_HDR_PATH}/supported_comm.h"
+    "${LIBRARY_HDR_PATH}/utils.h"
 )
 set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
 
@@ -51,7 +52,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/fileio.cpp"
     "${LIBRARY_SRC_PATH}/general.cpp"
     "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
-    "${LIBRARY_SRC_PATH}/legio.c"
+    "${LIBRARY_SRC_PATH}/legio.cpp"
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
     "${LIBRARY_SRC_PATH}/respawn_multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
