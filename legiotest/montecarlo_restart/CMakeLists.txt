@@ -1,0 +1,4 @@
+add_executable(legio_montecarlo_restart montecarlo.cpp)
+target_link_libraries(legio_montecarlo_restart PUBLIC legio)
+
+linkMPI(legio_montecarlo_restart)

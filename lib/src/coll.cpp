@@ -130,18 +130,32 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
     while(1)
     {
         int rc, flag;
+        failure_mtx.lock_shared(); 
         cur_comms->part_of(comm, &flag);
         ComplexComm* translated = cur_comms->translate_into_complex(comm);
-        failure_mtx.lock_shared(); 
-        if(flag)
+        if(VERBOSE)
         {
+            int rank, size;
+            PMPI_Comm_size(translated->get_comm(), &size);
+            MPI_Comm_rank(comm, &rank);
+            printf("Rank %d / %d: reduce ONGOING\n", rank, size);
+        }
+        if(flag)
+        {   
+            int rank, size;
+            MPI_Comm_rank(comm, &rank);
+                        PMPI_Comm_size(translated->get_comm(), &size);
+            printf("FOUND WITH RANK %d? ERROR!\n\n", rank);
             int root_rank;
             cur_comms->translate_ranks(root, translated, &root_rank);
             if(root_rank == MPI_UNDEFINED)
             {
+                printf("UNDEFINED? ERROR!\n\n");
                 HANDLE_REDUCE_FAIL(translated.get_comm());
             }
+                printf("Rank %d / %d: reduce\n", rank, size);
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank, translated->get_comm());
+            printf("Rank %d / %d: reduce COMPLETED\n", rank, size);
         }
         else
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
@@ -150,12 +164,12 @@ int MPI_Reduce(const void* sendbuf, void* recvbuf, int count, MPI_Datatype datat
         if(VERBOSE)
         {
             int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &size);
+            MPI_Comm_rank(comm, &rank);
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: reduce done (error: %s)\n", rank, size, errstr);
         }
-        if(flag)
+        if(rc != MPI_SUCCESS && flag)
         {
             agree_and_eventually_replace(&rc, translated);
             if(rc == MPI_SUCCESS)
