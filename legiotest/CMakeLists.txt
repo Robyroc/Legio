@@ -13,6 +13,8 @@ add_subdirectory(ptp)
 
 add_subdirectory(oh_measure)
 
+add_subdirectory(oh_measure_restart)
+
 add_subdirectory(montecarlo)
 
 add_subdirectory(montecarlo_restart)

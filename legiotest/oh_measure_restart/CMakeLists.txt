@@ -1,0 +1,4 @@
+add_executable(legio_oh_measure_restart oh.cpp)
+target_link_libraries(legio_oh_measure_restart PUBLIC legio)
+
+linkMPI(legio_oh_measure_restart)
