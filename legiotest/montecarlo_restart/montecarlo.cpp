@@ -53,7 +53,6 @@ int main(int argc, char** argv) {
    if (myRank == 1) {
       finish = MPI_Wtime();
       FILE *file_p = fopen("output.csv", "a");
-      fseek(file_p, 0, SEEK_END);
       fprintf(file_p, "%f\n", finish-start);
       fclose(file_p);
     }
@@ -84,7 +83,7 @@ long Toss (long processTosses, int myRank){
 	   x = rand_r(&seed)/(double)RAND_MAX;
 	   y = rand_r(&seed)/(double)RAND_MAX;
 	   if((x*x+y*y) <= 1.0 ) numberInCircle++;
-      if(myRank == 0 && toss == 50000000)
+      if(myRank == 0 && toss == 50000)
          raise(SIGINT);
       if(myRank == 0 && toss % 1000 == 0) 
          writeToFile(file, toss, numberInCircle);
@@ -95,11 +94,16 @@ long Toss (long processTosses, int myRank){
 long TossRestart (long processTosses, int myRank, long toss, long numberInCircle) {
 	double x,y;
 	unsigned int seed = (unsigned) time(NULL);
+   char buf[12];
+   snprintf(buf, 12, "checkpoint%d", myRank);
+   FILE* file = fopen(buf, "w+");
 	srand(seed + myRank);
 	for (; toss < processTosses; toss++) {
 	   x = rand_r(&seed)/(double)RAND_MAX;
 	   y = rand_r(&seed)/(double)RAND_MAX;
 	   if((x*x+y*y) <= 1.0 ) numberInCircle++;
+      if(myRank == 0 && toss % 1000 == 0) 
+         writeToFile(file, toss, numberInCircle);
     }
     return numberInCircle;
 }
