@@ -34,11 +34,11 @@ int main(int argc, char** argv)
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
 
-    if(rank == 1)
-    {
-        file_p = fopen("output.csv", "a");
-        fprintf(file_p, "%f\n", end-start);
-        fclose(file_p);
+   if (rank == 1) {
+      FILE *file_p = fopen("output.csv", "a");
+      fseek(file_p, 0, SEEK_END);
+      fprintf(file_p, "%f\n", end-start);
+      fclose(file_p);
     }
 
 

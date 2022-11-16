@@ -7,7 +7,7 @@
 #include <restart.h>
 #include <chrono>
 
-#define TOSSNUM 1200000000
+#define TOSSNUM 120000000
 struct checkpoint
 {
    long toss;
@@ -52,7 +52,8 @@ int main(int argc, char** argv) {
 
    if (myRank == 1) {
       finish = MPI_Wtime();
-      FILE *file_p = fopen("time-montercarlo-restart.csv", "a");
+      FILE *file_p = fopen("output.csv", "a");
+      fseek(file_p, 0, SEEK_END);
       fprintf(file_p, "%f\n", finish-start);
       fclose(file_p);
     }
