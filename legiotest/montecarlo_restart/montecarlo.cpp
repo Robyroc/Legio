@@ -29,6 +29,9 @@ int main(int argc, char** argv) {
    MPI_Init(&argc, &argv);
    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
+   if (myRank == 1) 
+      start = MPI_Wtime();
    
    totalNumTosses = TOSSNUM;
    numProcessTosses = totalNumTosses/numProcs;
@@ -46,6 +49,13 @@ int main(int argc, char** argv) {
    MPI_Reduce(&processNumberInCircle, &totalNumberInCircle, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
    MPI_Reduce(&numProcessTosses, &totalPerfTosses, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+   if (myRank == 1) {
+      finish = MPI_Wtime();
+      FILE *file_p = fopen("time-montercarlo-restart.csv", "a");
+      fprintf(file_p, "%f\n", finish-start);
+      fclose(file_p);
+    }
    
    if (myRank == 0) {
 	   //piEstimate = (4*totalNumberInCircle)/((double) totalNumTosses);
