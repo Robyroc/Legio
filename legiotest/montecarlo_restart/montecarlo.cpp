@@ -83,7 +83,7 @@ long Toss (long processTosses, int myRank){
 	   x = rand_r(&seed)/(double)RAND_MAX;
 	   y = rand_r(&seed)/(double)RAND_MAX;
 	   if((x*x+y*y) <= 1.0 ) numberInCircle++;
-      if(myRank == 0 && toss == 50000)
+      if(myRank == 0 && toss == 5000000)
          raise(SIGINT);
       if(myRank == 0 && toss % 1000 == 0) 
          writeToFile(file, toss, numberInCircle);
