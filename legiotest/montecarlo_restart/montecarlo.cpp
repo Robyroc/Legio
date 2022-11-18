@@ -7,14 +7,14 @@
 #include <restart.h>
 #include <chrono>
 
-#define TOSSNUM 120000000
+#define TOSSNUM 12000000000
 struct checkpoint
 {
    long toss;
    long numberincircle;
 };
 
-long Toss (long numProcessTosses, int myRank);
+long Toss (long numProcessTosses, int myRank, int tossFail);
 long TossRestart (long processTosses, int myRank, long toss, long numberInCircle);
 void writeToFile(FILE *file, long toss, long numberInCircle);
 void readFromFile(int myRank, struct checkpoint *cp);
@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
    
    totalNumTosses = TOSSNUM;
    numProcessTosses = totalNumTosses/numProcs;
+   int tossFail = numProcessTosses - 10000;
    
    if (is_respawned()) {
       struct checkpoint *cp = new checkpoint;
@@ -43,7 +44,7 @@ int main(int argc, char** argv) {
    }
    else {
       MPI_Barrier(MPI_COMM_WORLD);
-      processNumberInCircle = Toss(numProcessTosses, myRank);
+      processNumberInCircle = Toss(numProcessTosses, myRank, tossFail);
    }
    
    MPI_Barrier(MPI_COMM_WORLD);
@@ -70,11 +71,11 @@ int main(int argc, char** argv) {
 }  
 
 /* Function implements Monte Carlo version of tossing darts at a board */
-long Toss (long processTosses, int myRank){
+long Toss (long processTosses, int myRank, int tossFail){
 	long toss, numberInCircle = 0;        
 	double x,y;
-   char buf[12];
-   snprintf(buf, 12, "checkpoint%d", myRank);
+   char buf[15];
+   snprintf(buf, 15, "checkpoint%d", myRank);
    FILE* file = fopen(buf, "w+");
 	unsigned int seed = (unsigned) time(NULL);
 	srand(seed + myRank);
@@ -82,7 +83,7 @@ long Toss (long processTosses, int myRank){
 	   x = rand_r(&seed)/(double)RAND_MAX;
 	   y = rand_r(&seed)/(double)RAND_MAX;
 	   if((x*x+y*y) <= 1.0 ) numberInCircle++;
-      if(myRank == 0 && toss == 500000)
+      if(myRank == 0 && toss == tossFail)
          raise(SIGINT);
       if(myRank == 0 && toss % 1000 == 0) 
          writeToFile(file, toss, numberInCircle);
@@ -93,8 +94,8 @@ long Toss (long processTosses, int myRank){
 long TossRestart (long processTosses, int myRank, long toss, long numberInCircle) {
 	double x,y;
 	unsigned int seed = (unsigned) time(NULL);
-   char buf[12];
-   snprintf(buf, 12, "checkpoint%d", myRank);
+   char buf[15];
+   snprintf(buf, 15, "checkpoint%d", myRank);
    FILE* file = fopen(buf, "w+");
 	srand(seed + myRank);
 	for (; toss < processTosses; toss++) {
