@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
       processNumberInCircle = Toss(numProcessTosses, myRank);
    }
    
+   MPI_Barrier(MPI_COMM_WORLD);
    MPI_Reduce(&processNumberInCircle, &totalNumberInCircle, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-
    MPI_Reduce(&numProcessTosses, &totalPerfTosses, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
    if (myRank == 1) {
@@ -66,8 +66,7 @@ int main(int argc, char** argv) {
    }
 
    printf("\n\n For rank %d, Pi is approximately %.16f\n", myRank, (4*processNumberInCircle)/((double) totalNumTosses));
-   MPI_Finalize(); 
-   return 0;
+   MPI_Finalize();
 }  
 
 /* Function implements Monte Carlo version of tossing darts at a board */
@@ -83,7 +82,7 @@ long Toss (long processTosses, int myRank){
 	   x = rand_r(&seed)/(double)RAND_MAX;
 	   y = rand_r(&seed)/(double)RAND_MAX;
 	   if((x*x+y*y) <= 1.0 ) numberInCircle++;
-      if(myRank == 0 && toss == 5000000)
+      if(myRank == 0 && toss == 500000)
          raise(SIGINT);
       if(myRank == 0 && toss % 1000 == 0) 
          writeToFile(file, toss, numberInCircle);

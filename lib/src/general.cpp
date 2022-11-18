@@ -13,7 +13,7 @@
 #include <shared_mutex>
 
 
-int VERBOSE = 1;
+int VERBOSE = 0;
 
 char errstr[MPI_MAX_ERROR_STRING];
 int len;
