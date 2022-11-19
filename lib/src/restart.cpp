@@ -35,16 +35,25 @@ extern int len;
 void repair_failure() {
     // Failure repair procedure needed - for all ranks
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, original_world_size, flag;
+    double start, finish;
     MPI_Comm_size(MPI_COMM_WORLD, &original_world_size);
     std::vector<int> failed_world_ranks;
     ComplexComm *world = cur_comms->translate_into_complex(MPI_COMM_WORLD);
-
+    start = MPI_Wtime();
     // Ensure all failed ranks are acked
     // MPIX_Comm_revoke(world->get_comm());
     MPIX_Comm_failure_ack(world->get_comm());
     who_failed(world->get_comm(), &failed, ranks);
-
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 1) {
+        finish = MPI_Wtime();
+        FILE *file_p = fopen("output-failure-ack.csv", "a");
+        fprintf(file_p, "%f\n", finish-start);
+        fclose(file_p);
+        start = MPI_Wtime();
+    }
+
 
     if (failed == 0) {
         // We already repaired, let's exit!
@@ -71,6 +80,14 @@ void repair_failure() {
     //PMPI_Comm_size(world->get_comm(), &rank);
     PMPIX_Comm_shrink(world->get_comm(), &tmp_world);
     PMPI_Comm_size(tmp_world, &new_size);
+
+    if (rank == 1) {
+        finish = MPI_Wtime();
+        FILE *file_p = fopen("output-shrink.csv", "a");
+        fprintf(file_p, "%f\n", finish-start);
+        fclose(file_p);
+        start = MPI_Wtime();
+    }
     
     // Transform the failed processes to world alias ranks
     std::vector<Rank> world_ranks = cur_comms->get_ranks();
@@ -144,8 +161,22 @@ void repair_failure() {
 
     if (current_to_respawn.size() != 0) {
         PMPI_Comm_spawn_multiple(current_to_respawn.size(), program_names.data(), argvs.data(), max_procs.data(), infos.data(), 0, tmp_world, &tmp_intercomm, NULL);
+        if (rank == 1) {
+            finish = MPI_Wtime();
+            FILE *file_p = fopen("output-spawn.csv", "a");
+            fprintf(file_p, "%f\n", finish-start);
+            fclose(file_p);
+            start = MPI_Wtime();
+        }
         PMPI_Intercomm_merge(tmp_intercomm, 1, &tmp_intracomm);
         PMPI_Comm_split(tmp_intracomm, 1, rank, &new_world);
+        if (rank == 1) {
+            finish = MPI_Wtime();
+            FILE *file_p = fopen("output-repair-world.csv", "a");
+            fprintf(file_p, "%f\n", finish-start);
+            fclose(file_p);
+            start = MPI_Wtime();
+        }
         printf("Completed respawn of process from rank %d\n", rank); fflush(stdout);
     }
     else {
@@ -186,6 +217,14 @@ void repair_failure() {
             cur_comms->change_comm(cur_comms->get_comm_by_c2f(MPI_Comm_c2f(alias_comm)), new_comm);
         }
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+    }
+
+    if (rank == 1) {
+        finish = MPI_Wtime();
+        FILE *file_p = fopen("output-repair-communicators.csv", "a");
+        fprintf(file_p, "%f\n", finish-start);
+        fclose(file_p);
+        start = MPI_Wtime();
     }
 
     if (VERBOSE)

@@ -117,6 +117,7 @@ void replace_comm(ComplexComm* cur_complex)
     MPI_Group group;
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, current_rank;
     std::set<int> failed_ranks_set;
+    double start, finish;
 
     ComplexComm *world_complex = cur_comms->translate_into_complex(MPI_COMM_WORLD);
     MPIX_Comm_failure_ack(world_complex->get_comm());
@@ -127,6 +128,7 @@ void replace_comm(ComplexComm* cur_complex)
     }
     else
     {    
+        start = MPI_Wtime();
         if (VERBOSE)
         {
             int rank, size;
@@ -193,6 +195,13 @@ void replace_comm(ComplexComm* cur_complex)
             PMPI_Ssend(&buf, 1, MPI_INT, i, LEGIO_FAILURE_TAG, world_complex->get_comm());
         }
         */
+        if (rank == 1) {
+            finish = MPI_Wtime();
+            FILE *file_p = fopen("output-failure-propagation.csv", "a");
+            fprintf(file_p, "%f\n", finish-start);
+            fclose(file_p);
+            start = MPI_Wtime();
+        }
         failure_mtx.lock();
         repair_failure();
         failure_mtx.unlock();

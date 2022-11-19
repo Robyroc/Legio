@@ -12,8 +12,15 @@ int print_to_file(double, int, int, FILE*, char*);
 int main(int argc, char** argv)
 {
     int rank, size;
-    
     MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm new_comm;
+    int ranks[size];
+    for (int i = 0; i < size; i++) {
+        ranks[i] = i;
+    }
+    initialize_comm(size, ranks, &new_comm);
+    
 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
