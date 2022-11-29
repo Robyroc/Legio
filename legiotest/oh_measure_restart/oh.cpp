@@ -11,12 +11,22 @@ int print_to_file(double, int, int, FILE*, char*);
 
 int main(int argc, char** argv)
 {
+    MPI_Init(&argc, &argv);
     int rank, size;
     
-    MPI_Init(&argc, &argv);
-
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int ranks[size];
+    
+    for (int i = 0; i < size; i++) {
+        ranks[i] = i;
+    }
+
+    MPI_Comm comms[100];
+    for (int i = 0; i < 100; i++) {
+        initialize_comm(size, ranks, &comms[i]);
+    }
 
     FILE* file_p;
 
@@ -31,7 +41,9 @@ int main(int argc, char** argv)
         raise(SIGINT);
     
     start = MPI_Wtime();
-    MPI_Barrier(MPI_COMM_WORLD);
+    for (int i = 0; i < 100; i++) {
+        MPI_Barrier(comms[i]);
+    }
     end = MPI_Wtime();
 
    if (rank == 1) {
