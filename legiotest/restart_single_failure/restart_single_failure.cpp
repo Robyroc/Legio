@@ -1,10 +1,11 @@
-#include "mpi.h"
-#include "mpi-ext.h"
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
-#include <restart.h>
 #include <unistd.h>
+#include "mpi.h"
+extern "C" {
+#include "restart.h"
+}
 
 // Run with `-n 3 --to-respawn 0` for respawn OR `-n 3 --to-respawn 1` without respawn
 int main(int argc, char** argv)
@@ -22,18 +23,22 @@ int main(int argc, char** argv)
     first_ranks[1] = 1;
     first_ranks[2] = 2;
 
-    printf("Setup done for rank: %d\n", rank); fflush(stdout);
+    printf("Setup done for rank: %d\n", rank);
+    fflush(stdout);
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_size(world_group, &world_group_size);
     initialize_comm(3, first_ranks, &first_comm);
 
-    if (!is_respawned()) {
-        if (rank == 0) {
+    if (!is_respawned())
+    {
+        if (rank == 0)
+        {
             raise(SIGINT);
         }
         MPI_Barrier(first_comm);
     }
-    else {
+    else
+    {
         MPI_Barrier(first_comm);
     }
 

@@ -1,49 +1,41 @@
+#include "supported_comm.hpp"
+#include "complex_comm.hpp"
 #include "mpi.h"
-#include "mpi-ext.h"
-#include "supported_comm.h"
-#include "complex_comm.h"
-#include "respawn_multicomm.h"
-#include <functional>
-#include <chrono>
-#include <string>
-#include <shared_mutex>
-#include <thread>
-#include <condition_variable>
-#include <algorithm>
-#include <numeric>
-#include <iostream>
-#include <sstream>
-#include <set>
+#include "multicomm.hpp"
+// #include "respawn_multicomm.h"
 
-extern Multicomm *cur_comms;
-
-Rank::Rank(int number_, bool failed_) {
+Rank::Rank(int number_, bool failed_)
+{
     number = number_;
     failed = failed_;
 }
 
-SupportedComm::SupportedComm(MPI_Comm alias_, std::vector<Rank> world_ranks_) {
+SupportedComm::SupportedComm(MPI_Comm alias_, std::vector<Rank> world_ranks_)
+{
     alias = alias_;
     world_ranks = world_ranks_;
 }
 
-int RespawnedSupportedComm::size() {
+int RespawnedSupportedComm::size()
+{
     return world_ranks.size();
 }
 
-
-int RespawnedSupportedComm::rank() {
+int RespawnedSupportedComm::rank()
+{
     int rank, dest;
     int size = RespawnedSupportedComm::size();
     MPI_Comm_rank(get_alias(), &rank);
 
-    cur_comms->translate_ranks(rank, cur_comms->translate_into_complex(alias), &dest);
-    return dest;
+    return Multicomm::get_instance().translate_ranks(
+        rank, Multicomm::get_instance().translate_into_complex(alias));
 }
 
-int SupportedComm::get_failed_ranks_before(int rank) {
+int SupportedComm::get_failed_ranks_before(int rank)
+{
     int failed = 0;
-    for (int i = 0; i < rank; i++) {
+    for (int i = 0; i < rank; i++)
+    {
         if (world_ranks.at(i).failed)
             failed++;
     }

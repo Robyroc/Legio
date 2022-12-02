@@ -1,39 +1,41 @@
 #include <mpi.h>
-#include <mpi-ext.h>
-#include <stdio.h>
 #include <signal.h>
-#include "comm_manipulation.h"
-#include "configuration.h"
-#include "complex_comm.h"
-#include "multicomm.h"
+#include <stdio.h>
 #include <shared_mutex>
+#include "comm_manipulation.hpp"
+#include "complex_comm.hpp"
+#include "configuration.hpp"
+#include "mpi-ext.h"
+#include "multicomm.hpp"
 
-extern Multicomm *cur_comms;
 extern int VERBOSE;
 extern char errstr[MPI_MAX_ERROR_STRING];
 extern int len;
 
 extern std::shared_timed_mutex failure_mtx;
 
-
-int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm, MPI_Win *win)
+int MPI_Win_create(void* base,
+                   MPI_Aint size,
+                   int disp_unit,
+                   MPI_Info info,
+                   MPI_Comm comm,
+                   MPI_Win* win)
 {
-    while(1)
+    while (1)
     {
-        int rc, flag;
-        cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
-        std::function<int(MPI_Comm, MPI_Win *)> func;
-        if(flag)
+        int rc;
+        bool flag = Multicomm::get_instance().part_of(comm);
+        std::function<int(MPI_Comm, MPI_Win*)> func;
+        if (flag)
         {
-            MPI_Barrier(translated->get_alias());
-            func = [base, size, disp_unit, info] (MPI_Comm c, MPI_Win* w) -> int
-            {
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            MPI_Barrier(translated.get_alias());
+            func = [base, size, disp_unit, info](MPI_Comm c, MPI_Win* w) -> int {
                 int rc = PMPI_Win_create(base, size, disp_unit, info, c, w);
                 MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
                 return rc;
             };
-            rc = func(translated->get_comm(), win);
+            rc = func(translated.get_comm(), win);
         }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
@@ -45,37 +47,42 @@ int MPI_Win_create(void* base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: win created (error: %s)\n", rank, size, errstr);
         }
-        if(!flag)
+        if (!flag)
             return rc;
-        else if(rc == MPI_SUCCESS)
+        else if (rc == MPI_SUCCESS)
         {
-            bool result = cur_comms->add_structure(translated, *win, func);
-            if(result)
+            bool result = Multicomm::get_instance().add_structure(
+                Multicomm::get_instance().translate_into_complex(comm), *win, func);
+            if (result)
                 return rc;
         }
         else
-            replace_comm(translated);
+            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
     }
 }
 
-int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm, void *baseptr, MPI_Win *win)
+int MPI_Win_allocate(MPI_Aint size,
+                     int disp_unit,
+                     MPI_Info info,
+                     MPI_Comm comm,
+                     void* baseptr,
+                     MPI_Win* win)
 {
-    while(1)
+    while (1)
     {
-        int rc, flag;
-        std::function<int(MPI_Comm, MPI_Win *)> func;
-        cur_comms->part_of(comm, &flag);
-        ComplexComm* translated = cur_comms->translate_into_complex(comm);
-        if(flag)
+        int rc;
+        std::function<int(MPI_Comm, MPI_Win*)> func;
+        bool flag = Multicomm::get_instance().part_of(comm);
+        if (flag)
         {
-            MPI_Barrier(translated->get_alias());
-            func = [size, disp_unit, info, baseptr] (MPI_Comm c, MPI_Win* w) -> int
-            {
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            MPI_Barrier(translated.get_alias());
+            func = [size, disp_unit, info, baseptr](MPI_Comm c, MPI_Win* w) -> int {
                 int rc = PMPI_Win_allocate(size, disp_unit, info, c, baseptr, w);
                 MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
                 return rc;
             };
-            rc = func(translated->get_comm(), win);
+            rc = func(translated.get_comm(), win);
         }
         else
             rc = PMPI_Win_allocate(size, disp_unit, info, comm, baseptr, win);
@@ -87,35 +94,37 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: win allocated (error: %s)\n", rank, size, errstr);
         }
-        if(!flag)
+        if (!flag)
             return rc;
-        else if(rc == MPI_SUCCESS)
+        else if (rc == MPI_SUCCESS)
         {
-            bool result = cur_comms->add_structure(translated, *win, func);
-            if(result)
+            bool result = Multicomm::get_instance().add_structure(
+                Multicomm::get_instance().translate_into_complex(comm), *win, func);
+            if (result)
                 return rc;
         }
         else
-            replace_comm(translated);
+            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
     }
 }
 
-int MPI_Win_free(MPI_Win *win)
+int MPI_Win_free(MPI_Win* win)
 {
-    cur_comms->remove_window(win);
+    Multicomm::get_instance().remove_structure(win);
     return MPI_SUCCESS;
 }
 
 int MPI_Win_fence(int assert, MPI_Win win)
 {
-    while(1)
+    while (1)
     {
         int rc;
-        ComplexComm* comm = cur_comms->get_complex_from_structure(win); 
-        if(comm != NULL)
+        bool flag = Multicomm::get_instance().part_of(win);
+        if (flag)
         {
-            MPI_Win translated = comm->translate_structure(win);
-            MPI_Barrier(comm->get_alias());
+            ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
+            MPI_Win translated = comm.translate_structure(win);
+            MPI_Barrier(comm.get_alias());
             rc = PMPI_Win_fence(assert, translated);
         }
         else
@@ -128,31 +137,41 @@ int MPI_Win_fence(int assert, MPI_Win win)
             MPI_Error_string(rc, errstr, &len);
             printf("Rank %d / %d: fence done (error: %s)\n", rank, size, errstr);
         }
-        if(rc == MPI_SUCCESS || comm == NULL)
+        if (rc == MPI_SUCCESS || !flag)
             return rc;
         else
-            replace_comm(comm);
+            replace_comm(Multicomm::get_instance().get_complex_from_structure(win));
     }
 }
 
-int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
+int MPI_Get(void* origin_addr,
+            int origin_count,
+            MPI_Datatype origin_datatype,
+            int target_rank,
+            MPI_Aint target_disp,
+            int target_count,
+            MPI_Datatype target_datatype,
+            MPI_Win win)
 {
     int rc;
-    ComplexComm* comm = cur_comms->get_complex_from_structure(win); 
-    if(comm != NULL)
+    bool flag = Multicomm::get_instance().part_of(win);
+
+    if (flag)
     {
-        MPI_Win translated = comm->translate_structure(win);
-        int new_rank;
-        cur_comms->translate_ranks(target_rank, comm, &new_rank);
-        if(new_rank == MPI_UNDEFINED)
+        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
+        MPI_Win translated = comm.translate_structure(win);
+        int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
+        if (new_rank == MPI_UNDEFINED)
         {
-            HANDLE_GET_FAIL(comm->get_comm());
+            HANDLE_GET_FAIL(comm.get_comm());
         }
-        rc = PMPI_Get(origin_addr, origin_count, origin_datatype, new_rank, target_disp, target_count, target_datatype, translated);
+        rc = PMPI_Get(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
+                      target_count, target_datatype, translated);
     }
     else
-        rc = PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank, target_disp, target_count, target_datatype, win);
-    get_handling:
+        rc = PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank, target_disp,
+                      target_count, target_datatype, win);
+get_handling:
     if (VERBOSE)
     {
         int rank, size;
@@ -164,24 +183,33 @@ int MPI_Get(void* origin_addr, int origin_count, MPI_Datatype origin_datatype, i
     return rc;
 }
 
-int MPI_Put(const void* origin_addr, int origin_count, MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp, int target_count, MPI_Datatype target_datatype, MPI_Win win)
+int MPI_Put(const void* origin_addr,
+            int origin_count,
+            MPI_Datatype origin_datatype,
+            int target_rank,
+            MPI_Aint target_disp,
+            int target_count,
+            MPI_Datatype target_datatype,
+            MPI_Win win)
 {
     int rc;
-    ComplexComm* comm = cur_comms->get_complex_from_structure(win); 
-    if(comm != NULL)
+    bool flag = Multicomm::get_instance().part_of(win);
+    if (flag)
     {
-        MPI_Win translated = comm->translate_structure(win);
-        int new_rank;
-        cur_comms->translate_ranks(target_rank, comm, &new_rank);
-        if(new_rank == MPI_UNDEFINED)
+        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
+        MPI_Win translated = comm.translate_structure(win);
+        int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
+        if (new_rank == MPI_UNDEFINED)
         {
-            HANDLE_PUT_FAIL(comm->get_comm());
+            HANDLE_PUT_FAIL(comm.get_comm());
         }
-        rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp, target_count, target_datatype, translated);
+        rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
+                      target_count, target_datatype, translated);
     }
     else
-        rc = PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank, target_disp, target_count, target_datatype, win);
-    put_handling:
+        rc = PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank, target_disp,
+                      target_count, target_datatype, win);
+put_handling:
     if (VERBOSE)
     {
         int rank, size;

@@ -1,7 +1,8 @@
+extern "C" {
 #include "legio.h"
-#include "mpi.h"
+}
 #include "mpi-ext.h"
-
+#include "mpi.h"
 
 void fault_number(MPI_Comm comm, int* size)
 {
@@ -17,6 +18,6 @@ void who_failed(MPI_Comm comm, int* size, int* ranks)
     PMPI_Group_size(failed, size);
     PMPI_Comm_group(comm, &comm_group);
     int i;
-    for(i = 0; i < *size && i < LEGIO_MAX_FAILS; i++)
+    for (i = 0; i < *size && i < LEGIO_MAX_FAILS; i++)
         PMPI_Group_translate_ranks(failed, 1, &i, comm_group, &(ranks[i]));
 }

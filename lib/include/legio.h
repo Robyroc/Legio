@@ -10,7 +10,6 @@
 #define LEGIO_FAILURE_REPAIR_VALUE 2
 #define LEGIO_FAILURE_REPAIR_SELF_VALUE 3
 
-
 void fault_number(MPI_Comm, int*);
 
 void who_failed(MPI_Comm, int*, int*);

@@ -19,29 +19,32 @@ defaultValue(SCATTER_FAIL_POLICY ${FAULT_STOP})
 defaultValue(SCATTER_APPROACH ${RANK_KEEP})
 
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.h.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.hpp"
 )
 
 ### SOURCE FILES ###
 
 set(LIBRARY_HDR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBRARY_HEADERS
-    "${LIBRARY_HDR_PATH}/comm_manipulation.h"
-    "${LIBRARY_HDR_PATH}/complex_comm.h"
-    "${LIBRARY_HDR_PATH}/configuration.h"
-    "${LIBRARY_HDR_PATH}/intercomm_utils.h"
+    "${LIBRARY_HDR_PATH}/comm_manipulation.hpp"
+    "${LIBRARY_HDR_PATH}/complex_comm.hpp"
+    "${LIBRARY_HDR_PATH}/configuration.hpp"
+    "${LIBRARY_HDR_PATH}/intercomm_utils.hpp"
     "${LIBRARY_HDR_PATH}/legio.h"
-    "${LIBRARY_HDR_PATH}/multicomm.h"
-    "${LIBRARY_HDR_PATH}/request_handler.h"
-    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
+    "${LIBRARY_HDR_PATH}/multicomm.hpp"
+    "${LIBRARY_HDR_PATH}/request_handler.hpp"
+#    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
     "${LIBRARY_HDR_PATH}/restart.h"
-    "${LIBRARY_HDR_PATH}/struct_selector.h"
-    "${LIBRARY_HDR_PATH}/structure_handler.h"
-    "${LIBRARY_HDR_PATH}/supported_comm.h"
-    "${LIBRARY_HDR_PATH}/utils.h"
+    "${LIBRARY_HDR_PATH}/struct_selector.hpp"
+    "${LIBRARY_HDR_PATH}/structure_handler.hpp"
+    "${LIBRARY_HDR_PATH}/supported_comm.hpp"
+    "${LIBRARY_HDR_PATH}/utils.hpp"
 )
-set(LIBRARY_INTERFACE "${LIBRARY_HDR_PATH}/legio.h")
+set(LIBRARY_INTERFACE
+    "${LIBRARY_HDR_PATH}/legio.h"
+    "${LIBRARY_HDR_PATH}/restart.h"
+)
 
 set(LIBRARY_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBRARY_SOURCES
@@ -54,7 +57,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
     "${LIBRARY_SRC_PATH}/legio.cpp"
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
-    "${LIBRARY_SRC_PATH}/respawn_multicomm.cpp"
+#    "${LIBRARY_SRC_PATH}/respawn_multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
     "${LIBRARY_SRC_PATH}/request_handler.cpp"

@@ -1,10 +1,11 @@
-#include "mpi.h"
-#include "mpi-ext.h"
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
-#include <restart.h>
 #include <unistd.h>
+#include "mpi.h"
+extern "C" {
+#include "restart.h"
+}
 
 // Run with `-n 3`
 int main(int argc, char** argv)
@@ -22,20 +23,23 @@ int main(int argc, char** argv)
     first_ranks[1] = 1;
     first_ranks[2] = 2;
 
-    printf("Setup done for rank: %d\n", rank); fflush(stdout);
+    printf("Setup done for rank: %d\n", rank);
+    fflush(stdout);
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_size(world_group, &world_group_size);
     initialize_comm(3, first_ranks, &first_comm);
 
     MPI_Barrier(first_comm);
-    
-    if (rank == 0) {
+
+    if (rank == 0)
+    {
         raise(SIGINT);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if (rank == 1) {
+    if (rank == 1)
+    {
         raise(SIGINT);
     }
 
