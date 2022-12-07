@@ -10,6 +10,7 @@ void check_group(ComplexComm complex_comm,
                  MPI_Group group,
                  MPI_Group* first_clean,
                  MPI_Group* second_clean);
-MPI_Group deeper_check(MPI_Group group, MPI_Comm comm);
+MPI_Group deeper_check_tree(MPI_Group group, MPI_Comm comm);
+MPI_Group deeper_check_cube(MPI_Group group, MPI_Comm comm);
 
 #endif

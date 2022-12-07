@@ -1,14 +1,30 @@
 #include "intercomm_utils.hpp"
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
+#include <vector>
 #include "mpi.h"
 
+/*
 int get_root_level(int own, int max_level)
 {
     int trail = 1;
     while (!(own % (1 << trail)) && trail - 1 < max_level)
         trail++;
     return trail - 1;
+}
+*/
+
+// Search Bit Twiddling Hacks for an explanation
+// Number of trailing zeros
+int get_root_level(int own, int max_level)
+{
+    unsigned int v = static_cast<unsigned>(own);
+    static const int Mod37BitPosition[] = {32, 0, 1,  26, 2,  23, 27, 0,  3,  16, 24, 30, 28,
+                                           11, 0, 13, 4,  7,  17, 0,  25, 22, 31, 15, 29, 10,
+                                           12, 6, 0,  21, 14, 9,  5,  20, 8,  19, 18};
+    return (Mod37BitPosition[(-v & v) % 37] > max_level ? max_level
+                                                        : Mod37BitPosition[(-v & v) % 37]);
 }
 
 void get_range(int prefix, int level, int size, int* low, int* high)
@@ -23,7 +39,7 @@ void get_range(int prefix, int level, int size, int* low, int* high)
         *high = size - 1;
 }
 
-MPI_Group deeper_check(MPI_Group to_check, MPI_Comm actual_comm)
+MPI_Group deeper_check_tree(MPI_Group to_check, MPI_Comm actual_comm)
 {
     MPI_Group actual;
     int check_rank, translated, size;
@@ -144,6 +160,187 @@ MPI_Group deeper_check(MPI_Group to_check, MPI_Comm actual_comm)
     return result;
 }
 
+// Search Bit Twiddling Hacks for an explanation
+unsigned next_pow_2(int number)
+{
+    unsigned v = static_cast<unsigned>(number);
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+
+MPI_Group deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
+{
+    char errstr[MPI_MAX_ERROR_STRING];
+    int len;
+    MPI_Group actual;
+    int check_rank, translated, size, own_rank;
+    MPI_Comm_group(actual_comm, &actual);
+    MPI_Group_rank(to_check, &check_rank);
+    MPI_Group_size(to_check, &size);
+    PMPI_Comm_rank(actual_comm, &own_rank);
+
+    unsigned u_rank = static_cast<unsigned>(check_rank);
+    unsigned next_power = next_pow_2(size);
+    int* ranks_list = static_cast<int*>(malloc(sizeof(int) * next_power));
+    memset(ranks_list, -1, next_power * sizeof(int));
+    ranks_list[check_rank] = check_rank;
+
+    std::vector<unsigned> roles;
+    std::vector<unsigned> future_roles;
+    roles.push_back(u_rank);
+    if (size + u_rank < next_power)
+        roles.push_back(size + u_rank);
+
+    int level = 0;
+    for (unsigned i = 1; i < next_power; i <<= 1, level += 1)
+    {
+        std::sort(roles.begin(), roles.end());
+        for (unsigned role : roles)
+        {
+            unsigned target = role xor i;
+            int target_index = static_cast<int>(target);
+            if (target_index >= size)
+                target_index -= size;
+            int target_rank;
+            PMPI_Group_translate_ranks(to_check, 1, &target_index, actual, &target_rank);
+            int low_index, high_index, rc;
+            if (target_rank == own_rank)
+                continue;
+            if (target < role)
+            {
+                printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
+                       role, target_rank);
+                get_range(static_cast<int>(role), level, next_power, &low_index, &high_index);
+                PMPI_Send(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                          target_rank,
+                          (target < role ? target + next_power : role + next_power) >> level,
+                          actual_comm);
+                get_range(static_cast<int>(target), level, next_power, &low_index, &high_index);
+                rc = PMPI_Recv(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                               target_rank,
+                               (target < role ? target + next_power : role + next_power) >> level,
+                               actual_comm, MPI_STATUS_IGNORE);
+                if (rc != MPI_SUCCESS)
+                {
+                    MPI_Error_string(rc, errstr, &len);
+                    printf("%d %s\n", check_rank, errstr);
+                }
+            }
+            else
+            {
+                printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
+                       role, target_rank);
+                get_range(static_cast<unsigned>(target), level, next_power, &low_index,
+                          &high_index);
+                rc = PMPI_Recv(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                               target_rank,
+                               (target < role ? target + next_power : role + next_power) >> level,
+                               actual_comm, MPI_STATUS_IGNORE);
+                get_range(static_cast<int>(role), level, next_power, &low_index, &high_index);
+                PMPI_Send(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                          target_rank,
+                          (target < role ? target + next_power : role + next_power) >> level,
+                          actual_comm);
+                if (rc != MPI_SUCCESS)
+                {
+                    MPI_Error_string(rc, errstr, &len);
+                    printf("%d %s\n", check_rank, errstr);
+                }
+            }
+            if (rc != MPI_SUCCESS)
+            {
+                printf("Rank %d, ERROR with %u, role %u\n", check_rank, target, role);
+                bool found = false;
+                for (unsigned j = 1; j < i; j <<= 1)
+                {
+                    unsigned adjusted_target = target xor j;
+                    int adjusted_target_index = static_cast<int>(adjusted_target);
+                    if (adjusted_target_index >= size)
+                        adjusted_target_index -= size;
+                    PMPI_Group_translate_ranks(to_check, 1, &adjusted_target_index, actual,
+                                               &target_rank);
+                    if (target_rank == own_rank)
+                        continue;
+                    if (adjusted_target < role)
+                    {
+                        printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
+                               target, adjusted_target, role);
+                        get_range(static_cast<int>(role), level, next_power, &low_index,
+                                  &high_index);
+                        PMPI_Send(
+                            &(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                            target_rank,
+                            (target < role ? target + next_power : role + next_power) >> level,
+                            actual_comm);
+                        get_range(static_cast<int>(target), level, next_power, &low_index,
+                                  &high_index);
+                        rc = PMPI_Recv(
+                            &(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                            target_rank,
+                            (target < role ? target + next_power : role + next_power) >> level,
+                            actual_comm, MPI_STATUS_IGNORE);
+                    }
+                    else
+                    {
+                        printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
+                               target, adjusted_target, role);
+                        get_range(static_cast<int>(target), level, next_power, &low_index,
+                                  &high_index);
+                        rc = PMPI_Recv(
+                            &(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                            target_rank,
+                            (target < role ? target + next_power : role + next_power) >> level,
+                            actual_comm, MPI_STATUS_IGNORE);
+                        get_range(static_cast<int>(role), level, next_power, &low_index,
+                                  &high_index);
+                        PMPI_Send(
+                            &(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
+                            target_rank,
+                            (target < role ? target + next_power : role + next_power) >> level,
+                            actual_comm);
+                    }
+                    if (rc == MPI_SUCCESS)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    printf("Rank %d, role %u, add role %u\n", check_rank, role, target);
+                    future_roles.push_back(target);
+                }
+            }
+        }
+        while (!future_roles.empty())
+        {
+            roles.push_back(future_roles[future_roles.size() - 1]);
+            future_roles.pop_back();
+        }
+    }
+    int* compacted = static_cast<int*>(malloc(sizeof(int) * size));
+    int position = 0;
+    printf("Rank %d, result:", check_rank);
+    for (int i = 0; i < size; i++)
+    {
+        printf(" %d", ranks_list[i]);
+        if (ranks_list[i] != -1)
+            compacted[position++] = ranks_list[i];
+    }
+    printf("\n");
+    free(ranks_list);
+    MPI_Group result;
+    MPI_Group_incl(to_check, position, compacted, &result);
+    free(compacted);
+    return result;
+}
+
 void check_group(ComplexComm cur_comm,
                  MPI_Group group,
                  MPI_Group* first_clean,
@@ -162,7 +359,8 @@ void check_group(ComplexComm cur_comm,
     // Up to this we removed all the previously detected failures in the communicator
     // Now we need to remove all the failures in the group
     // To do so we use the second algorithm (the DK one)
-    *second_clean = deeper_check(*first_clean, cur_comm.get_alias());
+    //*second_clean = deeper_check_tree(*first_clean, cur_comm.get_alias());
+    *second_clean = deeper_check_cube(*first_clean, cur_comm.get_alias());
     // MPI_Group_size(*second_clean, &size);
     // printf("___%d___ Second clean, size: %d\n", own_rank, size);
 }
