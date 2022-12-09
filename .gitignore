@@ -2,3 +2,4 @@
 /build/
 /unused/
 /**/.vscode/
+/lib/include/config.hpp

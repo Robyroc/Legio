@@ -12,7 +12,9 @@ option(WITH_EXAMPLES "Build example programs using ULFM from testsrc directory" 
 
 option(BROADCAST_RESILIENCY "Broadcast root failure resiliency" Off)
 option(SEND_RESILIENCY "Send target failure resiliency" On)
-set(NUM_RETRY 3)
+if(NOT DEFINED NUM_RETRY)
+    set(NUM_RETRY 3)
+endif()
 option(RECV_RESILIENCY "Recv source failure resiliency" Off)
 option(REDUCE_RESILIENCY "Reduce root failure resiliency" On)
 option(GET_RESILIENCY "Get source failure resiliency" Off)
@@ -23,7 +25,9 @@ option(SCATTER_RESILIENCY "Scatter root failure resiliency" On)
 option(SCATTER_SHIFT "Scatter rank movement upon failure" On)
 
 #"Library log level: 1->None, 2->Errors, 3->Errors&Info, 4->Full" 
-set(LOG_LEVEL 2)
+if(NOT DEFINED LOG_LEVEL)
+    set(LOG_LEVEL 2)
+endif()
 option(WITH_RESTART "Include restart functionalities" On)
 option(CUBE_ALGORITHM "Cube algorithm for non-collective operations" On)
 
