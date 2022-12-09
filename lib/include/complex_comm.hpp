@@ -8,6 +8,8 @@
 #include "struct_selector.hpp"
 #include "structure_handler.hpp"
 
+namespace legio {
+
 struct FullWindow
 {
     int id;
@@ -67,5 +69,7 @@ class ComplexComm
         return std::get<handle_selector<MPI_T>::get()>(struct_handlers);
     }
 };
+
+}  // namespace legio
 
 #endif

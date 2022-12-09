@@ -6,7 +6,10 @@
 #include <stdexcept>
 #include <unordered_map>
 #include "complex_comm.hpp"
+#include "config.hpp"
 #include "mpi.h"
+
+using namespace legio;
 
 // Multicomm::Multicomm(int size)
 void Multicomm::initialize(int size)
@@ -23,6 +26,8 @@ void Multicomm::initialize(int size)
 
 void Multicomm::initialize(const int size, const int rank_, const std::vector<int> failed)
 {
+    if constexpr (!BuildOptions::with_restart)
+        assert(false && "Unsupported (recompile with restart)");
     assert(!initialized);
     initialized = true;
     respawned = true;

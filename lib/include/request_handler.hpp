@@ -6,6 +6,8 @@
 #include "mpi.h"
 #include "structure_handler.hpp"
 
+namespace legio {
+
 class RequestHandler : public StructureHandler<MPI_Request, MPI_Comm>
 {
    public:
@@ -16,5 +18,7 @@ class RequestHandler : public StructureHandler<MPI_Request, MPI_Comm>
                    int);
     void replace(MPI_Comm) override;
 };
+
+}  // namespace legio
 
 #endif

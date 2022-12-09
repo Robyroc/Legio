@@ -6,15 +6,13 @@
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
-#include "configuration.hpp"
+#include "config.hpp"
+#include "log.hpp"
 #include "mpi-ext.h"
 #include "multicomm.hpp"
 
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
-
 extern std::shared_timed_mutex failure_mtx;
+using namespace legio;
 
 int MPI_Isend(const void* buf,
               int count,
@@ -40,34 +38,35 @@ int MPI_Isend(const void* buf,
         dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
         if (dest_rank == MPI_UNDEFINED)
         {
-            HANDLE_SEND_FAIL(translated.get_comm());
-        }
-        func = [tempbuf, count, datatype, dest, tag, comm](MPI_Comm actual,
-                                                           MPI_Request* request) -> int {
-            MPI_Group old_group, new_group;
-            int new_rank;
-            MPI_Comm_group(comm, &old_group);
-            MPI_Comm_group(actual, &new_group);
-            MPI_Group_translate_ranks(old_group, 1, &dest, new_group, &new_rank);
-            if (new_rank == MPI_UNDEFINED)
-                return MPI_ERR_PROC_FAILED;
+            if constexpr (BuildOptions::send_resiliency)
+                rc = MPI_SUCCESS;
             else
-                return PMPI_Isend(tempbuf, count, datatype, new_rank, tag, actual, request);
-        };
-        rc = PMPI_Isend(buf, count, datatype, dest_rank, tag, translated.get_comm(), request);
+            {
+                legio::log("##### Isend failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
+        }
+        else
+        {
+            func = [tempbuf, count, datatype, dest, tag, comm](MPI_Comm actual,
+                                                               MPI_Request* request) -> int {
+                MPI_Group old_group, new_group;
+                int new_rank;
+                MPI_Comm_group(comm, &old_group);
+                MPI_Comm_group(actual, &new_group);
+                MPI_Group_translate_ranks(old_group, 1, &dest, new_group, &new_rank);
+                if (new_rank == MPI_UNDEFINED)
+                    return MPI_ERR_PROC_FAILED;
+                else
+                    return PMPI_Isend(tempbuf, count, datatype, new_rank, tag, actual, request);
+            };
+            rc = PMPI_Isend(buf, count, datatype, dest_rank, tag, translated.get_comm(), request);
+        }
     }
     else
         rc = PMPI_Isend(buf, count, datatype, dest, tag, comm, request);
-send_handling:
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: isend done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, comm, "Isend");
     if (!flag)
         return rc;
     else if (rc == MPI_SUCCESS)
@@ -95,34 +94,35 @@ int MPI_Irecv(void* buf,
         int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
         if (source_rank == MPI_UNDEFINED)
         {
-            HANDLE_RECV_FAIL(translated.get_comm());
-        }
-        func = [buf, count, datatype, source, tag, comm](MPI_Comm actual,
-                                                         MPI_Request* request) -> int {
-            MPI_Group old_group, new_group;
-            int new_rank;
-            MPI_Comm_group(comm, &old_group);
-            MPI_Comm_group(actual, &new_group);
-            MPI_Group_translate_ranks(old_group, 1, &source, new_group, &new_rank);
-            if (new_rank == MPI_UNDEFINED)
-                return MPI_ERR_PROC_FAILED;
+            if constexpr (BuildOptions::recv_resiliency)
+                rc = MPI_SUCCESS;
             else
-                return PMPI_Irecv(buf, count, datatype, new_rank, tag, actual, request);
-        };
-        rc = PMPI_Irecv(buf, count, datatype, source_rank, tag, translated.get_comm(), request);
+            {
+                legio::log("##### Irecv failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
+        }
+        else
+        {
+            func = [buf, count, datatype, source, tag, comm](MPI_Comm actual,
+                                                             MPI_Request* request) -> int {
+                MPI_Group old_group, new_group;
+                int new_rank;
+                MPI_Comm_group(comm, &old_group);
+                MPI_Comm_group(actual, &new_group);
+                MPI_Group_translate_ranks(old_group, 1, &source, new_group, &new_rank);
+                if (new_rank == MPI_UNDEFINED)
+                    return MPI_ERR_PROC_FAILED;
+                else
+                    return PMPI_Irecv(buf, count, datatype, new_rank, tag, actual, request);
+            };
+            rc = PMPI_Irecv(buf, count, datatype, source_rank, tag, translated.get_comm(), request);
+        }
     }
     else
         rc = PMPI_Irecv(buf, count, datatype, source, tag, comm, request);
-recv_handling:
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: irecv done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, comm, "Irecv");
     if (!flag)
         return rc;
     else if (rc == MPI_SUCCESS)
@@ -147,14 +147,7 @@ int MPI_Wait(MPI_Request* request, MPI_Status* status)
         rc = PMPI_Wait(request, status);
 
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: wait done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Wait");
 
     Multicomm::get_instance().remove_structure(request);
     return rc;
@@ -174,14 +167,7 @@ int MPI_Test(MPI_Request* request, int* flag, MPI_Status* status)
     else
         rc = PMPI_Test(request, flag, status);
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: test done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Test");
     if (*flag)
     {
         Multicomm::get_instance().remove_structure(request);

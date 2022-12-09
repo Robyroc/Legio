@@ -2,15 +2,30 @@ cmake_minimum_required(VERSION 3.10)
 
 project(Legio)
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/lib/include/defaults.cmake")
-
 set(LEGIO_VERSION_MAJOR 0)
 set(LEGIO_VERSION_MINOR 1)
 
 #set(CMAKE_BUILD_TYPE "Debug")
 
-option(BUILD_TESTS "Build example programs from legiotest directory" ON)
-option(BUILD_EXAMPLES "Build example programs using ULFM from testsrc directory" OFF)
+option(WITH_TESTS "Build example programs from legiotest directory" On)
+option(WITH_EXAMPLES "Build example programs using ULFM from testsrc directory" Off)
+
+option(BROADCAST_RESILIENCY "Broadcast root failure resiliency" Off)
+option(SEND_RESILIENCY "Send target failure resiliency" On)
+set(NUM_RETRY 3)
+option(RECV_RESILIENCY "Recv source failure resiliency" Off)
+option(REDUCE_RESILIENCY "Reduce root failure resiliency" On)
+option(GET_RESILIENCY "Get source failure resiliency" Off)
+option(PUT_RESILIENCY "Put root failure resiliency" On)
+option(GATHER_RESILIENCY "Gather root failure resiliency" Off)
+option(GATHER_SHIFT "Gather rank movement upon failure" Off)
+option(SCATTER_RESILIENCY "Scatter root failure resiliency" On)
+option(SCATTER_SHIFT "Scatter rank movement upon failure" On)
+
+#"Library log level: 1->None, 2->Errors, 3->Errors&Info, 4->Full" 
+set(LOG_LEVEL 2)
+option(WITH_RESTART "Include restart functionalities" On)
+option(CUBE_ALGORITHM "Cube algorithm for non-collective operations" On)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
@@ -52,10 +67,33 @@ endfunction(linkMPI)
 
 add_subdirectory(lib)
 
-if(BUILD_TESTS)
+if(WITH_TESTS)
     add_subdirectory(legiotest)
 endif()
 
-if(BUILD_EXAMPLES)
+if(WITH_EXAMPLES)
     add_subdirectory(testsrc)
 endif()
+
+message ( STATUS "" )
+message ( STATUS "//===-------------------------===//" )
+message ( STATUS "//      LEGIO CONFIG STATUS      //" )
+message ( STATUS "//===-------------------------===//" )
+message ( STATUS "Build tests......................: ${WITH_TESTS} (CMake option WITH_TESTS)" )
+message ( STATUS "Build examples...................: ${WITH_EXAMPLES} (CMake option WITH_EXAMPLES)" )
+message ( STATUS "Enable restart functionalities...: ${WITH_RESTART} (CMake option WITH_RESTART)" )
+message ( STATUS "Broadcast resilient to root fail.: ${BROADCAST_RESILIENCY} (CMake option BROADCAST_RESILIENCY)" )
+message ( STATUS "Send resilient to target fail....: ${SEND_RESILIENCY} (CMake option SEND_RESILIENCY)" )
+message ( STATUS "Recv resilient to source fail....: ${RECV_RESILIENCY} (CMake option RECV_RESILIENCY)")
+message ( STATUS "Reduce resilient to root fail....: ${REDUCE_RESILIENCY} (CMake option REDUCE_RESILIENCY)")
+message ( STATUS "Get resilient to source fail.....: ${GET_RESILIENCY} (CMake option GET_RESILIENCY)")
+message ( STATUS "Put resilient to target fail.....: ${PUT_RESILIENCY} (CMake option PUT_RESILIENCY)")
+message ( STATUS "Gather resilient to root fail....: ${GATHER_RESILIENCY} (CMake option GATHER_RESILIENCY)")
+message ( STATUS "Scatter resilient to root fail...: ${SCATTER_RESILIENCY} (CMake option SCATTER_RESILIENCY)")
+message ( STATUS "Gather rank shift on fail........: ${GATHER_SHIFT} (CMake option GATHER_SHIFT)")
+message ( STATUS "Scatter rank shift on fail.......: ${SCATTER_SHIFT} (CMake option SCATTER_SHIFT)")
+message ( STATUS "Usage of hypercube algorithm.....: ${CUBE_ALGORITHM} (CMake option CUBE_ALGORITHM)")
+message ( STATUS "Number of tries for send.........: ${NUM_RETRY} (CMake set NUM_RETRY)")
+message ( STATUS "Log level (4 max, 1 none)........: ${LOG_LEVEL} (CMake set LOG_LEVEL)")
+message ( STATUS "//===-------------------------===//" )
+message ( STATUS "" )

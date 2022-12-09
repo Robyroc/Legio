@@ -28,3 +28,5 @@ add_subdirectory(restart_double_failure_no_respawn)
 add_subdirectory(restart_double_failure_both_respawn)
 
 add_subdirectory(restart_single_failure_different_threads)
+
+add_subdirectory(noncoll_test)

@@ -3,6 +3,8 @@
 #include "mpi.h"
 #include "unordered_map"
 
+using namespace legio;
+
 void RequestHandler::replace(MPI_Comm new_comm)
 {
     MPI_Request temp;

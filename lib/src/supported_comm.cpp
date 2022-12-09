@@ -4,6 +4,8 @@
 #include "multicomm.hpp"
 // #include "respawn_multicomm.h"
 
+using namespace legio;
+
 Rank::Rank(int number_, bool failed_)
 {
     number = number_;

@@ -4,15 +4,12 @@
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
-#include "configuration.hpp"
+#include "log.hpp"
 #include "mpi-ext.h"
 #include "multicomm.hpp"
 
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
-
 extern std::shared_timed_mutex failure_mtx;
+using namespace legio;
 
 int MPI_Barrier(MPI_Comm comm)
 {
@@ -35,14 +32,7 @@ int MPI_Barrier(MPI_Comm comm)
         }
         failure_mtx.unlock_shared();
 
-        if (VERBOSE)
-        {
-            MPI_Comm_size(comm, &size);
-            MPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: barrier done (error: %s)\n", rank, size, errstr);
-            fflush(stdout);
-        }
+        legio::report_execution(rc, comm, "Barrier");
 
         if (rc == MPI_SUCCESS || !flag)
         {
@@ -68,22 +58,21 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
             int root_rank = Multicomm::get_instance().translate_ranks(root, translated);
             if (root_rank == MPI_UNDEFINED)
             {
-                HANDLE_BCAST_FAIL(translated->get_comm());
+                if constexpr (BuildOptions::broadcast_resiliency)
+                    rc = MPI_SUCCESS;
+                else
+                {
+                    legio::log("##### Broadcast failed, stopping a node", LogLevel::errors_only);
+                    raise(SIGINT);
+                }
             }
-            rc = PMPI_Bcast(buffer, count, datatype, root_rank, translated.get_comm());
+            else
+                rc = PMPI_Bcast(buffer, count, datatype, root_rank, translated.get_comm());
         }
         else
             rc = PMPI_Bcast(buffer, count, datatype, root, comm);
-    bcast_handling:
         failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: bcast done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Bcast");
         if (flag)
         {
             agree_and_eventually_replace(&rc,
@@ -116,14 +105,7 @@ int MPI_Allreduce(const void* sendbuf,
         else
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
         failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: allreduce done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Allreduce");
         if (rc == MPI_SUCCESS || !flag)
             return rc;
         else
@@ -150,23 +132,22 @@ int MPI_Reduce(const void* sendbuf,
             int root_rank = Multicomm::get_instance().translate_ranks(root, translated);
             if (root_rank == MPI_UNDEFINED)
             {
-                HANDLE_REDUCE_FAIL(translated.get_comm());
+                if constexpr (BuildOptions::reduce_resiliency)
+                    rc = MPI_SUCCESS;
+                else
+                {
+                    legio::log("##### Reduce failed, stopping a node", LogLevel::errors_only);
+                    raise(SIGINT);
+                }
             }
-            rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank,
-                             translated.get_comm());
+            else
+                rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root_rank,
+                                 translated.get_comm());
         }
         else
             rc = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
-    reduce_handling:
         failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: reduce done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Reduce");
         if (flag)
         {
             agree_and_eventually_replace(&rc,
@@ -176,6 +157,39 @@ int MPI_Reduce(const void* sendbuf,
         }
         else
             return rc;
+    }
+}
+
+int perform_gather(const void* sendbuf,
+                   int sendcount,
+                   MPI_Datatype sendtype,
+                   void* recvbuf,
+                   int recvcount,
+                   MPI_Datatype recvtype,
+                   int root,
+                   MPI_Comm comm,
+                   int totalsize,
+                   int fakerank,
+                   MPI_Comm fakecomm)
+{
+    if constexpr (BuildOptions::gather_shift)
+        return PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm);
+    else
+    {
+        int type_size, cur_rank;
+        MPI_Win win;
+        MPI_Type_size(recvtype, &type_size);
+        MPI_Comm_rank(comm, &cur_rank);
+        if (cur_rank == root)
+            MPI_Win_create(recvbuf, totalsize * recvcount * type_size, type_size, MPI_INFO_NULL,
+                           fakecomm, &win);
+        else
+            MPI_Win_create(recvbuf, 0, type_size, MPI_INFO_NULL, fakecomm, &win);
+        MPI_Win_fence(0, win);
+        MPI_Put(sendbuf, sendcount, sendtype, root, fakerank * recvcount, recvcount, recvtype, win);
+        MPI_Win_fence(0, win);
+        MPI_Win_free(&win);
+        return MPI_SUCCESS;
     }
 }
 
@@ -202,28 +216,33 @@ int MPI_Gather(const void* sendbuf,
             actual_root = Multicomm::get_instance().translate_ranks(root, translated);
             if (actual_root == MPI_UNDEFINED)
             {
-                HANDLE_GATHER_FAIL(actual_comm);
+                if constexpr (BuildOptions::gather_resiliency)
+                    rc = MPI_SUCCESS;
+                else
+                {
+                    legio::log("##### Gather failed, stopping a node", LogLevel::errors_only);
+                    raise(SIGINT);
+                }
+            }
+            else
+            {
+                failure_mtx.lock_shared();
+                rc = perform_gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+                                    actual_root, actual_comm, total_size, fake_rank, comm);
+                failure_mtx.unlock_shared();
             }
         }
         else
         {
             actual_comm = comm;
             actual_root = root;
+            failure_mtx.lock_shared();
+            rc = perform_gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+                                actual_root, actual_comm, total_size, fake_rank, comm);
+            failure_mtx.unlock_shared();
         }
 
-        failure_mtx.lock_shared();
-        PERFORM_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root,
-                       actual_comm, total_size, fake_rank, comm);
-    gather_handling:
-        failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: gather done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Gather");
         if (flag)
         {
             agree_and_eventually_replace(&rc,
@@ -233,6 +252,39 @@ int MPI_Gather(const void* sendbuf,
         }
         else
             return rc;
+    }
+}
+
+int perform_scatter(const void* sendbuf,
+                    int sendcount,
+                    MPI_Datatype sendtype,
+                    void* recvbuf,
+                    int recvcount,
+                    MPI_Datatype recvtype,
+                    int root,
+                    MPI_Comm comm,
+                    int totalsize,
+                    int fakerank,
+                    MPI_Comm fakecomm)
+{
+    if constexpr (BuildOptions::scatter_shift)
+        return PMPI_Scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm);
+    else
+    {
+        int type_size, cur_rank;
+        MPI_Win win;
+        MPI_Type_size(recvtype, &type_size);
+        MPI_Comm_rank(comm, &cur_rank);
+        if (cur_rank == root)
+            MPI_Win_create((void*)sendbuf, totalsize * sendcount * type_size, type_size,
+                           MPI_INFO_NULL, fakecomm, &win);
+        else
+            MPI_Win_create((void*)sendbuf, 0, type_size, MPI_INFO_NULL, fakecomm, &win);
+        MPI_Win_fence(0, win);
+        MPI_Get(recvbuf, recvcount, recvtype, root, fakerank * sendcount, sendcount, sendtype, win);
+        MPI_Win_fence(0, win);
+        MPI_Win_free(&win);
+        return MPI_SUCCESS;
     }
 }
 
@@ -259,27 +311,33 @@ int MPI_Scatter(const void* sendbuf,
             actual_root = Multicomm::get_instance().translate_ranks(root, translated);
             if (actual_root == MPI_UNDEFINED)
             {
-                HANDLE_SCATTER_FAIL(actual_comm);
+                if constexpr (BuildOptions::scatter_resiliency)
+                    rc = MPI_SUCCESS;
+                else
+                {
+                    legio::log("##### Scatter failed, stopping a node", LogLevel::errors_only);
+                    raise(SIGINT);
+                }
+            }
+            else
+            {
+                failure_mtx.lock_shared();
+                rc = perform_scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+                                     actual_root, actual_comm, total_size, fake_rank, comm);
+                failure_mtx.unlock_shared();
             }
         }
         else
         {
             actual_comm = comm;
             actual_root = root;
+            failure_mtx.lock_shared();
+            rc = perform_scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+                                 actual_root, actual_comm, total_size, fake_rank, comm);
+            failure_mtx.unlock_shared();
         }
-        failure_mtx.lock_shared();
-        PERFORM_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, actual_root,
-                        actual_comm, total_size, fake_rank, comm);
-    scatter_handling:
-        failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: scatter done (error: %s)\n", rank, size, errstr);
-        }
+
+        legio::report_execution(rc, comm, "Scatter");
         if (flag)
         {
             agree_and_eventually_replace(&rc,
@@ -312,14 +370,7 @@ int MPI_Scan(const void* sendbuf,
         else
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm);
         failure_mtx.unlock_shared();
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: scan done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Scan");
         if (flag)
         {
             agree_and_eventually_replace(&rc,

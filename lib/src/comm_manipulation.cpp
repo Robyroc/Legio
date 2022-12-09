@@ -1,27 +1,22 @@
 #include "comm_manipulation.hpp"
-#include <mpi.h>
-#include <iostream>
 #include <numeric>
 #include <shared_mutex>
 #include <sstream>
 #include <thread>
 #include "complex_comm.hpp"
-#include "mpi-ext.h"
+#include "log.hpp"
+#include "mpi.h"
+#include "multicomm.hpp"
+#include "restart_routines.hpp"
+#include "utils.hpp"
 extern "C" {
 #include "legio.h"
-#include "restart.h"
 }
-#include "multicomm.hpp"
-//#include "respawn_multicomm.h"
-#include "utils.hpp"
-//#include <thread>
+
+#include "mpi-ext.h"
 
 extern std::shared_timed_mutex failure_mtx;
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
-// std::thread * kalive;
-// int temp;
+using namespace legio;
 
 // Far capire al processo respawnato il communicatore
 // Necessario
@@ -31,33 +26,41 @@ extern int len;
 // Dopo il restart duplica mpi_comm_self per creare comm da sostituire (con alternativa
 // MPI_COMM_NULL) Dopo fare le chiamate dara' un'errore di MPI_COMM_NULL -> fara' una recv su
 // MPI_COMM_WORLD da chiunque
-void initialization(int* argc, char*** argv)
+void legio::initialization(int* argc, char*** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
     int size, rank;
     std::vector<int> failed;
 
-    if (command_line_option_exists(*argc, *argv, "--respawned"))
+    if constexpr (BuildOptions::with_restart)
     {
-        size = std::stoi(get_command_line_option(*argc, *argv, "--size"));
-        char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
-        if (possibly_null_failed != 0)
+        if (command_line_option_exists(*argc, *argv, "--respawned"))
         {
-            std::string raw_failed = possibly_null_failed;
-            std::stringstream ss(raw_failed);
-            while (ss.good())
+            size = std::stoi(get_command_line_option(*argc, *argv, "--size"));
+            char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
+            if (possibly_null_failed != 0)
             {
-                std::string substr;
-                getline(ss, substr, ',');
-                // cur_comms->set_failed_rank(std::stoi(substr));
-                failed.push_back(std::stoi(substr));
+                std::string raw_failed = possibly_null_failed;
+                std::stringstream ss(raw_failed);
+                while (ss.good())
+                {
+                    std::string substr;
+                    getline(ss, substr, ',');
+                    // cur_comms->set_failed_rank(std::stoi(substr));
+                    failed.push_back(std::stoi(substr));
+                }
             }
-        }
 
-        rank = std::stoi(get_command_line_option(*argc, *argv, "--rank"));
-        // printf("PARSED RANK: %d\n", rank);
-        // cur_comms = new RespawnMulticomm(size, rank, failed);
-        Multicomm::get_instance().initialize(size, rank, failed);
+            rank = std::stoi(get_command_line_option(*argc, *argv, "--rank"));
+            // printf("PARSED RANK: %d\n", rank);
+            // cur_comms = new RespawnMulticomm(size, rank, failed);
+            Multicomm::get_instance().initialize(size, rank, failed);
+        }
+        else
+        {
+            PMPI_Comm_size(MPI_COMM_WORLD, &size);
+            Multicomm::get_instance().initialize(size);
+        }
     }
     else
     {
@@ -65,19 +68,21 @@ void initialization(int* argc, char*** argv)
         Multicomm::get_instance().initialize(size);
     }
 
-    char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
-    if (possibly_null_to_respawn != 0)
+    if constexpr (BuildOptions::with_restart)
     {
-        std::string raw_to_respawn = possibly_null_to_respawn;
-        std::stringstream ss(raw_to_respawn);
-        while (ss.good())
+        char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
+        if (possibly_null_to_respawn != 0)
         {
-            std::string substr;
+            std::string raw_to_respawn = possibly_null_to_respawn;
+            std::stringstream ss(raw_to_respawn);
+            while (ss.good())
+            {
+                std::string substr;
 
-            getline(ss, substr, ',');
-            std::cout << substr;
-            fflush(stdout);
-            Multicomm::get_instance().add_to_respawn_list(std::stoi(substr));
+                getline(ss, substr, ',');
+                legio::log(substr.c_str(), LogLevel::full);
+                Multicomm::get_instance().add_to_respawn_list(std::stoi(substr));
+            }
         }
     }
 
@@ -85,19 +90,23 @@ void initialization(int* argc, char*** argv)
     Multicomm::get_instance().add_comm(MPI_COMM_WORLD);
 
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
-    if (Multicomm::get_instance().is_respawned())
+    if constexpr (BuildOptions::with_restart)
     {
-        char* rank = get_command_line_option(*argc, *argv, "--rank");
-        restart(atoi(rank));
+        if (Multicomm::get_instance().is_respawned())
+        {
+            char* rank = get_command_line_option(*argc, *argv, "--rank");
+            restart(atoi(rank));
+        }
     }
 }
 
-void finalization() {}
+void legio::finalization() {}
 
-void replace_comm(ComplexComm& cur_complex)
+void legio::replace_comm(ComplexComm& cur_complex)
 {
-    if (!Multicomm::get_instance().get_respawn_list().empty())
-        return replace_and_repair_comm(cur_complex);
+    if constexpr (BuildOptions::with_restart)
+        if (!Multicomm::get_instance().get_respawn_list().empty())
+            return replace_and_repair_comm(cur_complex);
     MPI_Comm new_comm;
     int old_size, new_size, diff;
     MPIX_Comm_shrink(cur_complex.get_comm(), &new_comm);
@@ -113,7 +122,7 @@ void replace_comm(ComplexComm& cur_complex)
     }
 }
 
-void replace_and_repair_comm(ComplexComm& cur_complex)
+void legio::replace_and_repair_comm(ComplexComm& cur_complex)
 {
     MPI_Comm new_comm, world;
     MPI_Group group;
@@ -159,15 +168,6 @@ void replace_and_repair_comm(ComplexComm& cur_complex)
             {
                 int target_rank;
                 MPI_Group_translate_ranks(to_be_notified_group, 1, &i, world_group, &target_rank);
-                if (VERBOSE)
-                {
-                    int rank, size;
-                    MPI_Comm_size(MPI_COMM_WORLD, &size);
-                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                    printf("Rank %d / %d sending failure notification to not failed rank %d.\n",
-                           rank, size, target_rank);
-                    fflush(stdout);
-                }
                 PMPI_Issend(&buf, 1, MPI_INT, target_rank, LEGIO_FAILURE_TAG,
                             world_complex.get_comm(), &(requests[i]));
             }
@@ -185,7 +185,7 @@ void replace_and_repair_comm(ComplexComm& cur_complex)
     }
 }
 
-void agree_and_eventually_replace(int* rc, ComplexComm& cur_complex)
+void legio::agree_and_eventually_replace(int* rc, ComplexComm& cur_complex)
 {
     int flag = (MPI_SUCCESS == *rc);
     MPIX_Comm_agree(cur_complex.get_comm(), &flag);

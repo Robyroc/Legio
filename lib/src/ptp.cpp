@@ -4,15 +4,12 @@
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
-#include "configuration.hpp"
+#include "log.hpp"
 #include "mpi-ext.h"
 #include "multicomm.hpp"
 
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
-
 extern std::shared_timed_mutex failure_mtx;
+using namespace legio;
 
 int any_recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status*);
 
@@ -20,7 +17,7 @@ int MPI_Send(const void* buf, int count, MPI_Datatype datatype, int dest, int ta
 {
     int i, rc;
     bool flag = Multicomm::get_instance().part_of(comm);
-    for (i = 0; i < NUM_RETRY; i++)
+    for (i = 0; i < BuildOptions::num_retry; i++)
     {
         if (flag)
         {
@@ -28,21 +25,20 @@ int MPI_Send(const void* buf, int count, MPI_Datatype datatype, int dest, int ta
             int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
             if (dest_rank == MPI_UNDEFINED)
             {
-                HANDLE_SEND_FAIL(translated.get_comm());
+                if constexpr (BuildOptions::send_resiliency)
+                    rc = MPI_SUCCESS;
+                else
+                {
+                    legio::log("##### Send failed, stopping a node", LogLevel::errors_only);
+                    raise(SIGINT);
+                }
             }
-            rc = PMPI_Send(buf, count, datatype, dest_rank, tag, translated.get_comm());
+            else
+                rc = PMPI_Send(buf, count, datatype, dest_rank, tag, translated.get_comm());
         }
         else
             rc = PMPI_Send(buf, count, datatype, dest, tag, comm);
-    send_handling:
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: send done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Send");
         if (rc == MPI_SUCCESS)
             return rc;
     }
@@ -69,22 +65,21 @@ int MPI_Recv(void* buf,
         int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
         if (source_rank == MPI_UNDEFINED)
         {
-            HANDLE_RECV_FAIL(translated.get_comm());
+            if constexpr (BuildOptions::recv_resiliency)
+                rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Recv failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
         }
-        rc = PMPI_Recv(buf, count, datatype, source_rank, tag, translated.get_comm(), status);
+        else
+            rc = PMPI_Recv(buf, count, datatype, source_rank, tag, translated.get_comm(), status);
     }
     else
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated.get_comm(), status);
-recv_handling:
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: recv done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, comm, "Recv");
     return rc;
 }
 
@@ -111,24 +106,23 @@ int MPI_Sendrecv(const void* sendbuf,
         int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
         if (source_rank == MPI_UNDEFINED)
         {
-            HANDLE_RECV_FAIL(translated.get_comm());
+            if constexpr (BuildOptions::recv_resiliency && BuildOptions::send_resiliency)
+                rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Sendrecv failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
         }
-        rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest_rank, sendtag, recvbuf, recvcount,
-                           recvtype, source_rank, recvtag, translated.get_comm(), status);
+        else
+            rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest_rank, sendtag, recvbuf, recvcount,
+                               recvtype, source_rank, recvtag, translated.get_comm(), status);
     }
     else
         rc = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount,
                            recvtype, source, recvtag, comm, status);
-recv_handling:
     failure_mtx.unlock_shared();
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: sendrecv done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, comm, "Sendrecv");
     return rc;
 }
 
@@ -149,14 +143,7 @@ int any_recv(void* buf,
     }
     else
         rc = PMPI_Recv(buf, count, datatype, source, tag, comm, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(comm, &size);
-        PMPI_Comm_rank(comm, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: recv done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, comm, "Recv");
     if (rc != MPI_SUCCESS)
     {
         /*

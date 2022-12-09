@@ -4,13 +4,11 @@
 #include <string.h>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
-#include "configuration.hpp"
+#include "log.hpp"
 #include "mpi-ext.h"
 #include "multicomm.hpp"
 
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
+using namespace legio;
 
 int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info, MPI_File* mpi_fh)
 {
@@ -51,14 +49,7 @@ int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info,
         }
         else
             rc = PMPI_File_open(comm, filename, amode, info, mpi_fh);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: file opened (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "File_open");
         if (!flag)
             return rc;
         else if (rc == MPI_SUCCESS)
@@ -99,14 +90,7 @@ int MPI_File_read_at(MPI_File mpi_fh,
     }
     else
         rc = PMPI_File_read_at(mpi_fh, offset, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: read_at done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Read_at");
     return rc;
 }
 
@@ -129,14 +113,7 @@ int MPI_File_write_at(MPI_File mpi_fh,
     }
     else
         rc = PMPI_File_write_at(mpi_fh, offset, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: write_at done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Write_at");
     return rc;
 }
 
@@ -161,14 +138,7 @@ int MPI_File_read_at_all(MPI_File mpi_fh,
         }
         else
             rc = PMPI_File_read_at_all(mpi_fh, offset, buf, count, datatype, status);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: read_at_all done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "Read_at_all");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -202,14 +172,7 @@ int MPI_File_write_at_all(MPI_File mpi_fh,
         }
         else
             rc = PMPI_File_write_at_all(mpi_fh, offset, buf, count, datatype, status);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: write_at_all done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "Write_at_all");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -236,14 +199,7 @@ int MPI_File_seek(MPI_File mpi_fh, MPI_Offset offset, int whence)
     }
     else
         rc = PMPI_File_seek(mpi_fh, offset, whence);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: seek done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_seek");
     return rc;
 }
 
@@ -260,14 +216,7 @@ int MPI_File_get_position(MPI_File mpi_fh, MPI_Offset* offset)
     }
     else
         rc = PMPI_File_get_position(mpi_fh, offset);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get_position done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_get_position");
     return rc;
 }
 
@@ -289,14 +238,7 @@ int MPI_File_seek_shared(MPI_File mpi_fh, MPI_Offset offset, int whence)
         }
         else
             rc = PMPI_File_seek_shared(mpi_fh, offset, whence);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: seek_shared done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "File_seek_shared");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -331,14 +273,7 @@ int MPI_File_get_position_shared(MPI_File mpi_fh, MPI_Offset* offset)
     else
         rc = PMPI_File_get_position_shared(mpi_fh, offset);
 
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get_position_shared done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_get_position_shared");
     return rc;
 }
 
@@ -362,14 +297,7 @@ int MPI_File_read_all(MPI_File mpi_fh,
         }
         else
             rc = PMPI_File_read_all(mpi_fh, buf, count, datatype, status);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: read_all done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "File_read_all");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -403,14 +331,7 @@ int MPI_File_write_all(MPI_File mpi_fh,
         else
             rc = PMPI_File_write_all(mpi_fh, buf, count, datatype, status);
 
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: write_all done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "File_write_all");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -444,14 +365,7 @@ int MPI_File_set_view(MPI_File mpi_fh,
         }
         else
             rc = PMPI_File_set_view(mpi_fh, disp, etype, filetype, datarep, info);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: set_view done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "File_set_view");
         if (flag)
         {
             agree_and_eventually_replace(
@@ -478,14 +392,7 @@ int MPI_File_read(MPI_File mpi_fh, void* buf, int count, MPI_Datatype datatype, 
     }
     else
         rc = PMPI_File_read(mpi_fh, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: read done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_read");
     return rc;
 }
 
@@ -507,14 +414,7 @@ int MPI_File_write(MPI_File mpi_fh,
     }
     else
         rc = PMPI_File_write(mpi_fh, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: write done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_write");
     return rc;
 }
 
@@ -537,14 +437,7 @@ int MPI_File_read_shared(MPI_File mpi_fh,
     else
         rc = PMPI_File_read_shared(mpi_fh, buf, count, datatype, status);
 
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: read_shared done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_read_shared");
     return rc;
 }
 
@@ -567,14 +460,7 @@ int MPI_File_write_shared(MPI_File mpi_fh,
     else
         rc = PMPI_File_write_shared(mpi_fh, buf, count, datatype, status);
 
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: write_shared done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_write_shared");
     return rc;
 }
 
@@ -596,14 +482,7 @@ int MPI_File_read_ordered(MPI_File mpi_fh,
     }
     else
         rc = PMPI_File_read_ordered(mpi_fh, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: read_ordered done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_read_ordered");
     return rc;
 }
 
@@ -625,14 +504,7 @@ int MPI_File_write_ordered(MPI_File mpi_fh,
     }
     else
         rc = PMPI_File_write_ordered(mpi_fh, buf, count, datatype, status);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: write_ordered done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_write_ordered");
     return rc;
 }
 
@@ -650,14 +522,7 @@ int MPI_File_sync(MPI_File mpi_fh)
     }
     else
         rc = PMPI_File_sync(mpi_fh);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: file_sync done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_sync");
     return rc;
 }
 
@@ -675,14 +540,7 @@ int MPI_File_get_size(MPI_File mpi_fh, MPI_Offset* size)
     }
     else
         rc = PMPI_File_get_size(mpi_fh, size);
-    if (VERBOSE)
-    {
-        int rank, comm_size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: file_get_size done (error: %s)\n", rank, comm_size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_get_size");
     return rc;
 }
 
@@ -700,14 +558,7 @@ int MPI_File_get_type_extent(MPI_File mpi_fh, MPI_Datatype datatype, MPI_Aint* e
     }
     else
         rc = PMPI_File_get_type_extent(mpi_fh, datatype, extent);
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: file_get_type_extent done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_get_type_extent");
     return rc;
 }
 
@@ -725,13 +576,6 @@ int MPI_File_set_size(MPI_File mpi_fh, MPI_Offset size)
     }
     else
         rc = PMPI_File_set_size(mpi_fh, size);
-    if (VERBOSE)
-    {
-        int rank, comm_size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: file_set_size done (error: %s)\n", rank, comm_size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "File_set_size");
     return rc;
 }

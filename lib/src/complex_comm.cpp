@@ -6,6 +6,7 @@
 #include "structure_handler.hpp"
 
 extern std::mutex change_world_mtx;
+using namespace legio;
 
 ComplexComm::ComplexComm(MPI_Comm comm, int id) : cur_comm(comm), alias_id(id)
 {

@@ -1,0 +1,42 @@
+#pragma once
+
+#cmakedefine01 BROADCAST_RESILIENCY
+#cmakedefine01 SEND_RESILIENCY
+#cmakedefine NUM_RETRY @NUM_RETRY@
+#cmakedefine01 RECV_RESILIENCY
+#cmakedefine01 REDUCE_RESILIENCY
+#cmakedefine01 GET_RESILIENCY
+#cmakedefine01 PUT_RESILIENCY
+#cmakedefine01 GATHER_RESILIENCY
+#cmakedefine01 GATHER_SHIFT
+#cmakedefine01 SCATTER_RESILIENCY
+#cmakedefine01 SCATTER_SHIFT
+
+#cmakedefine LOG_LEVEL @LOG_LEVEL@
+#cmakedefine01 WITH_RESTART
+#cmakedefine01 CUBE_ALGORITHM
+
+namespace legio {
+
+enum class LogLevel { none = 1, errors_only = 2, errors_and_info = 3, full = 4 };
+
+struct BuildOptions
+{
+    constexpr static bool broadcast_resiliency = static_cast<bool>(BROADCAST_RESILIENCY);
+    constexpr static bool send_resiliency = static_cast<bool>(SEND_RESILIENCY);
+    constexpr static int num_retry = NUM_RETRY;
+    constexpr static bool recv_resiliency = static_cast<bool>(RECV_RESILIENCY);
+    constexpr static bool reduce_resiliency = static_cast<bool>(REDUCE_RESILIENCY);
+    constexpr static bool get_resiliency = static_cast<bool>(GET_RESILIENCY);
+    constexpr static bool put_resiliency = static_cast<bool>(PUT_RESILIENCY);
+    constexpr static bool gather_resiliency = static_cast<bool>(GATHER_RESILIENCY);
+    constexpr static bool gather_shift = static_cast<bool>(GATHER_SHIFT);
+    constexpr static bool scatter_resiliency = static_cast<bool>(SCATTER_RESILIENCY);
+    constexpr static bool scatter_shift = static_cast<bool>(SCATTER_SHIFT);
+
+    constexpr static LogLevel log_level = static_cast<LogLevel>(LOG_LEVEL);
+    constexpr static bool with_restart = static_cast<bool>(WITH_RESTART);
+    constexpr static bool cube_algorithm = static_cast<bool>(CUBE_ALGORITHM);
+};
+
+}  // namespace legio

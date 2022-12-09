@@ -1,0 +1,4 @@
+add_executable(legio_noncoll_test noncoll.cpp)
+target_link_libraries(legio_noncoll_test PUBLIC legio)
+
+linkMPI(legio_noncoll_test)

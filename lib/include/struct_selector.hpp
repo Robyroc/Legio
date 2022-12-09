@@ -5,6 +5,8 @@
 #include "mpi.h"
 #include "structure_handler.hpp"
 
+using namespace legio;
+
 template <class MPI_T>
 const int c2f(const MPI_T);
 

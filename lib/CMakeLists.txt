@@ -1,26 +1,20 @@
-include("${CMAKE_CURRENT_SOURCE_DIR}/include/defaults.cmake")
+#include("${CMAKE_CURRENT_SOURCE_DIR}/include/defaults.cmake")
 
-function(defaultValue VAR VALUE)
-    if(NOT DEFINED ${VAR})
-        set(${VAR} ${VALUE} PARENT_SCOPE)
-    endif()
-endfunction(defaultValue)
-
-defaultValue(BROADCAST_FAIL_POLICY ${FAULT_STOP})
-defaultValue(SEND_FAIL_POLICY ${FAULT_IGNORE})
-defaultValue(NUM_RETRY 3)
-defaultValue(RECV_FAIL_POLICY ${FAULT_STOP})
-defaultValue(REDUCE_FAIL_POLICY ${FAULT_IGNORE})
-defaultValue(GET_FAIL_POLICY ${FAULT_STOP})
-defaultValue(PUT_FAIL_POLICY ${FAULT_IGNORE})
-defaultValue(GATHER_FAIL_POLICY ${FAULT_IGNORE})
-defaultValue(GATHER_APPROACH ${RANK_KEEP})
-defaultValue(SCATTER_FAIL_POLICY ${FAULT_STOP})
-defaultValue(SCATTER_APPROACH ${RANK_KEEP})
+# defaultValue(BROADCAST_FAIL_POLICY ${FAULT_STOP})
+# defaultValue(SEND_FAIL_POLICY ${FAULT_IGNORE})
+# defaultValue(NUM_RETRY 3)
+# defaultValue(RECV_FAIL_POLICY ${FAULT_STOP})
+# defaultValue(REDUCE_FAIL_POLICY ${FAULT_IGNORE})
+# defaultValue(GET_FAIL_POLICY ${FAULT_STOP})
+# defaultValue(PUT_FAIL_POLICY ${FAULT_IGNORE})
+# defaultValue(GATHER_FAIL_POLICY ${FAULT_IGNORE})
+# defaultValue(GATHER_APPROACH ${RANK_KEEP})
+# defaultValue(SCATTER_FAIL_POLICY ${FAULT_STOP})
+# defaultValue(SCATTER_APPROACH ${RANK_KEEP})
 
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.hpp.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/configuration.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/configs.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp"
 )
 
 ### SOURCE FILES ###
@@ -29,12 +23,15 @@ set(LIBRARY_HDR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/comm_manipulation.hpp"
     "${LIBRARY_HDR_PATH}/complex_comm.hpp"
-    "${LIBRARY_HDR_PATH}/configuration.hpp"
+#    "${LIBRARY_HDR_PATH}/configuration.hpp"
+    "${LIBRARY_HDR_PATH}/config.hpp"
     "${LIBRARY_HDR_PATH}/intercomm_utils.hpp"
     "${LIBRARY_HDR_PATH}/legio.h"
+    "${LIBRARY_HDR_PATH}/log.hpp"
     "${LIBRARY_HDR_PATH}/multicomm.hpp"
     "${LIBRARY_HDR_PATH}/request_handler.hpp"
 #    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
+    "${LIBRARY_HDR_PATH}/restart_routines.hpp"
     "${LIBRARY_HDR_PATH}/restart.h"
     "${LIBRARY_HDR_PATH}/struct_selector.hpp"
     "${LIBRARY_HDR_PATH}/structure_handler.hpp"
@@ -56,11 +53,13 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/general.cpp"
     "${LIBRARY_SRC_PATH}/intercomm_utils.cpp"
     "${LIBRARY_SRC_PATH}/legio.cpp"
+    "${LIBRARY_SRC_PATH}/log.cpp"
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
 #    "${LIBRARY_SRC_PATH}/respawn_multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
     "${LIBRARY_SRC_PATH}/request_handler.cpp"
+    "${LIBRARY_SRC_PATH}/restart_routines.cpp"
     "${LIBRARY_SRC_PATH}/restart.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
@@ -75,7 +74,7 @@ target_include_directories(legio PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_compile_features(legio PUBLIC cxx_std_11)
+target_compile_features(legio PUBLIC cxx_std_17)
 set_target_properties(legio PROPERTIES CXX_EXTENSIONS OFF)
 set_target_properties(legio PROPERTIES PUBLIC_HEADER "${LIBRARY_INTERFACE}")
 

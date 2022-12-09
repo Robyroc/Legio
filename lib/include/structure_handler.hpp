@@ -6,6 +6,8 @@
 #include <functional>
 #include <unordered_map>
 
+namespace legio {
+
 template <typename T, typename U>
 class StructureHandler
 {
@@ -139,5 +141,7 @@ void StructureHandler<T, U>::part_of(T checked, int* result)
         *result = (res != opened.end());
     }
 }
+
+}  // namespace legio
 
 #endif

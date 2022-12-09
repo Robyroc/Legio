@@ -4,15 +4,12 @@
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
-#include "configuration.hpp"
+#include "log.hpp"
 #include "mpi-ext.h"
 #include "multicomm.hpp"
 
-extern int VERBOSE;
-extern char errstr[MPI_MAX_ERROR_STRING];
-extern int len;
-
 extern std::shared_timed_mutex failure_mtx;
+using namespace legio;
 
 int MPI_Win_create(void* base,
                    MPI_Aint size,
@@ -39,14 +36,7 @@ int MPI_Win_create(void* base,
         }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: win created (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Win_create");
         if (!flag)
             return rc;
         else if (rc == MPI_SUCCESS)
@@ -86,14 +76,7 @@ int MPI_Win_allocate(MPI_Aint size,
         }
         else
             rc = PMPI_Win_allocate(size, disp_unit, info, comm, baseptr, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(comm, &size);
-            PMPI_Comm_rank(comm, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: win allocated (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, comm, "Win_allocate");
         if (!flag)
             return rc;
         else if (rc == MPI_SUCCESS)
@@ -129,14 +112,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
         }
         else
             rc = PMPI_Win_fence(assert, win);
-        if (VERBOSE)
-        {
-            int rank, size;
-            PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Error_string(rc, errstr, &len);
-            printf("Rank %d / %d: fence done (error: %s)\n", rank, size, errstr);
-        }
+        legio::report_execution(rc, MPI_COMM_WORLD, "Win_fence");
         if (rc == MPI_SUCCESS || !flag)
             return rc;
         else
@@ -163,23 +139,22 @@ int MPI_Get(void* origin_addr,
         int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
         if (new_rank == MPI_UNDEFINED)
         {
-            HANDLE_GET_FAIL(comm.get_comm());
+            if constexpr (BuildOptions::get_resiliency)
+                rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Get failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
         }
-        rc = PMPI_Get(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
-                      target_count, target_datatype, translated);
+        else
+            rc = PMPI_Get(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
+                          target_count, target_datatype, translated);
     }
     else
         rc = PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank, target_disp,
                       target_count, target_datatype, win);
-get_handling:
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: get done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Get");
     return rc;
 }
 
@@ -201,22 +176,21 @@ int MPI_Put(const void* origin_addr,
         int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
         if (new_rank == MPI_UNDEFINED)
         {
-            HANDLE_PUT_FAIL(comm.get_comm());
+            if constexpr (BuildOptions::put_resiliency)
+                rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Put failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
         }
-        rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
-                      target_count, target_datatype, translated);
+        else
+            rc = PMPI_Put(origin_addr, origin_count, origin_datatype, new_rank, target_disp,
+                          target_count, target_datatype, translated);
     }
     else
         rc = PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank, target_disp,
                       target_count, target_datatype, win);
-put_handling:
-    if (VERBOSE)
-    {
-        int rank, size;
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Error_string(rc, errstr, &len);
-        printf("Rank %d / %d: put done (error: %s)\n", rank, size, errstr);
-    }
+    legio::report_execution(rc, MPI_COMM_WORLD, "Put");
     return rc;
 }

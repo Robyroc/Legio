@@ -1,6 +1,8 @@
 #ifndef COMM_MANIPULATION_HPP
 #define COMM_MANIPULATION_HPP
 
+namespace legio {
+
 class ComplexComm;
 
 void translate_ranks(int, ComplexComm&, int*);
@@ -11,14 +13,10 @@ void replace_and_repair_comm(ComplexComm& cur_complex);
 
 void agree_and_eventually_replace(int*, ComplexComm&);
 
-// int MPI_Barrier(ComplexComm *comm);
-
 void initialization(int* argc, char*** argv);
 
 void finalization();
 
-// void kalive_thread();
-
-// void kill_kalive_thread();
+}  // namespace legio
 
 #endif

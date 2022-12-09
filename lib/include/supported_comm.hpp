@@ -4,6 +4,8 @@
 #include <vector>
 #include "mpi.h"
 
+namespace legio {
+
 class Rank
 {
    public:
@@ -42,5 +44,7 @@ class RespawnedSupportedComm : public SupportedComm
     int size();
     int rank();
 };
+
+}  // namespace legio
 
 #endif

@@ -13,6 +13,8 @@
 #include "struct_selector.hpp"
 #include "supported_comm.hpp"
 
+namespace legio {
+
 class Multicomm
 {
    public:
@@ -131,5 +133,7 @@ class Multicomm
     std::vector<int> to_respawn;
     std::map<int, int> supported_comms;
 };
+
+}  // namespace legio
 
 #endif
