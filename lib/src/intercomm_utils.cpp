@@ -197,8 +197,6 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
     std::vector<unsigned> roles;
     std::vector<unsigned> future_roles;
     roles.push_back(u_rank);
-    if (size + u_rank < next_power)
-        roles.push_back(size + u_rank);
 
     int level = 0;
     for (unsigned i = 1; i < next_power; i <<= 1, level += 1)
@@ -208,17 +206,18 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
         {
             unsigned target = role xor i;
             int target_index = static_cast<int>(target);
-            if (target_index >= size)
-                target_index -= size;
             int target_rank;
-            PMPI_Group_translate_ranks(to_check, 1, &target_index, actual, &target_rank);
+            if (target_index >= size)
+                target_rank = MPI_UNDEFINED;
+            else
+                PMPI_Group_translate_ranks(to_check, 1, &target_index, actual, &target_rank);
             int low_index, high_index, rc;
             if (target_rank == own_rank)
                 continue;
             if (target < role)
             {
-                // printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
-                // role, target_rank);
+                printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
+                       role, target_rank);
                 get_range(static_cast<int>(role), level, next_power, &low_index, &high_index);
                 PMPI_Send(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
                           target_rank,
@@ -232,8 +231,8 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
             }
             else
             {
-                // printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
-                // role, target_rank);
+                printf("Rank %d, communicating with %u, role %u, rank %d\n", check_rank, target,
+                       role, target_rank);
                 get_range(static_cast<unsigned>(target), level, next_power, &low_index,
                           &high_index);
                 rc = PMPI_Recv(&(ranks_list[low_index]), high_index - low_index + 1, MPI_INT,
@@ -248,22 +247,24 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
             }
             if (rc != MPI_SUCCESS)
             {
-                // printf("Rank %d, ERROR with %u, role %u\n", check_rank, target, role);
-                bool found = false;
-                for (unsigned j = 1; j < i; j <<= 1)
+                printf("Rank %d, ERROR with %u, role %u\n", check_rank, target, role);
+                bool found = std::find(roles.begin(), roles.end(), static_cast<unsigned>(target)) !=
+                             roles.end();
+                for (unsigned j = 1; j < i && !found; j <<= 1)
                 {
                     unsigned adjusted_target = target xor j;
                     int adjusted_target_index = static_cast<int>(adjusted_target);
                     if (adjusted_target_index >= size)
-                        adjusted_target_index -= size;
-                    PMPI_Group_translate_ranks(to_check, 1, &adjusted_target_index, actual,
-                                               &target_rank);
+                        target_rank = MPI_UNDEFINED;
+                    else
+                        PMPI_Group_translate_ranks(to_check, 1, &adjusted_target_index, actual,
+                                                   &target_rank);
                     if (target_rank == own_rank)
                         continue;
                     if (adjusted_target < role)
                     {
-                        // printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
-                        // target, adjusted_target, role);
+                        printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
+                               target, adjusted_target, role);
                         get_range(static_cast<int>(role), level, next_power, &low_index,
                                   &high_index);
                         PMPI_Send(
@@ -281,8 +282,8 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
                     }
                     else
                     {
-                        // printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
-                        // target, adjusted_target, role);
+                        printf("Rank %d, ERROR with %u, adjusting to %u, role %u\n", check_rank,
+                               target, adjusted_target, role);
                         get_range(static_cast<int>(target), level, next_power, &low_index,
                                   &high_index);
                         rc = PMPI_Recv(
@@ -306,7 +307,7 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
                 }
                 if (!found)
                 {
-                    // printf("Rank %d, role %u, add role %u\n", check_rank, role, target);
+                    printf("Rank %d, role %u, add role %u\n", check_rank, role, target);
                     future_roles.push_back(target);
                 }
             }
@@ -319,44 +320,17 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
     }
     int* compacted = static_cast<int*>(malloc(sizeof(int) * size));
     int position = 0;
-    // printf("Rank %d, result:", check_rank);
+    printf("Rank %d, result:", check_rank);
     for (int i = 0; i < size; i++)
     {
-        // printf(" %d", ranks_list[i]);
+        printf(" %d", ranks_list[i]);
         if (ranks_list[i] != -1)
             compacted[position++] = ranks_list[i];
     }
-    // printf("\n");
+    printf("\n");
     free(ranks_list);
     MPI_Group result;
     MPI_Group_incl(to_check, position, compacted, &result);
     free(compacted);
     return result;
-}
-
-void legio::check_group(legio::ComplexComm cur_comm,
-                        MPI_Group group,
-                        MPI_Group* first_clean,
-                        MPI_Group* second_clean)
-{
-    MPI_Group failed_group, original_group = cur_comm.get_group(), actual_group;
-    // int own_rank;
-    MPI_Comm_group(cur_comm.get_comm(), &actual_group);
-    // MPI_Group_rank(actual_group, &own_rank);
-    MPI_Group_difference(original_group, actual_group, &failed_group);
-    MPI_Group_difference(group, failed_group, first_clean);
-    MPI_Group_free(&failed_group);
-    // int size;
-    // MPI_Group_size(*first_clean, &size);
-    // printf("___%d___ First clean, size: %d\n", own_rank, size);
-    // Up to this we removed all the previously detected failures in the communicator
-    // Now we need to remove all the failures in the group
-    // To do so we use the second algorithm (the DK one)
-    if constexpr (BuildOptions::cube_algorithm)
-        *second_clean = deeper_check_cube(*first_clean, cur_comm.get_alias());
-    else
-        *second_clean = deeper_check_tree(*first_clean, cur_comm.get_alias());
-
-    // MPI_Group_size(*second_clean, &size);
-    // printf("___%d___ Second clean, size: %d\n", own_rank, size);
 }

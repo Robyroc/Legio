@@ -180,6 +180,33 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm* newcomm)
     }
 }
 
+void check_group(legio::ComplexComm cur_comm,
+                 MPI_Group group,
+                 MPI_Group* first_clean,
+                 MPI_Group* second_clean)
+{
+    MPI_Group failed_group, original_group = cur_comm.get_group(), actual_group;
+    // int own_rank;
+    MPI_Comm_group(cur_comm.get_comm(), &actual_group);
+    // MPI_Group_rank(actual_group, &own_rank);
+    MPI_Group_difference(original_group, actual_group, &failed_group);
+    MPI_Group_difference(group, failed_group, first_clean);
+    MPI_Group_free(&failed_group);
+    // int size;
+    // MPI_Group_size(*first_clean, &size);
+    // printf("___%d___ First clean, size: %d\n", own_rank, size);
+    // Up to this we removed all the previously detected failures in the communicator
+    // Now we need to remove all the failures in the group
+    // To do so we use the second algorithm (the DK one)
+    if constexpr (BuildOptions::cube_algorithm)
+        *second_clean = deeper_check_cube(*first_clean, cur_comm.get_alias());
+    else
+        *second_clean = deeper_check_tree(*first_clean, cur_comm.get_alias());
+
+    // MPI_Group_size(*second_clean, &size);
+    // printf("___%d___ Second clean, size: %d\n", own_rank, size);
+}
+
 int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm* newcomm)
 {
     int rc;

@@ -29,7 +29,7 @@ if(NOT DEFINED LOG_LEVEL)
     set(LOG_LEVEL 2)
 endif()
 option(WITH_RESTART "Include restart functionalities" On)
-option(CUBE_ALGORITHM "Cube algorithm for non-collective operations" On)
+option(CUBE_ALGORITHM "Cube algorithm for non-collective operations" Off)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 

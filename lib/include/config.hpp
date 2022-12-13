@@ -14,7 +14,7 @@
 
 #define LOG_LEVEL 2
 #define WITH_RESTART 1
-#define CUBE_ALGORITHM 1
+#define CUBE_ALGORITHM 0
 
 namespace legio {
 
