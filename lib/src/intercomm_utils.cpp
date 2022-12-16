@@ -334,3 +334,125 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
     free(compacted);
     return result;
 }
+
+int legio::non_collective_agree(MPI_Group to_check, MPI_Comm actual_comm, const int flag)
+{
+    int local_flag = flag;
+    MPI_Group actual;
+    int check_rank, translated, size;
+    MPI_Comm_group(actual_comm, &actual);
+    MPI_Group_rank(to_check, &check_rank);
+    MPI_Group_size(to_check, &size);
+    int* ranks_list = static_cast<int*>(malloc(sizeof(int) * size));
+    memset(ranks_list, -1, size * sizeof(int));
+    ranks_list[check_rank] = check_rank;
+    int max_level = 0;
+    while (size > (1 << max_level))
+        max_level++;
+    // printf(">>>>%d<<<< Inside deeper check, max_level = %d, size = %d\n", check_rank, max_level,
+    // size);
+    int effective_rank = check_rank;
+    for (int level = 1; level <= max_level; level++)
+    {
+        int root_level = get_root_level(effective_rank, max_level);
+        if (root_level < level)
+        {
+            // printf(">>>>%d<<<< Level %d, I am no root\n", check_rank, level);
+            // We're leaf, gotta send info and then wait for response
+            int low, high;
+            int low_own, high_own;
+            get_range(effective_rank, level, size, &low, &high);
+            get_range(effective_rank, level - 1, size, &low_own, &high_own);
+            int target_rank;
+            int used_root;
+            for (used_root = low; used_root <= high; used_root++)
+            {
+                if (used_root == effective_rank)
+                    break;
+                else
+                {
+                    // printf(">>>>%d<<<< Level %d, checking %d as root\n", check_rank, level,
+                    // used_root);
+                    MPI_Group_translate_ranks(to_check, 1, &used_root, actual, &target_rank);
+                    PMPI_Send(&(ranks_list[low_own]), high_own - low_own + 1, MPI_INT, target_rank,
+                              0, actual_comm);
+                    PMPI_Send(&local_flag, 1, MPI_INT, target_rank, 1, actual_comm);
+                    int rc = PMPI_Recv(ranks_list, size, MPI_INT, target_rank, 0, actual_comm,
+                                       MPI_STATUSES_IGNORE);
+                    if (rc == MPI_SUCCESS)
+                    {
+                        int rc = PMPI_Recv(&local_flag, 1, MPI_INT, target_rank, 1, actual_comm,
+                                           MPI_STATUSES_IGNORE);
+                        // printf(">>>>%d<<<< Level %d, Found %d as root\n", check_rank, level,
+                        // used_root);
+                        break;  // All done, just need to propagate to top
+                    }
+                }
+            }
+            if (used_root == effective_rank)
+            {
+                // printf(">>>>%d<<<< Level %d, No roots found\n", check_rank, level);
+                // No roots found, gotta become the new root of the subtree
+                effective_rank = low;
+                level--;
+                continue;  // This way we repeat the iteration with a new effective
+            }
+            else
+                break;
+        }
+        else
+        {
+            // printf(">>>>%d<<<< Level %d, I am root\n", check_rank, level);
+            int receiver, target_rank;
+            int low, high;
+            get_range(effective_rank + (1 << level - 1), level - 1, size, &low, &high);
+            for (receiver = low; receiver <= high; receiver++)
+            {
+                if (receiver == check_rank)
+                    break;
+                // printf(">>>>%d<<<< Level %d, checking %d as leaf\n", check_rank, level,
+                // receiver);
+                MPI_Group_translate_ranks(to_check, 1, &receiver, actual, &target_rank);
+                int rc = PMPI_Recv(&(ranks_list[low]), high - low + 1, MPI_INT, target_rank, 0,
+                                   actual_comm, MPI_STATUS_IGNORE);
+                if (rc == MPI_SUCCESS)
+                {
+                    int temp_flag;
+                    int rc = PMPI_Recv(&temp_flag, 1, MPI_INT, target_rank, 1, actual_comm,
+                                       MPI_STATUS_IGNORE);
+                    local_flag |= temp_flag;
+                    // printf(">>>>%d<<<< Level %d, found %d as leaf\n", check_rank, level,
+                    // receiver);
+                    break;
+                }
+            }
+        }
+    }
+    // printf("]]]]%d[[[[ Starting up propagation, size = %d, values are :", check_rank, size);
+    // for(int i = 0; i < size; i++)
+    // printf("%d ", ranks_list[i]);
+    // printf("\n");
+    int level_root = get_root_level(effective_rank, max_level);
+    int level_check = get_root_level(check_rank, max_level);
+    int low, high;
+    for (int level = level_root; level >= 1; level--)
+    {
+        if (level == level_check)
+            effective_rank = check_rank;
+        get_range(effective_rank + (1 << level - 1), level - 1, size, &low, &high);
+        // printf("]]]]%d[[[[ Searching at Level %d\n", check_rank, level);
+        int root_searched, target;
+        for (root_searched = low; root_searched <= high; root_searched++)
+            if (ranks_list[root_searched] != -1)
+                break;
+        if (root_searched > high || root_searched == check_rank)
+            continue;
+        // printf("]]]]%d[[[[ Searching at Level %d, found leaf %d\n", check_rank, level,
+        // root_searched);
+        MPI_Group_translate_ranks(to_check, 1, &root_searched, actual, &target);
+        PMPI_Send(ranks_list, size, MPI_INT, target, 0, actual_comm);
+        PMPI_Send(&local_flag, 1, MPI_INT, target, 1, actual_comm);
+    }
+    free(ranks_list);
+    return local_flag;
+}

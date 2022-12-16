@@ -1,8 +1,10 @@
 extern "C" {
 #include "legio.h"
 }
-#include "mpi-ext.h"
+#include "intercomm_utils.hpp"
 #include "mpi.h"
+
+#include "mpi-ext.h"
 
 void fault_number(MPI_Comm comm, int* size)
 {
@@ -20,4 +22,10 @@ void who_failed(MPI_Comm comm, int* size, int* ranks)
     int i;
     for (i = 0; i < *size && i < LEGIO_MAX_FAILS; i++)
         PMPI_Group_translate_ranks(failed, 1, &i, comm_group, &(ranks[i]));
+}
+
+int MPIX_Comm_agree_group(MPI_Comm comm, MPI_Group group, int* flag)
+{
+    *flag = non_collective_agree(group, comm, *flag);
+    return MPI_SUCCESS;
 }

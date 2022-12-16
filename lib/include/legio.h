@@ -14,4 +14,6 @@ void fault_number(MPI_Comm, int*);
 
 void who_failed(MPI_Comm, int*, int*);
 
+int MPIX_Comm_agree_group(MPI_Comm, MPI_Group, int*);
+
 #endif

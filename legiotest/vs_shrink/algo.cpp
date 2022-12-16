@@ -6,6 +6,10 @@
 #include <vector>
 #include "mpi.h"
 
+extern "C" {
+#include "legio.h"
+}
+
 #include "mpi-ext.h"
 
 #define MULT 1000
@@ -137,8 +141,7 @@ int main(int argc, char** argv)
         start = MPI_Wtime();
         for (int i = 0; i < MULT; i++)
         {
-            MPI_Comm_create_from_group(group, "TAG", MPI_INFO_NULL, MPI_ERRORS_RETURN, &(bogus[i]));
-            MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_BOR, bogus[i]);
+            MPIX_Comm_agree_group(MPI_COMM_WORLD, group, &flag);
         }
         end = MPI_Wtime();
 
