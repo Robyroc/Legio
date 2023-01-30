@@ -243,37 +243,6 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm* new
         return rc;
 }
 
-int MPI_Comm_create_from_group(MPI_Group group,
-                               const char* stringtag,
-                               MPI_Info info,
-                               MPI_Errhandler errhandler,
-                               MPI_Comm* newcomm)
-{
-    int rc;
-    bool flag = Multicomm::get_instance().part_of(MPI_COMM_WORLD);
-    failure_mtx.lock_shared();
-    if (flag)
-    {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(MPI_COMM_WORLD);
-        MPI_Group first_clean, second_clean;
-        check_group(translated, group, &first_clean, &second_clean);
-        rc = PMPI_Comm_create_from_group(second_clean, stringtag, info, errhandler, newcomm);
-    }
-    else
-        rc = PMPI_Comm_create_from_group(group, stringtag, info, errhandler, newcomm);
-    failure_mtx.unlock_shared();
-    legio::report_execution(rc, MPI_COMM_WORLD, "Comm_create_from_group");
-    if (flag && rc == MPI_SUCCESS && *newcomm != MPI_COMM_NULL)
-    {
-        // Following line should be set by the errhandler parameter
-        // MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-        Multicomm::get_instance().add_comm(*newcomm);
-        return rc;
-    }
-    else
-        return rc;
-}
-
 int MPI_Comm_disconnect(MPI_Comm* comm)
 {
     std::function<int(MPI_Comm*)> func = [](MPI_Comm* a) { return PMPI_Comm_disconnect(a); };

@@ -1,0 +1,23 @@
+add_executable(session10 sessions_test10.c)
+add_executable(session11 sessions_test11.c)
+add_executable(session12 sessions_test12.c)
+add_executable(session13 sessions_test13.c)
+
+add_executable(session10p sessions_test10.c)
+add_executable(session11p sessions_test11.c)
+add_executable(session12p sessions_test12.c)
+add_executable(session13p sessions_test13.c)
+
+target_link_libraries(session10 PUBLIC legio)
+target_link_libraries(session11 PUBLIC legio)
+target_link_libraries(session12 PUBLIC legio)
+target_link_libraries(session13 PUBLIC legio)
+
+linkMPI(session10)
+linkMPI(session11)
+linkMPI(session12)
+linkMPI(session13)
+linkMPI(session10p)
+linkMPI(session11p)
+linkMPI(session12p)
+linkMPI(session13p)

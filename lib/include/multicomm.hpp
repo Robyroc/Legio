@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <functional>
 #include <map>
+#include <mutex>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -32,6 +33,7 @@ class Multicomm
     const bool part_of(const MPI_Comm) const;
     void initialize(const int size);
     void initialize(const int size, const int rank, const std::vector<int> failed);
+    const bool is_initialized();
 
     template <class MPI_T>
     bool add_structure(ComplexComm& comm,
@@ -121,7 +123,13 @@ class Multicomm
         supported_comms.insert(addee);
     }
 
+    MPI_Comm get_world_comm();
+
+    void set_world_comm(MPI_Comm);
+
    private:
+    std::mutex init_lock;
+    std::mutex world_lock;
     std::vector<Rank> ranks;
     std::unordered_map<int, ComplexComm> comms;
     std::array<std::unordered_map<int, int>, 3> maps;
@@ -132,6 +140,7 @@ class Multicomm
     int own_rank;
     std::vector<int> to_respawn;
     std::map<int, int> supported_comms;
+    MPI_Comm world_comm = MPI_COMM_NULL;
 };
 
 }  // namespace legio

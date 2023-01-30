@@ -34,3 +34,7 @@ add_subdirectory(noncoll_test)
 add_subdirectory(vs_shrink)
 
 add_subdirectory(algo_test)
+
+if(WITH_SESSION_TESTS)
+    add_subdirectory(session_test)
+endif()

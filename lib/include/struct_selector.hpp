@@ -34,6 +34,12 @@ inline const int c2f<MPI_Comm>(const MPI_Comm comm)
     return MPI_Comm_c2f(const_cast<MPI_Comm>(comm));
 }
 
+template <>
+inline const int c2f<MPI_Session>(const MPI_Session session)
+{
+    return MPI_Session_c2f(const_cast<MPI_Session>(session));
+}
+
 typedef std::tuple<StructureHandler<MPI_Win, MPI_Comm>*,
                    StructureHandler<MPI_File, MPI_Comm>*,
                    StructureHandler<MPI_Request, MPI_Comm>*>

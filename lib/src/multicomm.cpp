@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <functional>
+#include <mutex>
 #include <stdexcept>
 #include <unordered_map>
 #include "complex_comm.hpp"
@@ -14,7 +15,9 @@ using namespace legio;
 // Multicomm::Multicomm(int size)
 void Multicomm::initialize(int size)
 {
-    assert(!initialized);
+    const std::lock_guard<std::mutex> lock(init_lock);
+    if (initialized)
+        return;
     initialized = true;
     respawned = false;
     // Initialize ranks
@@ -28,7 +31,9 @@ void Multicomm::initialize(const int size, const int rank_, const std::vector<in
 {
     if constexpr (!BuildOptions::with_restart)
         assert(false && "Unsupported (recompile with restart)");
-    assert(!initialized);
+    const std::lock_guard<std::mutex> lock(init_lock);
+    if (initialized)
+        return;
     initialized = true;
     respawned = true;
     for (int i = 0; i < size; i++)
@@ -37,6 +42,25 @@ void Multicomm::initialize(const int size, const int rank_, const std::vector<in
         ranks.push_back(Rank(i, is_failed));
     }
     own_rank = rank_;
+}
+const bool Multicomm::is_initialized()
+{
+    const std::lock_guard<std::mutex> lock(init_lock);
+    return initialized;
+}
+
+MPI_Comm Multicomm::get_world_comm()
+{
+    const std::lock_guard<std::mutex> lock(world_lock);
+    return world_comm;
+}
+
+void Multicomm::set_world_comm(MPI_Comm comm)
+{
+    const std::lock_guard<std::mutex> lock(world_lock);
+    if (world_comm != MPI_COMM_NULL)
+        PMPI_Comm_free(&world_comm);
+    world_comm = comm;
 }
 
 int Multicomm::add_comm(MPI_Comm added)

@@ -29,6 +29,8 @@ using namespace legio;
 void legio::initialization(int* argc, char*** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+    MPI_Comm temp;
+    PMPI_Comm_dup(MPI_COMM_WORLD, &temp);
     int size, rank;
     std::vector<int> failed;
 
@@ -66,6 +68,7 @@ void legio::initialization(int* argc, char*** argv)
     {
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         Multicomm::get_instance().initialize(size);
+        Multicomm::get_instance().set_world_comm(temp);
     }
 
     if constexpr (BuildOptions::with_restart)

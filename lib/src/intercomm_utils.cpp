@@ -177,6 +177,18 @@ unsigned legio::next_pow_2(int number)
     return v;
 }
 
+std::vector<unsigned> find_alternatives(unsigned target, unsigned level)
+{
+    std::vector<unsigned> result;
+    for (unsigned i = 1; i < level; i <<= 1)
+    {
+        result.push_back(target xor i);
+        auto appendee = find_alternatives((target xor i), i);
+        result.insert(result.end(), appendee.begin(), appendee.end());
+    }
+    return result;
+}
+
 MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
 {
     char errstr[MPI_MAX_ERROR_STRING];
@@ -250,9 +262,11 @@ MPI_Group legio::deeper_check_cube(MPI_Group to_check, MPI_Comm actual_comm)
                 printf("Rank %d, ERROR with %u, role %u\n", check_rank, target, role);
                 bool found = std::find(roles.begin(), roles.end(), static_cast<unsigned>(target)) !=
                              roles.end();
-                for (unsigned j = 1; j < i && !found; j <<= 1)
+                std::vector<unsigned> alternatives = find_alternatives(target, i);
+                for (auto adjusted_target : alternatives)
                 {
-                    unsigned adjusted_target = target xor j;
+                    if (found)
+                        break;
                     int adjusted_target_index = static_cast<int>(adjusted_target);
                     if (adjusted_target_index >= size)
                         target_rank = MPI_UNDEFINED;

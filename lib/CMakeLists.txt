@@ -61,6 +61,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/request_handler.cpp"
     "${LIBRARY_SRC_PATH}/restart_routines.cpp"
     "${LIBRARY_SRC_PATH}/restart.cpp"
+    "${LIBRARY_SRC_PATH}/session.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
 )
