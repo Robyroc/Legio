@@ -13,6 +13,7 @@
 #define SCATTER_SHIFT 1
 
 #define LOG_LEVEL 2
+#define SESSION_THREAD 0
 #define WITH_RESTART 1
 #define CUBE_ALGORITHM 0
 
@@ -35,6 +36,7 @@ struct BuildOptions
     constexpr static bool scatter_shift = static_cast<bool>(SCATTER_SHIFT);
 
     constexpr static LogLevel log_level = static_cast<LogLevel>(LOG_LEVEL);
+    constexpr static bool session_thread = static_cast<bool>(SESSION_THREAD);
     constexpr static bool with_restart = static_cast<bool>(WITH_RESTART);
     constexpr static bool cube_algorithm = static_cast<bool>(CUBE_ALGORITHM);
 };

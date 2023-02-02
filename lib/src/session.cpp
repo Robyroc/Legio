@@ -25,46 +25,44 @@ int MPI_Session_init(MPI_Info info, MPI_Errhandler errhandler, MPI_Session* sess
 {
     if constexpr (BuildOptions::with_restart)
         assert(false && "Session model incompatible with restart functionalities");
-    int flag;
-    MPI_Initialized(&flag);
     if (!Multicomm::get_instance().is_initialized())
     {
         MPI_Session temp;
         int flag2, size;
         MPI_Group group;
-        PMPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &temp);
+        MPI_Info tinfo;
+        if constexpr (BuildOptions::session_thread)
+        {
+            PMPI_Info_create(&tinfo);
+            PMPI_Info_set(tinfo, "mpi_thread_support_level", "MPI_THREAD_MULTIPLE");
+            PMPI_Session_init(tinfo, MPI_ERRORS_RETURN, &temp);
+            PMPI_Info_free(&tinfo);
+        }
+        else
+            PMPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &temp);
         PMPI_Group_from_session_pset(temp, "mpi://WORLD", &group);
         PMPI_Group_size(group, &size);
-        PMPI_Group_free(&group);
         Multicomm::get_instance().initialize(size);
+        if constexpr (BuildOptions::session_thread)
+        {
+            std::future<int>* hThread =
+                new std::future<int>(std::async(std::launch::async, [group] {
+                    MPI_Comm temp;
+                    int rc = PMPI_Comm_create_from_group(group, "Legio_horizon_construction",
+                                                         MPI_INFO_NULL, MPI_ERRORS_RETURN, &temp);
+                    Multicomm::get_instance().add_horizon_comm(temp);
+                    return rc;
+                }));
+            if (hThread->wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
+            {
+                printf("Not all processes reachable during first init, aborting\n");
+                exit(-1);
+            }
+        }
+        PMPI_Group_free(&group);
         // PMPI_Session_finalize(&temp);
     }
     int rc = PMPI_Session_init(info, errhandler, session);
-    return rc;
-}
-
-int MPI_Group_from_session_pset(MPI_Session session, const char* pset_name, MPI_Group* newgroup)
-{
-    int rc = PMPI_Group_from_session_pset(session, pset_name, newgroup);
-    MPI_Group union_group;
-    if (Multicomm::get_instance().get_world_comm() == MPI_COMM_NULL)
-        union_group = *newgroup;
-    else
-    {
-        MPI_Group temp, diff;
-        int group_size;
-        PMPI_Comm_group(Multicomm::get_instance().get_world_comm(), &temp);
-        PMPI_Group_union(temp, *newgroup, &union_group);
-        PMPI_Group_difference(union_group, temp, &diff);
-        PMPI_Group_size(diff, &group_size);
-        if (group_size == 0)
-            return rc;
-    }
-    MPI_Comm temp;
-    PMPI_Comm_create_from_group(union_group, "Legio_world_group_construction", MPI_INFO_NULL,
-                                MPI_ERRORS_RETURN, &temp);
-    printf("new_world_comm!\n");
-    Multicomm::get_instance().set_world_comm(temp);
     return rc;
 }
 
@@ -74,20 +72,29 @@ int MPI_Comm_create_from_group(MPI_Group group,
                                MPI_Errhandler errhandler,
                                MPI_Comm* newcomm)
 {
-    int rank, size;
-    PMPI_Group_rank(group, &rank);
-    PMPI_Group_size(group, &size);
-
     int rc;
     failure_mtx.lock_shared();
     {
         MPI_Group clean;
+        MPI_Comm horizon = Multicomm::get_instance().get_horizon_comm(group);
+        if (horizon != MPI_COMM_NULL)
+            check_group(horizon, group, &clean);
+        else
         {
-            check_group(Multicomm::get_instance().get_world_comm(), group, &clean);
-            rc = PMPI_Comm_create_from_group(clean, stringtag, info, errhandler, newcomm);
-            MPI_Group_free(&clean);
-            legio::report_execution(rc, Multicomm::get_instance().get_world_comm(),
-                                    "Comm_create_from_group");
+            legio::log("Executing MPI_Comm_create_from_group in unsafe mode, it can deadlock",
+                       LogLevel::errors_and_info);
+            clean = group;
+        }
+        rc = PMPI_Comm_create_from_group(clean, stringtag, info, errhandler, newcomm);
+        MPI_Group_free(&clean);
+        if (horizon != MPI_COMM_NULL)
+            legio::report_execution(rc, horizon, "Comm_create_from_group");
+        else
+        {
+            MPI_Comm temp;
+            PMPI_Comm_dup(*newcomm, &temp);
+            Multicomm::get_instance().add_horizon_comm(temp);
+            legio::report_execution(rc, temp, "Comm_create_from_group");
         }
     }
     failure_mtx.unlock_shared();

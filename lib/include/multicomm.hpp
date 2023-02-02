@@ -123,13 +123,15 @@ class Multicomm
         supported_comms.insert(addee);
     }
 
-    MPI_Comm get_world_comm();
+    // bool is_horizon_present();
 
-    void set_world_comm(MPI_Comm);
+    MPI_Comm get_horizon_comm(MPI_Group);
+
+    void add_horizon_comm(MPI_Comm);
 
    private:
     std::mutex init_lock;
-    std::mutex world_lock;
+    std::mutex horizon_lock;
     std::vector<Rank> ranks;
     std::unordered_map<int, ComplexComm> comms;
     std::array<std::unordered_map<int, int>, 3> maps;
@@ -140,7 +142,7 @@ class Multicomm
     int own_rank;
     std::vector<int> to_respawn;
     std::map<int, int> supported_comms;
-    MPI_Comm world_comm = MPI_COMM_NULL;
+    std::list<MPI_Comm> horizon_comms;
 };
 
 }  // namespace legio

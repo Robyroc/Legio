@@ -13,6 +13,7 @@
 #cmakedefine01 SCATTER_SHIFT
 
 #cmakedefine LOG_LEVEL @LOG_LEVEL@
+#cmakedefine01 SESSION_THREAD
 #cmakedefine01 WITH_RESTART
 #cmakedefine01 CUBE_ALGORITHM
 
@@ -35,6 +36,7 @@ struct BuildOptions
     constexpr static bool scatter_shift = static_cast<bool>(SCATTER_SHIFT);
 
     constexpr static LogLevel log_level = static_cast<LogLevel>(LOG_LEVEL);
+    constexpr static bool session_thread = static_cast<bool>(SESSION_THREAD);
     constexpr static bool with_restart = static_cast<bool>(WITH_RESTART);
     constexpr static bool cube_algorithm = static_cast<bool>(CUBE_ALGORITHM);
 };

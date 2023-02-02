@@ -29,8 +29,6 @@ using namespace legio;
 void legio::initialization(int* argc, char*** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    MPI_Comm temp;
-    PMPI_Comm_dup(MPI_COMM_WORLD, &temp);
     int size, rank;
     std::vector<int> failed;
 
@@ -66,9 +64,18 @@ void legio::initialization(int* argc, char*** argv)
     }
     else
     {
+        MPI_Comm temp;
+        MPI_Session temp_session;
+        MPI_Group temp_group;
+        PMPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &temp_session);
+        PMPI_Group_from_session_pset(temp_session, "mpi://WORLD", &temp_group);
+        PMPI_Comm_create_from_group(temp_group, "Legio_horizon_construction", MPI_INFO_NULL,
+                                    MPI_ERRORS_RETURN, &temp);
+        PMPI_Group_free(&temp_group);
+        PMPI_Session_finalize(&temp_session);
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         Multicomm::get_instance().initialize(size);
-        Multicomm::get_instance().set_world_comm(temp);
+        Multicomm::get_instance().add_horizon_comm(temp);
     }
 
     if constexpr (BuildOptions::with_restart)

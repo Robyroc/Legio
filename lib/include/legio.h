@@ -16,4 +16,6 @@ void who_failed(MPI_Comm, int*, int*);
 
 int MPIX_Comm_agree_group(MPI_Comm, MPI_Group, int*);
 
+int MPIX_Horizon_from_group(MPI_Group);
+
 #endif
