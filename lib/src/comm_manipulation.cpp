@@ -72,7 +72,8 @@ void legio::initialization(int* argc, char*** argv)
         PMPI_Comm_create_from_group(temp_group, "Legio_horizon_construction", MPI_INFO_NULL,
                                     MPI_ERRORS_RETURN, &temp);
         PMPI_Group_free(&temp_group);
-        PMPI_Session_finalize(&temp_session);
+        Multicomm::get_instance().add_pending_session(temp_session);
+        Multicomm::get_instance().add_open_session();
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
         Multicomm::get_instance().initialize(size);
         Multicomm::get_instance().add_horizon_comm(temp);
@@ -110,7 +111,10 @@ void legio::initialization(int* argc, char*** argv)
     }
 }
 
-void legio::finalization() {}
+void legio::finalization()
+{
+    Multicomm::get_instance().close_session();
+}
 
 void legio::replace_comm(ComplexComm& cur_complex)
 {

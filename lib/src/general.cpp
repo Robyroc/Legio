@@ -43,6 +43,7 @@ int MPI_Init_thread(int* argc, char*** argv, int required, int* provided)
 int MPI_Finalize()
 {
     MPI_Barrier(MPI_COMM_WORLD);
+    PMPI_Finalize();
     finalization();
     return MPI_SUCCESS;
 }

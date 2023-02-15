@@ -33,15 +33,15 @@ int MPI_Barrier(MPI_Comm comm)
         failure_mtx.unlock_shared();
 
         legio::report_execution(rc, comm, "Barrier");
-
-        if (rc == MPI_SUCCESS || !flag)
+        if (flag)
         {
-            return rc;
+            agree_and_eventually_replace(&rc,
+                                         Multicomm::get_instance().translate_into_complex(comm));
+            if (rc == MPI_SUCCESS)
+                return rc;
         }
         else
-        {
-            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
-        }
+            return rc;
     }
 }
 

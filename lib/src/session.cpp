@@ -60,9 +60,10 @@ int MPI_Session_init(MPI_Info info, MPI_Errhandler errhandler, MPI_Session* sess
             }
         }
         PMPI_Group_free(&group);
-        // PMPI_Session_finalize(&temp);
+        Multicomm::get_instance().add_pending_session(temp);
     }
     int rc = PMPI_Session_init(info, errhandler, session);
+    Multicomm::get_instance().add_open_session();
     return rc;
 }
 
@@ -86,7 +87,6 @@ int MPI_Comm_create_from_group(MPI_Group group,
             clean = group;
         }
         rc = PMPI_Comm_create_from_group(clean, stringtag, info, errhandler, newcomm);
-        MPI_Group_free(&clean);
         if (horizon != MPI_COMM_NULL)
             legio::report_execution(rc, horizon, "Comm_create_from_group");
         else
@@ -112,5 +112,6 @@ int MPI_Comm_create_from_group(MPI_Group group,
 int MPI_Session_finalize(MPI_Session* session)
 {
     int rc = PMPI_Session_finalize(session);
+    Multicomm::get_instance().close_session();
     return rc;
 }

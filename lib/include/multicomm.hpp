@@ -129,9 +129,33 @@ class Multicomm
 
     void add_horizon_comm(MPI_Comm);
 
+    void add_pending_session(MPI_Session session)
+    {
+        std::unique_lock<std::mutex> lock(session_lock);
+        pending.push_back(session);
+    }
+    void add_open_session()
+    {
+        std::unique_lock<std::mutex> lock(session_lock);
+        open_sessions++;
+    }
+    void close_session()
+    {
+        std::unique_lock<std::mutex> lock(session_lock);
+        open_sessions--;
+        if (open_sessions == 0)
+        {
+            for (auto session : pending)
+                PMPI_Session_finalize(&session);
+        }
+    }
+
    private:
     std::mutex init_lock;
     std::mutex horizon_lock;
+    std::mutex session_lock;
+    std::vector<MPI_Session> pending;
+    int open_sessions = 0;
     std::vector<Rank> ranks;
     std::unordered_map<int, ComplexComm> comms;
     std::array<std::unordered_map<int, int>, 3> maps;

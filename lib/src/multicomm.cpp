@@ -69,7 +69,6 @@ MPI_Comm Multicomm::get_horizon_comm(MPI_Group group)
 
 void Multicomm::add_horizon_comm(MPI_Comm comm)
 {
-    printf("Adding\n");
     const std::lock_guard<std::mutex> lock(horizon_lock);
     std::list<MPI_Comm> new_horizon;
     for (std::list<MPI_Comm>::iterator horizon = horizon_comms.begin();
