@@ -23,31 +23,31 @@ struct FullWindow
 class ComplexComm
 {
    public:
-    template <class MPI_T>
-    inline void add_structure(MPI_T elem, std::function<int(MPI_Comm, MPI_T*)> func)
+    template <class Legio_T>
+    inline void add_structure(Legio_T elem, std::function<int(Legio_comm, Legio_T*)> func)
     {
-        auto structure_ptr = get_handler<MPI_T>();
-        structure_ptr->add(c2f<MPI_T>(elem), elem, func);
+        auto structure_ptr = get_handler<Legio_T>();
+        structure_ptr->add(c2f<Legio_T>(elem), elem, func);
     }
 
-    template <class MPI_T>
-    inline void remove_structure(MPI_T elem)
+    template <class Legio_T>
+    inline void remove_structure(Legio_T elem)
     {
-        auto structure_ptr = get_handler<MPI_T>();
+        auto structure_ptr = get_handler<Legio_T>();
         structure_ptr->remove(elem);
     }
 
-    template <class MPI_T>
-    inline MPI_T translate_structure(const MPI_T elem)
+    template <class Legio_T>
+    inline Legio_T translate_structure(const Legio_T elem)
     {
-        auto structure_ptr = get_handler<MPI_T>();
+        auto structure_ptr = get_handler<Legio_T>();
         return structure_ptr->translate(elem);
     }
 
-    template <class MPI_T>
-    inline bool check_served(MPI_T elem)
+    template <class Legio_T>
+    inline bool check_served(Legio_T elem)
     {
-        auto structure_ptr = get_handler<MPI_T>();
+        auto structure_ptr = get_handler<Legio_T>();
         return structure_ptr->part_of(elem);
     }
 
@@ -63,10 +63,10 @@ class ComplexComm
     MPI_Comm cur_comm;
     MPI_Group group;
     int alias_id;
-    template <class MPI_T>
-    inline StructureHandler<MPI_T, MPI_Comm>* get_handler(void)
+    template <class Legio_T>
+    inline StructureHandler<Legio_T, MPI_Comm>* get_handler(void)
     {
-        return std::get<handle_selector<MPI_T>::get()>(struct_handlers);
+        return std::get<handle_selector<Legio_T>::get()>(struct_handlers);
     }
 };
 

@@ -9,7 +9,7 @@
 #include "mpi.h"
 #include "multicomm.hpp"
 
-#include "mpi-ext.h"
+#include ULFM_HDR
 
 extern "C" {
 #include "legio.h"

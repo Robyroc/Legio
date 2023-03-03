@@ -5,7 +5,7 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "log.hpp"
-#include "mpi-ext.h"
+#include ULFM_HDR
 #include "multicomm.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
@@ -16,12 +16,13 @@ int any_recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status*);
 int MPI_Send(const void* buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
 {
     int i, rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    Legio_comm com = comm;
+    bool flag = Multicomm::get_instance().part_of(com);
     for (i = 0; i < BuildOptions::num_retry; i++)
     {
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
             if (dest_rank == MPI_UNDEFINED)
             {
@@ -57,8 +58,9 @@ int MPI_Recv(void* buf,
         return any_recv(buf, count, datatype, source, tag, comm, status);
 
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
-    ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+    Legio_comm com = comm;
+    bool flag = Multicomm::get_instance().part_of(com);
+    ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
     failure_mtx.lock_shared();
     if (flag)
     {
@@ -97,11 +99,12 @@ int MPI_Sendrecv(const void* sendbuf,
                  MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    Legio_comm com = comm;
+    bool flag = Multicomm::get_instance().part_of(com);
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
         int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
         int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
         if (source_rank == MPI_UNDEFINED)
@@ -134,11 +137,12 @@ int any_recv(void* buf,
              MPI_Comm comm,
              MPI_Status* status)
 {
+    Legio_comm com = comm;
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Multicomm::get_instance().part_of(com);
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated.get_comm(), status);
     }
     else
@@ -149,13 +153,13 @@ int any_recv(void* buf,
         /*
         int eclass;
         MPI_Error_class(rc, &eclass);
-        if( MPIX_ERR_PROC_FAILED != eclass )
+        if( MPI_ERR_PROC_FAILED != eclass )
         {
             MPI_Abort(MPI_COMM_WORLD, rc);
         }
         */
 
-        MPIX_Comm_failure_ack(Multicomm::get_instance().translate_into_complex(comm).get_comm());
+        MPIX_Comm_failure_ack(Multicomm::get_instance().translate_into_complex(com).get_comm());
     }
     return rc;
 }

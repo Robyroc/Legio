@@ -1,11 +1,11 @@
-#include <mpi.h>
 #include <signal.h>
 #include <stdio.h>
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "log.hpp"
-#include "mpi-ext.h"
+#include "mpi.h"
+#include ULFM_HDR
 #include "multicomm.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
@@ -21,18 +21,22 @@ int MPI_Win_create(void* base,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
-        std::function<int(MPI_Comm, MPI_Win*)> func;
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
+        std::function<int(Legio_comm, Legio_win*)> func;
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             MPI_Barrier(translated.get_alias());
-            func = [base, size, disp_unit, info](MPI_Comm c, MPI_Win* w) -> int {
-                int rc = PMPI_Win_create(base, size, disp_unit, info, c, w);
-                MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
+            func = [base, size, disp_unit, info](Legio_comm c, Legio_win* w) -> int {
+                MPI_Win win = *w;
+                int rc = PMPI_Win_create(base, size, disp_unit, info, c, &win);
+                MPI_Win_set_errhandler(win, MPI_ERRORS_RETURN);
+                *w = win;
                 return rc;
             };
-            rc = func(translated.get_comm(), win);
+            rc = PMPI_Win_create(base, size, disp_unit, info, translated.get_comm(), win);
+            MPI_Win_set_errhandler(*win, MPI_ERRORS_RETURN);
         }
         else
             rc = PMPI_Win_create(base, size, disp_unit, info, comm, win);
@@ -41,13 +45,14 @@ int MPI_Win_create(void* base,
             return rc;
         else if (rc == MPI_SUCCESS)
         {
+            Legio_win w = *win;
             bool result = Multicomm::get_instance().add_structure(
-                Multicomm::get_instance().translate_into_complex(comm), *win, func);
+                Multicomm::get_instance().translate_into_complex(com), w, func);
             if (result)
                 return rc;
         }
         else
-            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
+            replace_comm(Multicomm::get_instance().translate_into_complex(com));
     }
 }
 
@@ -61,18 +66,23 @@ int MPI_Win_allocate(MPI_Aint size,
     while (1)
     {
         int rc;
-        std::function<int(MPI_Comm, MPI_Win*)> func;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        std::function<int(Legio_comm, Legio_win*)> func;
+        bool flag = Multicomm::get_instance().part_of(com);
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             MPI_Barrier(translated.get_alias());
-            func = [size, disp_unit, info, baseptr](MPI_Comm c, MPI_Win* w) -> int {
-                int rc = PMPI_Win_allocate(size, disp_unit, info, c, baseptr, w);
-                MPI_Win_set_errhandler(*w, MPI_ERRORS_RETURN);
+            func = [size, disp_unit, info, baseptr](Legio_comm c, Legio_win* w) -> int {
+                MPI_Win win = *w;
+                int rc = PMPI_Win_allocate(size, disp_unit, info, c, baseptr, &win);
+                MPI_Win_set_errhandler(win, MPI_ERRORS_RETURN);
+                *w = win;
                 return rc;
             };
-            rc = func(translated.get_comm(), win);
+            Legio_win w = *win;
+            rc = func(translated.get_comm(), &w);
+            *win = w;
         }
         else
             rc = PMPI_Win_allocate(size, disp_unit, info, comm, baseptr, win);
@@ -81,8 +91,9 @@ int MPI_Win_allocate(MPI_Aint size,
             return rc;
         else if (rc == MPI_SUCCESS)
         {
+            Legio_win w = *win;
             bool result = Multicomm::get_instance().add_structure(
-                Multicomm::get_instance().translate_into_complex(comm), *win, func);
+                Multicomm::get_instance().translate_into_complex(com), w, func);
             if (result)
                 return rc;
         }
@@ -93,7 +104,9 @@ int MPI_Win_allocate(MPI_Aint size,
 
 int MPI_Win_free(MPI_Win* win)
 {
-    Multicomm::get_instance().remove_structure(win);
+    Legio_win w = *win;
+    Multicomm::get_instance().remove_structure(&w);
+    *win = w;
     return MPI_SUCCESS;
 }
 
@@ -102,11 +115,12 @@ int MPI_Win_fence(int assert, MPI_Win win)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(win);
+        Legio_win w = win;
+        bool flag = Multicomm::get_instance().part_of(w);
         if (flag)
         {
-            ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
-            MPI_Win translated = comm.translate_structure(win);
+            ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(w);
+            MPI_Win translated = comm.translate_structure(w);
             MPI_Barrier(comm.get_alias());
             rc = PMPI_Win_fence(assert, translated);
         }
@@ -116,7 +130,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
         if (rc == MPI_SUCCESS || !flag)
             return rc;
         else
-            replace_comm(Multicomm::get_instance().get_complex_from_structure(win));
+            replace_comm(Multicomm::get_instance().get_complex_from_structure(w));
     }
 }
 
@@ -130,12 +144,13 @@ int MPI_Get(void* origin_addr,
             MPI_Win win)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(win);
+    Legio_win w = win;
+    bool flag = Multicomm::get_instance().part_of(w);
 
     if (flag)
     {
-        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
-        MPI_Win translated = comm.translate_structure(win);
+        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(w);
+        MPI_Win translated = comm.translate_structure(w);
         int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
         if (new_rank == MPI_UNDEFINED)
         {
@@ -168,11 +183,12 @@ int MPI_Put(const void* origin_addr,
             MPI_Win win)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(win);
+    Legio_win w = win;
+    bool flag = Multicomm::get_instance().part_of(w);
     if (flag)
     {
-        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(win);
-        MPI_Win translated = comm.translate_structure(win);
+        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(w);
+        MPI_Win translated = comm.translate_structure(w);
         int new_rank = Multicomm::get_instance().translate_ranks(target_rank, comm);
         if (new_rank == MPI_UNDEFINED)
         {

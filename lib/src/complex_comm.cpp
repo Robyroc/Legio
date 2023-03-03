@@ -10,40 +10,49 @@ using namespace legio;
 
 ComplexComm::ComplexComm(MPI_Comm comm, int id) : cur_comm(comm), alias_id(id)
 {
-    std::function<int(MPI_Win, int*)> setter_w = [](MPI_Win w, int* value) -> int {
+    std::function<int(Legio_win, int*)> setter_w = [](Legio_win w, int* value) -> int {
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_Win, int*, int*)> getter_w = [](MPI_Win f, int* key, int* flag) -> int {
+    std::function<int(Legio_win, int*, int*)> getter_w = [](Legio_win f, int* key,
+                                                            int* flag) -> int {
         int* pointer = *((int**)key);
         *flag = 1;
-        *pointer = c2f<MPI_Win>(f);
+        *pointer = c2f<Legio_win>(f);
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_Win*)> killer_w = [](MPI_Win* w) -> int { return PMPI_Win_free(w); };
+    std::function<int(Legio_win*)> killer_w = [](Legio_win* w) -> int {
+        MPI_Win win = *w;
+        return PMPI_Win_free(&win);
+    };
 
-    std::function<int(MPI_Win, MPI_Win*)> adapter_w = [](MPI_Win, MPI_Win*) -> int {
+    std::function<int(Legio_win, Legio_win*)> adapter_w = [](Legio_win, Legio_win*) -> int {
         return MPI_SUCCESS;
     };
 
-    std::get<handle_selector<MPI_Win>::get()>(struct_handlers) =
-        new StructureHandler<MPI_Win, MPI_Comm>(setter_w, getter_w, killer_w, adapter_w, 0);
+    std::get<handle_selector<Legio_win>::get()>(struct_handlers) =
+        new StructureHandler<Legio_win, MPI_Comm>(setter_w, getter_w, killer_w, adapter_w, 0);
 
-    std::function<int(MPI_File, int*)> setter_f = [](MPI_File f, int* value) -> int {
+    std::function<int(Legio_file, int*)> setter_f = [](Legio_file f, int* value) -> int {
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_File, int*, int*)> getter_f = [](MPI_File f, int* key, int* flag) -> int {
+    std::function<int(Legio_file, int*, int*)> getter_f = [](Legio_file f, int* key,
+                                                             int* flag) -> int {
         int* pointer = *((int**)key);
         *flag = 0;
-        *pointer = c2f<MPI_File>(f);
+        *pointer = c2f<Legio_file>(f);
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_File*)> killer_f = [](MPI_File* f) -> int { return PMPI_File_close(f); };
+    std::function<int(Legio_file*)> killer_f = [](Legio_file* f) -> int {
+        MPI_File file = *f;
+        return PMPI_File_close(&file);
+    };
 
-    std::function<int(MPI_File, MPI_File*)> adapter_f = [](MPI_File old, MPI_File* updated) -> int {
+    std::function<int(Legio_file, Legio_file*)> adapter_f = [](Legio_file old,
+                                                               Legio_file* updated) -> int {
         MPI_Offset disp;
         MPI_Datatype etype, filetype;
         char datarep[MPI_MAX_DATAREP_STRING];
@@ -56,30 +65,30 @@ ComplexComm::ComplexComm(MPI_Comm comm, int id) : cur_comm(comm), alias_id(id)
         return rc;
     };
 
-    std::get<handle_selector<MPI_File>::get()>(struct_handlers) =
-        new StructureHandler<MPI_File, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
+    std::get<handle_selector<Legio_file>::get()>(struct_handlers) =
+        new StructureHandler<Legio_file, MPI_Comm>(setter_f, getter_f, killer_f, adapter_f, 1);
 
-    std::function<int(MPI_Request, int*)> setter_r = [](MPI_Request r, int* value) -> int {
+    std::function<int(Legio_request, int*)> setter_r = [](Legio_request r, int* value) -> int {
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_Request, int*, int*)> getter_r = [](MPI_Request r, int* key,
-                                                              int* flag) -> int {
+    std::function<int(Legio_request, int*, int*)> getter_r = [](Legio_request r, int* key,
+                                                                int* flag) -> int {
         int* pointer = *((int**)key);
         *flag = 0;
-        *pointer = c2f<MPI_Request>(r);
+        *pointer = c2f<Legio_request>(r);
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_Request*)> killer_r = [](MPI_Request* r) -> int {
+    std::function<int(Legio_request*)> killer_r = [](Legio_request* r) -> int {
         // return PMPI_Request_free(r);
         return MPI_SUCCESS;
     };
 
-    std::function<int(MPI_Request, MPI_Request*)> adapter_r =
-        [](MPI_Request old, MPI_Request* updated) -> int { return MPI_SUCCESS; };
+    std::function<int(Legio_request, Legio_request*)> adapter_r =
+        [](Legio_request old, Legio_request* updated) -> int { return MPI_SUCCESS; };
 
-    std::get<handle_selector<MPI_Request>::get()>(struct_handlers) =
+    std::get<handle_selector<Legio_request>::get()>(struct_handlers) =
         new RequestHandler(setter_r, getter_r, killer_r, adapter_r, 1);
 
     MPI_Comm_group(comm, &group);
@@ -96,11 +105,11 @@ void ComplexComm::replace_comm(MPI_Comm comm)
     {
         change_world_mtx.lock();
     }
-    get_handler<MPI_Win>()->replace(comm);
+    get_handler<Legio_win>()->replace(comm);
     // windows->replace(comm);
-    get_handler<MPI_File>()->replace(comm);
+    get_handler<Legio_file>()->replace(comm);
     // files->replace(comm);
-    get_handler<MPI_Request>()->replace(comm);
+    get_handler<Legio_request>()->replace(comm);
     // requests->replace(comm);
     MPI_Info info;
     PMPI_Comm_get_info(cur_comm, &info);

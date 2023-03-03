@@ -11,6 +11,7 @@
 #include <vector>
 #include "complex_comm.hpp"
 #include "mpi.h"
+#include "mpi_structs.hpp"
 #include "struct_selector.hpp"
 #include "supported_comm.hpp"
 
@@ -27,37 +28,44 @@ class Multicomm
         return instance;
     }
 
-    int add_comm(MPI_Comm);
-    ComplexComm& translate_into_complex(MPI_Comm);
-    void remove(MPI_Comm, std::function<int(MPI_Comm*)>);
-    const bool part_of(const MPI_Comm) const;
+    int add_comm(Legio_comm);
+    ComplexComm& translate_into_complex(Legio_comm);
+    void remove(Legio_comm, std::function<int(Legio_comm*)>);
+    const bool part_of(const Legio_comm) const;
     void initialize(const int size);
     void initialize(const int size, const int rank, const std::vector<int> failed);
     const bool is_initialized();
 
-    template <class MPI_T>
+    template <class Legio_T>
     bool add_structure(ComplexComm& comm,
-                       MPI_T elem,
-                       const std::function<int(MPI_Comm, MPI_T*)> func)
+                       Legio_T elem,
+                       const std::function<int(Legio_comm, Legio_T*)> func)
     {
         assert(initialized);
-        int id = c2f<MPI_Comm>(comm.get_alias());
-        auto res = maps[handle_selector<MPI_T>::get()].insert({c2f<MPI_T>(elem), id});
+        int id;
+        id = c2f<Legio_comm>(static_cast<Legio_comm>(comm.get_alias()));
+        // id = c2f<MPI_Comm>(comm.get_alias());
+        auto res = maps[handle_selector<Legio_T>::get()].insert({c2f<Legio_T>(elem), id});
         if (res.second)
             comm.add_structure(elem, func);
         return res.second;
     }
 
-    void remove_structure(MPI_Win*);
-    void remove_structure(MPI_File*);
-    void remove_structure(MPI_Request*);
+    /*
+        void remove_structure(MPI_Win*);
+        void remove_structure(MPI_File*);
+        void remove_structure(MPI_Request*);
+    */
+    void remove_structure(Legio_win*);
+    void remove_structure(Legio_file*);
+    void remove_structure(Legio_request*);
 
-    template <class MPI_T>
-    ComplexComm& get_complex_from_structure(MPI_T elem)
+    template <class Legio_T>
+    ComplexComm& get_complex_from_structure(Legio_T elem)
     {
         assert(initialized);
-        auto res = maps[handle_selector<MPI_T>::get()].find(c2f<MPI_T>(elem));
-        if (res != maps[handle_selector<MPI_T>::get()].end())
+        auto res = maps[handle_selector<Legio_T>::get()].find(c2f<Legio_T>(elem));
+        if (res != maps[handle_selector<Legio_T>::get()].end())
         {
             // std::unordered_map<int, int>::iterator res2 = comms_order.find(res->second);
             auto res2 = comms.find(res->second);
@@ -74,12 +82,12 @@ class Multicomm
         }
     }
 
-    template <class MPI_T>
-    const bool part_of(MPI_T elem) const
+    template <class Legio_T>
+    const bool part_of(Legio_T elem) const
     {
         assert(initialized);
-        auto result = maps[handle_selector<MPI_T>::get()].find(c2f<MPI_T>(elem));
-        return result != maps[handle_selector<MPI_T>::get()].end();
+        auto result = maps[handle_selector<Legio_T>::get()].find(c2f<Legio_T>(elem));
+        return result != maps[handle_selector<Legio_T>::get()].end();
     }
 
     // void change_comm(ComplexComm &, MPI_Comm);

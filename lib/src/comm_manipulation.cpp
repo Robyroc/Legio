@@ -13,7 +13,7 @@ extern "C" {
 #include "legio.h"
 }
 
-#include "mpi-ext.h"
+#include ULFM_HDR
 
 extern std::shared_timed_mutex failure_mtx;
 using namespace legio;
@@ -204,7 +204,7 @@ void legio::agree_and_eventually_replace(int* rc, ComplexComm& cur_complex)
     int flag = (MPI_SUCCESS == *rc);
     MPIX_Comm_agree(cur_complex.get_comm(), &flag);
     if (!flag && *rc == MPI_SUCCESS)
-        *rc = MPIX_ERR_PROC_FAILED;
+        *rc = MPI_ERR_PROC_FAILED;
     if (*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
 }

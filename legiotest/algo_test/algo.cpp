@@ -7,7 +7,11 @@
 #include "intercomm_utils.hpp"
 #include "mpi.h"
 
+#ifdef MPICH
+#include "mpi_proto.h"
+#else
 #include "mpi-ext.h"
+#endif
 
 #define MULT 1
 

@@ -1,11 +1,11 @@
+#include "mpi.h"
+
 extern "C" {
 #include "legio.h"
 }
 #include "intercomm_utils.hpp"
-#include "mpi.h"
 #include "multicomm.hpp"
-
-#include "mpi-ext.h"
+#include ULFM_HDR
 
 void fault_number(MPI_Comm comm, int* size)
 {

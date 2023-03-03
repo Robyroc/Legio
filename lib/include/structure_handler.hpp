@@ -112,12 +112,11 @@ void StructureHandler<T, U>::remove(T item)
 template <typename T, typename U>
 void StructureHandler<T, U>::replace(U new_upper)
 {
-    T temp;
     for (typename std::unordered_map<int, std::pair<std::function<int(U, T*)>, T>>::iterator it =
              opened.begin();
          it != opened.end(); it++)
     {
-        temp = it->second.second;
+        T temp = it->second.second;
         destroyer(&(it->second.second));
         it->second.first(new_upper, &(it->second.second));
         attribute_set(it->second.second, (int*)&(it->first));

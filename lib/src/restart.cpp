@@ -13,8 +13,8 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "config.hpp"
-#include "mpi-ext.h"
 #include "mpi.h"
+#include ULFM_HDR
 #include "multicomm.hpp"
 //#include "respawn_multicomm.hpp"
 #include "supported_comm.hpp"

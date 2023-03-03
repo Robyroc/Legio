@@ -10,6 +10,10 @@
 #include "config.hpp"
 #include "mpi.h"
 
+#ifdef MPICH
+#include "mpi_structs.hpp"
+#endif
+
 using namespace legio;
 
 // Multicomm::Multicomm(int size)
@@ -104,12 +108,12 @@ void Multicomm::add_horizon_comm(MPI_Comm comm)
     return;
 }
 
-int Multicomm::add_comm(MPI_Comm added)
+int Multicomm::add_comm(Legio_comm added)
 {
     assert(initialized);
     if (!respawned)
     {
-        int id = c2f<MPI_Comm>(added);
+        int id = c2f<Legio_comm>(added);
         MPI_Comm temp;
         PMPI_Comm_dup(added, &temp);
         MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
@@ -119,17 +123,17 @@ int Multicomm::add_comm(MPI_Comm added)
     }
     else
     {
-        int id = c2f<MPI_Comm>(added);
+        int id = c2f<Legio_comm>(added);
         std::pair<int, ComplexComm> adding(id, ComplexComm(added, id));
         auto res = comms.insert(adding);
         return res.second;
     }
 }
 
-ComplexComm& Multicomm::translate_into_complex(MPI_Comm input)
+ComplexComm& Multicomm::translate_into_complex(Legio_comm input)
 {
     assert(initialized);
-    auto res = comms.find(c2f<MPI_Comm>(input));
+    auto res = comms.find(c2f<Legio_comm>(input));
     if (res == comms.end())
     {
         if (input != MPI_COMM_NULL)
@@ -140,16 +144,16 @@ ComplexComm& Multicomm::translate_into_complex(MPI_Comm input)
         return res->second;
 }
 
-void Multicomm::remove(MPI_Comm removed, std::function<int(MPI_Comm*)> destroyer)
+void Multicomm::remove(Legio_comm removed, std::function<int(Legio_comm*)> destroyer)
 {
     assert(initialized);
-    int id = c2f<MPI_Comm>(removed);
+    int id = c2f<Legio_comm>(removed);
     auto res = comms.find(id);
     // std::unordered_map<int, int>::iterator res = comms_order.find(id);
     if (res != comms.end())
     {
-        MPI_Comm target = res->second.get_comm();
-        // destroyer(&target);
+        Legio_comm target = res->second.get_comm();
+        destroyer(&target);
         // Removed deletion since it may be useful for the recreation of the following comms
         comms.erase(id);
     }
@@ -159,47 +163,51 @@ void Multicomm::remove(MPI_Comm removed, std::function<int(MPI_Comm*)> destroyer
     }
 }
 
-const bool Multicomm::part_of(MPI_Comm checked) const
+const bool Multicomm::part_of(Legio_comm checked) const
 {
     assert(initialized);
-    auto res = comms.find(c2f<MPI_Comm>(checked));
+    auto res = comms.find(c2f<Legio_comm>(checked));
     return res != comms.end();
 }
 
-void Multicomm::remove_structure(MPI_Win* win)
+void Multicomm::remove_structure(Legio_win* win)
 {
     assert(initialized);
     if (part_of(*win))
     {
         ComplexComm& translated = get_complex_from_structure(*win);
         translated.remove_structure(*win);
-        maps[handle_selector<MPI_Win>::get()].erase(MPI_Win_c2f(*win));
+        maps[handle_selector<Legio_win>::get()].erase(c2f<Legio_win>(*win));
     }
     else
-        PMPI_Win_free(win);
+    {
+        MPI_Win win2 = *win;
+        PMPI_Win_free(&win2);
+        *win = win2;
+    }
 }
 
-void Multicomm::remove_structure(MPI_File* file)
+void Multicomm::remove_structure(Legio_file* file)
 {
     assert(initialized);
     if (part_of(*file))
     {
         ComplexComm& translated = get_complex_from_structure(*file);
         translated.remove_structure(*file);
-        maps[handle_selector<MPI_File>::get()].erase(MPI_File_c2f(*file));
+        maps[handle_selector<Legio_file>::get()].erase(c2f<Legio_file>(*file));
     }
     else
         PMPI_File_close(file);
 }
 
-void Multicomm::remove_structure(MPI_Request* req)
+void Multicomm::remove_structure(Legio_request* req)
 {
     assert(initialized);
     if (part_of(*req))
     {
         ComplexComm& translated = get_complex_from_structure(*req);
         translated.remove_structure(*req);
-        maps[handle_selector<MPI_Request>::get()].erase(c2f<MPI_Request>(*req));
+        maps[handle_selector<Legio_request>::get()].erase(c2f<Legio_request>(*req));
     }
 }
 

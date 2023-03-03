@@ -23,11 +23,11 @@ void RequestHandler::replace(MPI_Comm new_comm)
     }
 }
 
-RequestHandler::RequestHandler(std::function<int(MPI_Request, int*)> setter,
-                               std::function<int(MPI_Request, int*, int*)> getter,
-                               std::function<int(MPI_Request*)> killer,
-                               std::function<int(MPI_Request, MPI_Request*)> adapter,
+RequestHandler::RequestHandler(std::function<int(Legio_request, int*)> setter,
+                               std::function<int(Legio_request, int*, int*)> getter,
+                               std::function<int(Legio_request*)> killer,
+                               std::function<int(Legio_request, Legio_request*)> adapter,
                                int flag)
-    : StructureHandler<MPI_Request, MPI_Comm>(setter, getter, killer, adapter, flag)
+    : StructureHandler<Legio_request, MPI_Comm>(setter, getter, killer, adapter, flag)
 {
 }

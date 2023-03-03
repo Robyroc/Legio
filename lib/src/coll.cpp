@@ -5,7 +5,7 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "log.hpp"
-#include "mpi-ext.h"
+#include ULFM_HDR
 #include "multicomm.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
@@ -18,25 +18,25 @@ int MPI_Barrier(MPI_Comm comm)
     while (1)
     {
         int rc;
-        int rank, size;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             rc = PMPI_Barrier(translated.get_comm());
         }
         else
         {
-            rc = PMPI_Barrier(comm);
+            rc = PMPI_Barrier(com);
         }
         failure_mtx.unlock_shared();
 
-        legio::report_execution(rc, comm, "Barrier");
+        legio::report_execution(rc, com, "Barrier");
         if (flag)
         {
             agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+                                         Multicomm::get_instance().translate_into_complex(com));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -50,11 +50,12 @@ int MPI_Bcast(void* buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             int root_rank = Multicomm::get_instance().translate_ranks(root, translated);
             if (root_rank == MPI_UNDEFINED)
             {
@@ -95,11 +96,12 @@ int MPI_Allreduce(const void* sendbuf,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             rc = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, translated.get_comm());
         }
         else
@@ -109,7 +111,7 @@ int MPI_Allreduce(const void* sendbuf,
         if (rc == MPI_SUCCESS || !flag)
             return rc;
         else
-            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
+            replace_comm(Multicomm::get_instance().translate_into_complex(com));
     }
 }
 
@@ -124,11 +126,12 @@ int MPI_Reduce(const void* sendbuf,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             int root_rank = Multicomm::get_instance().translate_ranks(root, translated);
             if (root_rank == MPI_UNDEFINED)
             {
@@ -151,7 +154,7 @@ int MPI_Reduce(const void* sendbuf,
         if (flag)
         {
             agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+                                         Multicomm::get_instance().translate_into_complex(com));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -205,13 +208,14 @@ int MPI_Gather(const void* sendbuf,
     while (1)
     {
         int rc, actual_root, total_size, fake_rank;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             actual_comm = translated.get_comm();
             actual_root = Multicomm::get_instance().translate_ranks(root, translated);
             if (actual_root == MPI_UNDEFINED)
@@ -246,7 +250,7 @@ int MPI_Gather(const void* sendbuf,
         if (flag)
         {
             agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+                                         Multicomm::get_instance().translate_into_complex(com));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -300,13 +304,14 @@ int MPI_Scatter(const void* sendbuf,
     while (1)
     {
         int rc, actual_root, total_size, fake_rank;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         MPI_Comm actual_comm;
         MPI_Comm_size(comm, &total_size);
         MPI_Comm_rank(comm, &fake_rank);
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             actual_comm = translated.get_comm();
             actual_root = Multicomm::get_instance().translate_ranks(root, translated);
             if (actual_root == MPI_UNDEFINED)
@@ -341,7 +346,7 @@ int MPI_Scatter(const void* sendbuf,
         if (flag)
         {
             agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+                                         Multicomm::get_instance().translate_into_complex(com));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -360,11 +365,12 @@ int MPI_Scan(const void* sendbuf,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             rc = PMPI_Scan(sendbuf, recvbuf, count, datatype, op, translated.get_comm());
         }
         else
@@ -374,7 +380,7 @@ int MPI_Scan(const void* sendbuf,
         if (flag)
         {
             agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+                                         Multicomm::get_instance().translate_into_complex(com));
             if (rc == MPI_SUCCESS)
                 return rc;
         }

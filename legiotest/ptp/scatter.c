@@ -1,8 +1,12 @@
 #include "mpi.h"
+#ifdef MPICH
+#include "mpi_proto.h"
+#else
 #include "mpi-ext.h"
+#endif
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 
 int main(int argc, char** argv)
 {
@@ -19,22 +23,25 @@ int main(int argc, char** argv)
     send = rank;
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if(rank == 4) raise(SIGINT);
+    if (rank == 4)
+        raise(SIGINT);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    value = rank/(double)size;
+    value = rank / (double)size;
 
-    if( rank == (size/4) ) raise(SIGINT);
+    if (rank == (size / 4))
+        raise(SIGINT);
     MPI_Bcast(&value, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    if( value != 0.0 ) {
-        printf("Rank %d / %d: value from %d is wrong: %g\n",  //try what happens without ft
-                rank, size, 0, value);                        //with test 5
+    if (value != 0.0)
+    {
+        printf("Rank %d / %d: value from %d is wrong: %g\n",  // try what happens without ft
+               rank, size, 0, value);                         // with test 5
     }
-    if(rank == 0)
+    if (rank == 0)
         MPI_Send(&send, 1, MPI_INT, 4, 1, MPI_COMM_WORLD);
-    if(rank == 4)
+    if (rank == 4)
         MPI_Recv(&received, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, NULL);
     MPI_Finalize();
 

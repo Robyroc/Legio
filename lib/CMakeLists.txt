@@ -28,6 +28,7 @@ set(LIBRARY_HEADERS
     "${LIBRARY_HDR_PATH}/intercomm_utils.hpp"
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/log.hpp"
+    "${LIBRARY_HDR_PATH}/mpi_structs.hpp"
     "${LIBRARY_HDR_PATH}/multicomm.hpp"
     "${LIBRARY_HDR_PATH}/request_handler.hpp"
 #    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"

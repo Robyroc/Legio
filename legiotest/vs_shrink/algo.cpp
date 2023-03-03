@@ -10,7 +10,11 @@ extern "C" {
 #include "legio.h"
 }
 
+#ifdef MPICH
+#include "mpi_proto.h"
+#else
 #include "mpi-ext.h"
+#endif
 
 #define MULT 1000
 

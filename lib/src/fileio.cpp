@@ -5,7 +5,7 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "log.hpp"
-#include "mpi-ext.h"
+#include ULFM_HDR
 #include "multicomm.hpp"
 
 using namespace legio;
@@ -34,15 +34,18 @@ int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
-        std::function<int(MPI_Comm, MPI_File*)> func;
+        Legio_comm com = comm;
+        bool flag = Multicomm::get_instance().part_of(com);
+        std::function<int(Legio_comm, Legio_file*)> func;
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(com);
             MPI_Barrier(translated.get_alias());
-            func = [filename, consequent_amode, info](MPI_Comm c, MPI_File* f) -> int {
-                int rc = PMPI_File_open(c, filename, consequent_amode, info, f);
-                MPI_File_set_errhandler(*f, MPI_ERRORS_RETURN);
+            func = [filename, consequent_amode, info](Legio_comm c, Legio_file* f) -> int {
+                MPI_File file = *f;
+                int rc = PMPI_File_open(c, filename, consequent_amode, info, &file);
+                MPI_File_set_errhandler(file, MPI_ERRORS_RETURN);
+                *f = file;
                 return rc;
             };
             rc = PMPI_File_open(translated.get_comm(), filename, consequent_amode, info, mpi_fh);
@@ -55,7 +58,7 @@ int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info,
         else if (rc == MPI_SUCCESS)
         {
             bool result = Multicomm::get_instance().add_structure(
-                Multicomm::get_instance().translate_into_complex(comm), *mpi_fh, func);
+                Multicomm::get_instance().translate_into_complex(com), *mpi_fh, func);
             if (result)
                 return rc;
         }
