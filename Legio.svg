@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="80.476265mm"
-   height="28.840586mm"
-   viewBox="0 0 80.476265 28.840586"
+   width="82.588608mm"
+   height="28.840588mm"
+   viewBox="0 0 82.588608 28.840588"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09, custom)"
@@ -28,9 +28,9 @@
      inkscape:deskcolor="#505050"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="3.1179854"
-     inkscape:cx="225.4661"
-     inkscape:cy="93.489854"
+     inkscape:zoom="2.2047486"
+     inkscape:cx="166.45889"
+     inkscape:cy="65.993918"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -92,19 +92,19 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-54.623853,-25.972421)">
+     transform="translate(-54.623854,-25.972422)">
     <text
        xml:space="preserve"
-       transform="matrix(0.26458333,0,0,0.26458333,4.8218216,-2.0493702)"
+       transform="matrix(0.26458333,0,0,0.26458333,4.8218216,-3.5846172)"
        id="text1151"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:85.3333px;line-height:1.25;font-family:'Roman SD';-inkscape-font-specification:'Roman SD';text-align:center;white-space:pre;shape-inside:url(#rect1153);display:inline;fill:none;stroke:none;stroke-width:3.77953;stroke-linecap:round"><tspan
-         x="311.37729"
-         y="209.7076"
-         id="tspan14912"><tspan
-           style="fill:#000000"
-           id="tspan14908">L</tspan><tspan
-           style="font-size:53.3333px;fill:#030101"
-           id="tspan14910">egio</tspan></tspan></text>
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:85.3333px;line-height:1.25;font-family:'Roman SD';-inkscape-font-specification:'Roman SD';text-align:center;white-space:pre;shape-inside:url(#rect1153);display:inline;fill:none;stroke:#ffffff;stroke-width:0.377953;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"><tspan
+         x="302.78253"
+         y="214.99579"
+         id="tspan2192"><tspan
+           style="font-size:90.6667px;fill:#000000"
+           id="tspan2188">L</tspan><tspan
+           style="font-size:58.6667px;fill:#030101"
+           id="tspan2190">egio</tspan></tspan></text>
     <g
        id="g5284"
        transform="rotate(11.602187,77.002599,17.885402)">
