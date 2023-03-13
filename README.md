@@ -1,4 +1,4 @@
-# Legio
+<img src="./Legio.svg">
 
 Library to introduce fault-tolerance in MPI in the form of graceful degradation
 
