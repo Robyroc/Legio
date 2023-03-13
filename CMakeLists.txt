@@ -20,10 +20,10 @@ option(RECV_RESILIENCY "Recv source failure resiliency" Off)
 option(REDUCE_RESILIENCY "Reduce root failure resiliency" On)
 option(GET_RESILIENCY "Get source failure resiliency" Off)
 option(PUT_RESILIENCY "Put root failure resiliency" On)
-option(GATHER_RESILIENCY "Gather root failure resiliency" Off)
+option(GATHER_RESILIENCY "Gather root failure resiliency" On)
 option(GATHER_SHIFT "Gather rank movement upon failure" Off)
-option(SCATTER_RESILIENCY "Scatter root failure resiliency" On)
-option(SCATTER_SHIFT "Scatter rank movement upon failure" On)
+option(SCATTER_RESILIENCY "Scatter root failure resiliency" Off)
+option(SCATTER_SHIFT "Scatter rank movement upon failure" Off)
 
 #"Library log level: 1->None, 2->Errors, 3->Errors&Info, 4->Full" 
 if(NOT DEFINED LOG_LEVEL)
@@ -31,7 +31,7 @@ if(NOT DEFINED LOG_LEVEL)
 endif()
 option(SESSION_THREAD "Use background session thread" Off)
 option(WITH_RESTART "Include restart functionalities" On)
-option(CUBE_ALGORITHM "Cube algorithm for non-collective operations" Off)
+option(CUBE_ALGORITHM "Cube algorithm for group-collective operations" Off)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 

@@ -6,23 +6,31 @@ errors,MPI_Add_error_code,-,,
 errors,MPI_Add_error_string,-,,
 collective,MPI_Allgather,NO,medium,gather + broadcast
 async,MPI_Iallgather,NO,medium,basic function + corner cases
+partial,MPI_Allgather_init,NO,?,partial communication
 collective,MPI_Allgatherv,NO,hard,gatherv + broadcast
 async,MPI_Iallgatherv,NO,hard,basic function + corner cases
+partial,MPI_Allgatherv_init,NO,?,partial communication
 osc,MPI_Alloc_mem,-,,
 collective,MPI_Allreduce,YES,,
 async,MPI_Iallreduce,NO,medium,basic function + corner cases
+partial,MPI_Allreduce_init,NO,?,partial communication
 collective,MPI_Alltoall,NO,medium,gather-like
 async,MPI_Ialltoall,NO,medium,basic function + corner cases
+partial,MPI_Alltoall_init,NO,?,partial communication
 collective,MPI_Alltoallv,NO,hard,gatherv-like
 async,MPI_Ialltoallv,NO,hard,basic function + corner cases
+partial,MPI_Alltoallv_init,NO,?,partial communication
 collective,MPI_Alltoallw,NO,hard,more complex than gatherv
 async,MPI_Ialltoallw,NO,hard,basic function + corner cases
+partial,MPI_Alltoallw_init,NO,?,partial communication
 collective,MPI_Barrier,YES,,
 async,MPI_Ibarrier,NO,medium,basic function + corner cases
+partial,MPI_Barrier_init,NO,?,partial communication
 collective,MPI_Bcast,YES,,
-ptp,MPI_Bsend,NO,easy,like send
 async,MPI_Ibcast,NO,medium,basic function + corner cases
-?,MPI_Ibsend_init,NO,?,?
+partial,MPI_Bcast_init,NO,?,partial communication
+ptp,MPI_Bsend,NO,easy,like send
+partial,MPI_Bsend_init,NO,?,partial communication
 general,MPI_Buffer_attach,-,,
 general,MPI_Buffer_detach,-,,
 async,MPI_Cancel,NO,medium,basic function + corner cases
@@ -43,12 +51,14 @@ intercom,MPI_Comm_connect,NO,?,
 errors,MPI_Comm_create_errhandler,NO,?,errorhandler usage shall be wrapped
 attr,MPI_Comm_create_keyval,-,,
 comm,MPI_Comm_create_group,YES,,
+comm,MPI_Comm_create_from_group,YES,,
 comm,MPI_Comm_create,YES,,
 attr,MPI_Comm_delete_attr,-,,
 comm,MPI_Comm_disconnect,YES,,
 comm,MPI_Comm_dup,YES,,
 async,MPI_Comm_idup,NO,hard,manage comm upon end
 comm,MPI_Comm_dup_with_info,NO,easy,like dup
+comm,MPI_Comm_idup_with_info,NO,hard,like idup
 fortran,MPI_Comm_f2c,-,,
 attr,MPI_Comm_free_keyval,-,,
 comm,MPI_Comm_free,YES,,
@@ -84,8 +94,9 @@ errors,MPI_Errhandler_free,NO,?,errorhandler usage shall be wrapped
 errors,MPI_Error_class,-,,
 errors,MPI_Error_string,-,,
 collective,MPI_Exscan,NO,easy,like scan
-osc,MPI_Fetch_and_op,NO,easy,win and rank translation
 async,MPI_Iexscan,NO,medium,basic function + corner cases
+partial,MPI_Exscan_init,NO,?,partial communication
+osc,MPI_Fetch_and_op,NO,easy,win and rank translation
 fortran,MPI_File_c2f,-,,
 fortran,MPI_File_f2c,-,,
 errors,MPI_File_call_errhandler,NO,?,errorhandler usage shall be wrapped
@@ -152,8 +163,10 @@ general,MPI_Finalized,-,,
 osc,MPI_Free_mem,-,,
 collective,MPI_Gather,YES,,
 async,MPI_Igather,NO,medium,basic function + corner cases
+partial,MPI_Gather_init,NO,?,partial communication
 collective,MPI_Gatherv,NO,hard,complex to translate counts
 async,MPI_Igatherv,NO,hard,basic function + corner cases
+partial,MPI_Gatherv_init,NO,?,partial communication
 general,MPI_Get_address,-,,
 status,MPI_Get_count,-,,
 status,MPI_Get_elements,-,,
@@ -172,7 +185,12 @@ topo,MPI_Graphdims_get,NO,?,
 async,MPI_Grequest_complete,NO,medium,basic function + corner cases
 async,MPI_Grequest_start,NO,medium,basic function + corner cases
 general,MPI_Group_c2f,-,,
+general,MPI_Group_compare,-,,
+general,MPI_Group_difference,-,,
+general,MPI_Group_excl,-,,
+general,MPI_Group_f2c,-,,
 general,MPI_Group_free,-,,
+general,MPI_Group_from_session_pset,-,,
 general,MPI_Group_incl,-,,
 general,MPI_Group_intersection,-,,
 general,MPI_Group_range_excl,-,,
@@ -194,16 +212,20 @@ info,MPI_Info_get,-,,
 info,MPI_Info_get_nkeys,-,,
 info,MPI_Info_get_nthkey,-,,
 info,MPI_Info_get_valuelen,-,,
+info,MPI_Info_get_string,-,,
 info,MPI_Info_set,-,,
 general,MPI_Init,YES,,
-general,MPI_Initialized,NO,,
+general,MPI_Initialized,-,,
 general,MPI_Init_thread,YES,,
 intercom,MPI_Intercomm_create,YES,,
+intercomm,MPI_Intercomm_create_from_groups,NO,easy,like create_from_group
 intercom,MPI_Intercomm_merge,YES,,
 async,MPI_Iprobe,NO,medium,basic function + corner cases
 async,MPI_Irecv,YES,,
 async,MPI_Irsend,NO,medium,like isend
 async,MPI_Isend,YES,,
+async,MPI_Isendrecv,NO,medium,like isend + irecv
+async,MPI_Isendrecv_replace,NO,medium,like isendrecv
 async,MPI_Issend,NO,medium,like isend
 general,MPI_Is_thread_main,-,,
 general,MPI_Lookup_name,-,,
@@ -214,13 +236,18 @@ ptp,MPI_Mrecv,NO,easy,like Mrecv
 topo,MPI_Neighbor_allgather,NO,?,
 topo,MPI_Ineighbor_allgather,NO,?,
 topo,MPI_Neighbor_allgatherv,NO,?,
+partial,MPI_Neighbor_allgather_init,NO,?,partial communication
 topo,MPI_Ineighbor_allgatherv,NO,?,
+partial,MPI_Neighbor_allgatherv_init,NO,?,partial communication
 topo,MPI_Neighbor_alltoall,NO,?,
 topo,MPI_Ineighbor_alltoall,NO,?,
+partial,MPI_Neighbor_alltoall_init,NO,?,partial communication
 topo,MPI_Neighbor_alltoallv,NO,?,
 topo,MPI_Ineighbor_alltoallv,NO,?,
+partial,MPI_Neighbor_alltoallv_init,NO,?,partial communication
 topo,MPI_Neighbor_alltoallw,NO,?,
 topo,MPI_Ineighbor_alltoallw,NO,?,
+partial,MPI_Neighbor_alltoallw_init,NO,?,partial communication
 general,MPI_Op_c2f,-,,
 general,MPI_Op_commutative,-,,
 general,MPI_Op_create,-,,
@@ -231,8 +258,14 @@ pack,MPI_Pack_external,NO,?,
 pack,MPI_Pack_external_size,NO,?,
 pack,MPI_Pack,NO,?,
 pack,MPI_Pack_size,NO,?,
+partial,MPI_Parrived,NO,?,
 general,MPI_Pcontrol,-,,
+partial,MPI_Pready,NO,?,
+partial,MPI_Pready_range,NO,?,
+partial,MPI_Pready_list,NO,?,
+partial,MPI_Precv_init,NO,?,
 ptp,MPI_Probe,NO,easy,like recv
+partial,MPI_Psend_init,NO,?,
 intercom,MPI_Publish_name,NO,?,
 osc,MPI_Put,YES,,
 general,MPI_Query_thread,-,,
@@ -241,11 +274,14 @@ async,MPI_Recv_init,NO,medium,basic function + corner cases
 ptp,MPI_Recv,YES,,
 collective,MPI_Reduce,YES,,
 async,MPI_Ireduce,NO,medium,basic function + corner cases
+partial,MPI_Reduce_init,NO,?,partial communication
 collective,MPI_Reduce_local,NO,easy,like reduce
 collective,MPI_Reduce_scatter,NO,easy,reduce + scatter
 async,MPI_Ireduce_scatter,NO,medium,basic function + corner cases
+partial,MPI_Reduce_scatter_init,NO,?,partial communication
 collective,MPI_Reduce_scatter_block,NO,easy,reduce + scatter
 async,MPI_Ireduce_scatter_block,NO,medium,basic function + corner cases
+partial,MPI_Reduce_scatter_block_init,NO,?,partial communication
 file,MPI_Register_datarep,-,,
 general,MPI_Request_c2f,-,,
 general,MPI_Request_f2c,-,,
@@ -258,14 +294,27 @@ async,MPI_Rsend,NO,medium,basic function + corner cases
 async,MPI_Rsend_init,NO,medium,basic function + corner cases
 collective,MPI_Scan,YES,,
 async,MPI_Iscan,NO,medium,basic function + corner cases
+partial,MPI_Scan_init,NO,?,partial communication
 collective,MPI_Scatter,YES,,
 async,MPI_Iscatter,NO,medium,basic function + corner cases
+partial,MPI_Scatter_init,NO,?,partial communication
 collective,MPI_Scatterv,NO,hard,analyze vector is complex computationally
 async,MPI_Iscatterv,NO,hard,basic function + corner cases
+partial,MPI_Scatterv_init,NO,?,partial communication
 async,MPI_Send_init,NO,medium,basic function + corner cases
 ptp,MPI_Send,YES,,
 ptp,MPI_Sendrecv,YES,,
 ptp,MPI_Sendrecv_replace,NO,easy,save old value in case of something bad happens
+session,MPI_Session_c2f,-,,
+session,MPI_Session_create_errhandler,NO,?,errorhandler usage shall be wrapped
+session,MPI_Session_finalize,YES,,
+session,MPI_Session_get_info,-,,
+session,MPI_Session_get_num_psets,-,,
+session,MPI_Session_get_nth_pset,-,,
+session,MPI_Session_get_pset_info,-,,
+session,MPI_Session_init,YES,,
+session,MPI_Session_f2c,-,,
+session,MPI_Session_set_info,-,,
 async,MPI_Ssend_init,NO,medium,basic function + corner cases
 ptp,MPI_Ssend,NO,easy,
 async,MPI_Start,NO,medium,basic function + corner cases
