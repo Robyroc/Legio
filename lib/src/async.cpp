@@ -7,9 +7,9 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "config.hpp"
+#include "context.hpp"
 #include "log.hpp"
 #include "mpi-ext.h"
-#include "multicomm.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
 using namespace legio;
@@ -25,7 +25,7 @@ int MPI_Isend(const void* buf,
     int rc;
 
     int size;
-    int flag = Multicomm::get_instance().part_of(comm);
+    int flag = Context::get().m_comm.part_of(comm);
     MPI_Type_size(datatype, &size);
     void* tempbuf = malloc(size * count);
     memcpy(tempbuf, buf, size * count);
@@ -33,9 +33,9 @@ int MPI_Isend(const void* buf,
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         int dest_rank;
-        dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
+        dest_rank = translate_ranks(dest, translated);
         if (dest_rank == MPI_UNDEFINED)
         {
             if constexpr (BuildOptions::send_resiliency)
@@ -70,8 +70,8 @@ int MPI_Isend(const void* buf,
     if (!flag)
         return rc;
     else if (rc == MPI_SUCCESS)
-        bool result = Multicomm::get_instance().add_structure(
-            Multicomm::get_instance().translate_into_complex(comm), *request, func);
+        bool result = Context::get().m_comm.add_structure(
+            Context::get().m_comm.translate_into_complex(comm), *request, func);
     free(tempbuf);
     return rc;
 }
@@ -85,13 +85,13 @@ int MPI_Irecv(void* buf,
               MPI_Request* request)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     std::function<int(MPI_Comm, MPI_Request*)> func;
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
-        int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
+        int source_rank = translate_ranks(source, translated);
         if (source_rank == MPI_UNDEFINED)
         {
             if constexpr (BuildOptions::recv_resiliency)
@@ -126,8 +126,8 @@ int MPI_Irecv(void* buf,
     if (!flag)
         return rc;
     else if (rc == MPI_SUCCESS)
-        bool result = Multicomm::get_instance().add_structure(
-            Multicomm::get_instance().translate_into_complex(comm), *request, func);
+        bool result = Context::get().m_comm.add_structure(
+            Context::get().m_comm.translate_into_complex(comm), *request, func);
     return rc;
 }
 
@@ -135,11 +135,11 @@ int MPI_Wait(MPI_Request* request, MPI_Status* status)
 {
     int rc;
     MPI_Request old = *request;
-    bool flag = Multicomm::get_instance().part_of(*request);
+    bool flag = Context::get().m_comm.part_of(*request);
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(*request);
+        ComplexComm& comm = Context::get().m_comm.get_complex_from_structure(*request);
         MPI_Request translated = comm.translate_structure(*request);
         rc = PMPI_Wait(&translated, status);
     }
@@ -149,18 +149,18 @@ int MPI_Wait(MPI_Request* request, MPI_Status* status)
     failure_mtx.unlock_shared();
     legio::report_execution(rc, MPI_COMM_WORLD, "Wait");
 
-    Multicomm::get_instance().remove_structure(request);
+    Context::get().m_comm.remove_structure(request);
     return rc;
 }
 
 int MPI_Test(MPI_Request* request, int* flag, MPI_Status* status)
 {
     int rc;
-    bool part = Multicomm::get_instance().part_of(*request);
+    bool part = Context::get().m_comm.part_of(*request);
     failure_mtx.lock_shared();
     if (part)
     {
-        ComplexComm& comm = Multicomm::get_instance().get_complex_from_structure(*request);
+        ComplexComm& comm = Context::get().m_comm.get_complex_from_structure(*request);
         MPI_Request translated = comm.translate_structure(*request);
         rc = PMPI_Test(&translated, flag, status);
     }
@@ -170,13 +170,13 @@ int MPI_Test(MPI_Request* request, int* flag, MPI_Status* status)
     legio::report_execution(rc, MPI_COMM_WORLD, "Test");
     if (*flag)
     {
-        Multicomm::get_instance().remove_structure(request);
+        Context::get().m_comm.remove_structure(request);
     }
     return rc;
 }
 
 int MPI_Request_free(MPI_Request* request)
 {
-    Multicomm::get_instance().remove_structure(request);
+    Context::get().m_comm.remove_structure(request);
     return PMPI_Request_free(request);
 }

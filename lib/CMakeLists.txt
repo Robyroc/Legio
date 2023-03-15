@@ -1,38 +1,26 @@
-#include("${CMAKE_CURRENT_SOURCE_DIR}/include/defaults.cmake")
-
-# defaultValue(BROADCAST_FAIL_POLICY ${FAULT_STOP})
-# defaultValue(SEND_FAIL_POLICY ${FAULT_IGNORE})
-# defaultValue(NUM_RETRY 3)
-# defaultValue(RECV_FAIL_POLICY ${FAULT_STOP})
-# defaultValue(REDUCE_FAIL_POLICY ${FAULT_IGNORE})
-# defaultValue(GET_FAIL_POLICY ${FAULT_STOP})
-# defaultValue(PUT_FAIL_POLICY ${FAULT_IGNORE})
-# defaultValue(GATHER_FAIL_POLICY ${FAULT_IGNORE})
-# defaultValue(GATHER_APPROACH ${RANK_KEEP})
-# defaultValue(SCATTER_FAIL_POLICY ${FAULT_STOP})
-# defaultValue(SCATTER_APPROACH ${RANK_KEEP})
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/configs.hpp.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp"
 )
 
 ### SOURCE FILES ###
 
 set(LIBRARY_HDR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBRARY_HEADERS
+    "${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp"
     "${LIBRARY_HDR_PATH}/comm_manipulation.hpp"
     "${LIBRARY_HDR_PATH}/complex_comm.hpp"
-#    "${LIBRARY_HDR_PATH}/configuration.hpp"
-    "${LIBRARY_HDR_PATH}/config.hpp"
+    "${LIBRARY_HDR_PATH}/context.hpp"
     "${LIBRARY_HDR_PATH}/intercomm_utils.hpp"
     "${LIBRARY_HDR_PATH}/legio.h"
     "${LIBRARY_HDR_PATH}/log.hpp"
     "${LIBRARY_HDR_PATH}/multicomm.hpp"
     "${LIBRARY_HDR_PATH}/request_handler.hpp"
-#    "${LIBRARY_HDR_PATH}/respawn_multicomm.h"
+    "${LIBRARY_HDR_PATH}/restart_manager.hpp"
     "${LIBRARY_HDR_PATH}/restart_routines.hpp"
     "${LIBRARY_HDR_PATH}/restart.h"
+    "${LIBRARY_HDR_PATH}/session_manager.hpp"
     "${LIBRARY_HDR_PATH}/struct_selector.hpp"
     "${LIBRARY_HDR_PATH}/structure_handler.hpp"
     "${LIBRARY_HDR_PATH}/supported_comm.hpp"
@@ -55,12 +43,13 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/legio.cpp"
     "${LIBRARY_SRC_PATH}/log.cpp"
     "${LIBRARY_SRC_PATH}/multicomm.cpp"
-#    "${LIBRARY_SRC_PATH}/respawn_multicomm.cpp"
     "${LIBRARY_SRC_PATH}/osc.cpp"
     "${LIBRARY_SRC_PATH}/ptp.cpp"
     "${LIBRARY_SRC_PATH}/request_handler.cpp"
+    "${LIBRARY_SRC_PATH}/restart_manager.cpp"
     "${LIBRARY_SRC_PATH}/restart_routines.cpp"
     "${LIBRARY_SRC_PATH}/restart.cpp"
+    "${LIBRARY_SRC_PATH}/session_manager.cpp"
     "${LIBRARY_SRC_PATH}/session.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
@@ -72,6 +61,7 @@ add_library(legio::legio ALIAS legio)
 
 target_include_directories(legio PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 

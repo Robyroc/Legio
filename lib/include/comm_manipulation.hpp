@@ -5,7 +5,7 @@ namespace legio {
 
 class ComplexComm;
 
-void translate_ranks(int, ComplexComm&, int*);
+int translate_ranks(int, ComplexComm&);
 
 void replace_comm(ComplexComm&);
 

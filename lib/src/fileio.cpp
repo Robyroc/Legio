@@ -4,9 +4,9 @@
 #include <string.h>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
+#include "context.hpp"
 #include "log.hpp"
 #include "mpi-ext.h"
-#include "multicomm.hpp"
 
 using namespace legio;
 
@@ -34,11 +34,11 @@ int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
         std::function<int(MPI_Comm, MPI_File*)> func;
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
             MPI_Barrier(translated.get_alias());
             func = [filename, consequent_amode, info](MPI_Comm c, MPI_File* f) -> int {
                 int rc = PMPI_File_open(c, filename, consequent_amode, info, f);
@@ -54,19 +54,19 @@ int MPI_File_open(MPI_Comm comm, const char* filename, int amode, MPI_Info info,
             return rc;
         else if (rc == MPI_SUCCESS)
         {
-            bool result = Multicomm::get_instance().add_structure(
-                Multicomm::get_instance().translate_into_complex(comm), *mpi_fh, func);
+            bool result = Context::get().m_comm.add_structure(
+                Context::get().m_comm.translate_into_complex(comm), *mpi_fh, func);
             if (result)
                 return rc;
         }
         else
-            replace_comm(Multicomm::get_instance().translate_into_complex(comm));
+            replace_comm(Context::get().m_comm.translate_into_complex(comm));
     }
 }
 
 int MPI_File_close(MPI_File* mpi_fh)
 {
-    Multicomm::get_instance().remove_structure(mpi_fh);
+    Context::get().m_comm.remove_structure(mpi_fh);
     return MPI_SUCCESS;
 }
 
@@ -79,13 +79,12 @@ int MPI_File_read_at(MPI_File mpi_fh,
 {
     int rc;
 
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
         rc = PMPI_File_read_at(translated, offset, buf, count, datatype, status);
     }
     else
@@ -102,13 +101,12 @@ int MPI_File_write_at(MPI_File mpi_fh,
                       MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
         rc = PMPI_File_write_at(translated, offset, buf, count, datatype, status);
     }
     else
@@ -127,13 +125,13 @@ int MPI_File_read_at_all(MPI_File mpi_fh,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             rc = PMPI_File_read_at_all(translated, offset, buf, count, datatype, status);
         }
         else
@@ -141,8 +139,8 @@ int MPI_File_read_at_all(MPI_File mpi_fh,
         legio::report_execution(rc, MPI_COMM_WORLD, "Read_at_all");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -161,13 +159,13 @@ int MPI_File_write_at_all(MPI_File mpi_fh,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             rc = PMPI_File_write_at_all(translated, offset, buf, count, datatype, status);
         }
         else
@@ -175,8 +173,8 @@ int MPI_File_write_at_all(MPI_File mpi_fh,
         legio::report_execution(rc, MPI_COMM_WORLD, "Write_at_all");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -188,13 +186,12 @@ int MPI_File_write_at_all(MPI_File mpi_fh,
 int MPI_File_seek(MPI_File mpi_fh, MPI_Offset offset, int whence)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
         rc = PMPI_File_seek(translated, offset, whence);
     }
     else
@@ -206,12 +203,11 @@ int MPI_File_seek(MPI_File mpi_fh, MPI_Offset offset, int whence)
 int MPI_File_get_position(MPI_File mpi_fh, MPI_Offset* offset)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
         rc = PMPI_File_get_position(translated, offset);
     }
     else
@@ -226,12 +222,12 @@ int MPI_File_seek_shared(MPI_File mpi_fh, MPI_Offset offset, int whence)
     while (1)
     {
         MPI_Offset starting_offset;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
             MPI_File_get_position_shared(translated, &starting_offset);
             rc = PMPI_File_seek_shared(translated, offset, whence);
@@ -241,15 +237,15 @@ int MPI_File_seek_shared(MPI_File mpi_fh, MPI_Offset offset, int whence)
         legio::report_execution(rc, MPI_COMM_WORLD, "File_seek_shared");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
             else
             {
-                MPI_File translated = Multicomm::get_instance()
-                                          .get_complex_from_structure(mpi_fh)
-                                          .translate_structure(mpi_fh);
+                MPI_File translated =
+                    Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
+                        mpi_fh);
                 PMPI_File_seek_shared(translated, starting_offset, MPI_SEEK_SET);
             }
         }
@@ -261,13 +257,12 @@ int MPI_File_seek_shared(MPI_File mpi_fh, MPI_Offset offset, int whence)
 int MPI_File_get_position_shared(MPI_File mpi_fh, MPI_Offset* offset)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_get_position_shared(translated, offset);
     }
     else
@@ -286,13 +281,13 @@ int MPI_File_read_all(MPI_File mpi_fh,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             rc = PMPI_File_read_all(translated, buf, count, datatype, status);
         }
         else
@@ -300,8 +295,8 @@ int MPI_File_read_all(MPI_File mpi_fh,
         legio::report_execution(rc, MPI_COMM_WORLD, "File_read_all");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -319,13 +314,13 @@ int MPI_File_write_all(MPI_File mpi_fh,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             rc = PMPI_File_write_all(translated, buf, count, datatype, status);
         }
         else
@@ -334,8 +329,8 @@ int MPI_File_write_all(MPI_File mpi_fh,
         legio::report_execution(rc, MPI_COMM_WORLD, "File_write_all");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -354,13 +349,13 @@ int MPI_File_set_view(MPI_File mpi_fh,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(mpi_fh);
+        bool flag = Context::get().m_comm.part_of(mpi_fh);
         if (flag)
         {
             MPI_File translated =
-                Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
+                Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(
                     mpi_fh);
-            MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
             rc = PMPI_File_set_view(translated, disp, etype, filetype, datarep, info);
         }
         else
@@ -368,8 +363,8 @@ int MPI_File_set_view(MPI_File mpi_fh,
         legio::report_execution(rc, MPI_COMM_WORLD, "File_set_view");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().get_complex_from_structure(mpi_fh));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.get_complex_from_structure(mpi_fh));
             if (rc == MPI_SUCCESS)
                 return rc;
         }
@@ -381,13 +376,12 @@ int MPI_File_set_view(MPI_File mpi_fh,
 int MPI_File_read(MPI_File mpi_fh, void* buf, int count, MPI_Datatype datatype, MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_read(translated, buf, count, datatype, status);
     }
     else
@@ -403,13 +397,12 @@ int MPI_File_write(MPI_File mpi_fh,
                    MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_write(translated, buf, count, datatype, status);
     }
     else
@@ -425,13 +418,12 @@ int MPI_File_read_shared(MPI_File mpi_fh,
                          MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_read_shared(translated, buf, count, datatype, status);
     }
     else
@@ -448,13 +440,12 @@ int MPI_File_write_shared(MPI_File mpi_fh,
                           MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_write_shared(translated, buf, count, datatype, status);
     }
     else
@@ -471,13 +462,12 @@ int MPI_File_read_ordered(MPI_File mpi_fh,
                           MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_read_ordered(translated, buf, count, datatype, status);
     }
     else
@@ -493,13 +483,12 @@ int MPI_File_write_ordered(MPI_File mpi_fh,
                            MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_write_ordered(translated, buf, count, datatype, status);
     }
     else
@@ -511,13 +500,12 @@ int MPI_File_write_ordered(MPI_File mpi_fh,
 int MPI_File_sync(MPI_File mpi_fh)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_sync(translated);
     }
     else
@@ -529,13 +517,12 @@ int MPI_File_sync(MPI_File mpi_fh)
 int MPI_File_get_size(MPI_File mpi_fh, MPI_Offset* size)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_get_size(translated, size);
     }
     else
@@ -547,13 +534,12 @@ int MPI_File_get_size(MPI_File mpi_fh, MPI_Offset* size)
 int MPI_File_get_type_extent(MPI_File mpi_fh, MPI_Datatype datatype, MPI_Aint* extent)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_get_type_extent(translated, datatype, extent);
     }
     else
@@ -565,13 +551,12 @@ int MPI_File_get_type_extent(MPI_File mpi_fh, MPI_Datatype datatype, MPI_Aint* e
 int MPI_File_set_size(MPI_File mpi_fh, MPI_Offset size)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(mpi_fh);
+    bool flag = Context::get().m_comm.part_of(mpi_fh);
     if (flag)
     {
         MPI_File translated =
-            Multicomm::get_instance().get_complex_from_structure(mpi_fh).translate_structure(
-                mpi_fh);
-        // MPI_Barrier(Multicomm::get_instance().get_complex_from_structure(mpi_fh).get_alias());
+            Context::get().m_comm.get_complex_from_structure(mpi_fh).translate_structure(mpi_fh);
+        // MPI_Barrier(Context::get().m_comm.get_complex_from_structure(mpi_fh).get_alias());
         rc = PMPI_File_set_size(translated, size);
     }
     else

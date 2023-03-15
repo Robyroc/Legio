@@ -6,6 +6,6 @@ add_executable(algo_test
                 "${LEGIO_SRC_FOLDER}/intercomm_utils.cpp"
                 algo.cpp)
 
-target_include_directories(algo_test PUBLIC ${LEGIO_HDR_FOLDER})
+target_include_directories(algo_test PUBLIC ${LEGIO_HDR_FOLDER} "${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib/include")
 
 linkMPI(algo_test)

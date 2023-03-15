@@ -13,9 +13,9 @@
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
 #include "config.hpp"
+#include "context.hpp"
 #include "mpi-ext.h"
 #include "mpi.h"
-#include "multicomm.hpp"
 //#include "respawn_multicomm.hpp"
 #include "supported_comm.hpp"
 extern "C" {
@@ -39,7 +39,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
     {
         MPI_Group group_world, new_group;
         int rank, found = false;
-        if (!Multicomm::get_instance().is_respawned())
+        if (!Context::get().r_manager.is_respawned())
         {
             std::vector<Rank> world_ranks;
             PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -52,15 +52,14 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
             MPI_Comm_create(MPI_COMM_WORLD, new_group, newcomm);
             if (*newcomm != MPI_COMM_NULL)
             {
-                ComplexComm& complex_comm =
-                    Multicomm::get_instance().translate_into_complex(*newcomm);
-                Multicomm::get_instance().add_to_supported_comms(
+                ComplexComm& complex_comm = Context::get().m_comm.translate_into_complex(*newcomm);
+                Context::get().r_manager.add_to_supported_comms(
                     {complex_comm.get_alias_id(),
-                     Multicomm::get_instance().supported_comms_vector.size()});
+                     Context::get().r_manager.supported_comms_vector.size()});
             }
 
             SupportedComm* supported_comm = new SupportedComm(*newcomm, world_ranks);
-            Multicomm::get_instance().supported_comms_vector.push_back(*supported_comm);
+            Context::get().r_manager.supported_comms_vector.push_back(*supported_comm);
         }
         else
         {
@@ -69,7 +68,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             MPI_Comm_size(MPI_COMM_WORLD, &size);
             ComplexComm& world_complex =
-                Multicomm::get_instance().translate_into_complex(MPI_COMM_WORLD);
+                Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
             MPI_Comm world = world_complex.get_comm();
             // RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
 
@@ -79,7 +78,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
             MPI_Comm new_comm;
             for (int i = 0; i < n; i++)
             {
-                if (!Multicomm::get_instance().get_ranks().at(ranks[i]).failed)
+                if (!Context::get().r_manager.get_ranks().at(ranks[i]).failed)
                 {
                     ranks_in_comm.push_back(i);
                     world_ranks.push_back(Rank(ranks[i], false));
@@ -90,7 +89,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
                 }
             }
 
-            ComplexComm& complex = Multicomm::get_instance().translate_into_complex(MPI_COMM_WORLD);
+            ComplexComm& complex = Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
             // Translate the ranks according to current world
             int dest = 0;
             for (auto rank : ranks_in_comm)
@@ -98,7 +97,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
                 /*
                 printf("Pushing comm %d\n\n", rank);
                 */
-                dest = Multicomm::get_instance().translate_ranks(rank, complex);
+                dest = Context::get().r_manager.translate_ranks(rank, complex);
                 ranks_in_comm_translated.push_back(dest);
             }
 
@@ -111,7 +110,7 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
             PMPI_Comm_create(complex.get_comm(), new_group, &new_comm);
 
             MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
-            Multicomm::get_instance().add_comm(new_comm);
+            Context::get().m_comm.add_comm(new_comm);
             /*
             if (VERBOSE)
             {
@@ -125,15 +124,15 @@ void initialize_comm(const int n, const int* ranks, MPI_Comm* newcomm)
             *newcomm = new_comm;
 
             SupportedComm* supported_comm = new SupportedComm(*newcomm, world_ranks);
-            Multicomm::get_instance().add_to_supported_comms(
-                {Multicomm::get_instance().translate_into_complex(new_comm).get_alias_id(),
-                 Multicomm::get_instance().supported_comms_vector.size()});
-            Multicomm::get_instance().supported_comms_vector.push_back(*supported_comm);
+            Context::get().r_manager.add_to_supported_comms(
+                {Context::get().m_comm.translate_into_complex(new_comm).get_alias_id(),
+                 Context::get().r_manager.supported_comms_vector.size()});
+            Context::get().r_manager.supported_comms_vector.push_back(*supported_comm);
         }
     }
 }
 
 int is_respawned()
 {
-    return Multicomm::get_instance().is_respawned();
+    return Context::get().r_manager.is_respawned();
 }

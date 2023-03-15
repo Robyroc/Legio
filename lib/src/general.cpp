@@ -4,10 +4,10 @@
 #include <thread>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
+#include "context.hpp"
 #include "intercomm_utils.hpp"
 #include "log.hpp"
 #include "mpi-ext.h"
-#include "multicomm.hpp"
 #include "restart_routines.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
@@ -53,16 +53,16 @@ int MPI_Comm_rank(MPI_Comm comm, int* rank)
     if constexpr (BuildOptions::with_restart)
     {
         // If not respawned, use alias to get the rank
-        if (!Multicomm::get_instance().is_respawned())
+        if (!Context::get().r_manager.is_respawned())
             return PMPI_Comm_rank(comm, rank);
         else
         {
             // RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
-            auto supported_comms = Multicomm::get_instance().access_supported_comms_respawned();
+            auto supported_comms = Context::get().r_manager.access_supported_comms_respawned();
             auto found_comm = supported_comms.find(c2f<MPI_Comm>(comm));
 
             if (comm == MPI_COMM_WORLD)
-                *rank = Multicomm::get_instance().get_own_rank();
+                *rank = Context::get().r_manager.get_own_rank();
             else if (found_comm == supported_comms.end())
                 return PMPI_Comm_rank(comm, rank);
             else
@@ -79,16 +79,16 @@ int MPI_Comm_size(MPI_Comm comm, int* size)
     if constexpr (BuildOptions::with_restart)
     {
         // If not respawned, use alias to get the size
-        if (!Multicomm::get_instance().is_respawned())
+        if (!Context::get().r_manager.is_respawned())
             return PMPI_Comm_size(comm, size);
         else
         {
             // RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
-            auto supported_comms = Multicomm::get_instance().access_supported_comms_respawned();
+            auto supported_comms = Context::get().r_manager.access_supported_comms_respawned();
             auto found_comm = supported_comms.find(MPI_Comm_c2f(comm));
 
             if (comm == MPI_COMM_WORLD)
-                *size = Multicomm::get_instance().get_ranks().size();
+                *size = Context::get().r_manager.get_ranks().size();
             else if (found_comm == supported_comms.end())
                 return PMPI_Comm_size(comm, size);
             else
@@ -103,10 +103,10 @@ int MPI_Comm_size(MPI_Comm comm, int* size)
 int MPI_Abort(MPI_Comm comm, int errorcode)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         rc = PMPI_Abort(translated.get_comm(), errorcode);
     }
     else
@@ -120,11 +120,11 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm* newcomm)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
             rc = PMPI_Comm_dup(translated.get_comm(), newcomm);
         }
         else
@@ -133,12 +133,11 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm* newcomm)
         legio::report_execution(rc, comm, "Comm_dup");
         if (flag)
         {
-            agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+            agree_and_eventually_replace(&rc, Context::get().m_comm.translate_into_complex(comm));
             if (rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = Multicomm::get_instance().add_comm(*newcomm);
+                bool result = Context::get().m_comm.add_comm(*newcomm);
                 if (result)
                     return rc;
             }
@@ -153,7 +152,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm* newcomm)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
         failure_mtx.lock_shared();
         if (flag)
         {
@@ -211,11 +210,11 @@ void check_group(legio::ComplexComm cur_comm,
 int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm* newcomm)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         MPI_Group first_clean, second_clean;
         check_group(translated, group, &first_clean, &second_clean);
         int size_first, size_second;
@@ -237,7 +236,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm* new
     if (flag && rc == MPI_SUCCESS && *newcomm != MPI_COMM_NULL)
     {
         MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-        Multicomm::get_instance().add_comm(*newcomm);
+        Context::get().m_comm.add_comm(*newcomm);
         return rc;
     }
     else
@@ -247,7 +246,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm* new
 int MPI_Comm_disconnect(MPI_Comm* comm)
 {
     std::function<int(MPI_Comm*)> func = [](MPI_Comm* a) { return PMPI_Comm_disconnect(a); };
-    Multicomm::get_instance().remove(*comm, func);
+    Context::get().m_comm.remove(*comm, func);
     func(comm);
     return MPI_SUCCESS;
 }
@@ -255,7 +254,7 @@ int MPI_Comm_disconnect(MPI_Comm* comm)
 int MPI_Comm_free(MPI_Comm* comm)
 {
     std::function<int(MPI_Comm*)> func = [](MPI_Comm* a) { return PMPI_Comm_free(a); };
-    Multicomm::get_instance().remove(*comm, func);
+    Context::get().m_comm.remove(*comm, func);
     func(comm);
     return MPI_SUCCESS;
 }
@@ -265,11 +264,11 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
             rc = PMPI_Comm_split(translated.get_comm(), color, key, newcomm);
         }
         else
@@ -278,12 +277,11 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm* newcomm)
         legio::report_execution(rc, comm, "Comm_split");
         if (flag)
         {
-            agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+            agree_and_eventually_replace(&rc, Context::get().m_comm.translate_into_complex(comm));
             if (rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newcomm, MPI_ERRORS_RETURN);
-                bool result = Multicomm::get_instance().add_comm(*newcomm);
+                bool result = Context::get().m_comm.add_comm(*newcomm);
                 if (result)
                     return rc;
             }
@@ -303,15 +301,15 @@ int MPI_Intercomm_create(MPI_Comm local_comm,
     while (1)
     {
         int rc, own_rank;
-        bool flag = Multicomm::get_instance().part_of(local_comm);
+        bool flag = Context::get().m_comm.part_of(local_comm);
         PMPI_Comm_rank(local_comm, &own_rank);
         // MPI_Barrier(local_comm);
         MPI_Comm remote_comm = MPI_COMM_NULL;
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(local_comm);
-            int local_root = Multicomm::get_instance().translate_ranks(local_leader, translated);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(local_comm);
+            int local_root = translate_ranks(local_leader, translated);
             if (own_rank == local_leader)
             {
                 MPI_Group remote_group, shrink_group;
@@ -343,15 +341,15 @@ int MPI_Intercomm_create(MPI_Comm local_comm,
         legio::report_execution(rc, local_comm, "Intercomm_create");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().translate_into_complex(local_comm));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.translate_into_complex(local_comm));
             if (rc == MPI_SUCCESS)
             {
                 MPI_Group local_group, remote_group;
                 MPI_Comm_group(local_comm, &local_group);
                 MPI_Comm_group(peer_comm, &remote_group);
                 MPI_Comm_set_errhandler(*newintercomm, MPI_ERRORS_RETURN);
-                int result = Multicomm::get_instance().add_comm(*newintercomm);
+                int result = Context::get().m_comm.add_comm(*newintercomm);
                 if (result)
                     return rc;
             }
@@ -366,11 +364,11 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm* newintracomm)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(intercomm);
+        bool flag = Context::get().m_comm.part_of(intercomm);
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(intercomm);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(intercomm);
             rc = PMPI_Intercomm_merge(translated.get_comm(), high, newintracomm);
         }
         else
@@ -379,12 +377,12 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm* newintracomm)
         legio::report_execution(rc, intercomm, "Intercomm_merge");
         if (flag)
         {
-            agree_and_eventually_replace(
-                &rc, Multicomm::get_instance().translate_into_complex(intercomm));
+            agree_and_eventually_replace(&rc,
+                                         Context::get().m_comm.translate_into_complex(intercomm));
             if (rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*newintracomm, MPI_ERRORS_RETURN);
-                bool result = Multicomm::get_instance().add_comm(*newintracomm);
+                bool result = Context::get().m_comm.add_comm(*newintracomm);
                 if (result)
                     return rc;
             }
@@ -406,13 +404,13 @@ int MPI_Comm_spawn(const char* command,
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
         int root_rank = root;
         failure_mtx.lock_shared();
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
-            root_rank = Multicomm::get_instance().translate_ranks(root, translated);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
+            root_rank = translate_ranks(root, translated);
             rc = PMPI_Comm_spawn(command, argv, maxprocs, info, root_rank, translated.get_comm(),
                                  intercomm, array_of_errcodes);
         }
@@ -423,12 +421,11 @@ int MPI_Comm_spawn(const char* command,
         legio::report_execution(rc, comm, "Comm_spawn");
         if (flag)
         {
-            agree_and_eventually_replace(&rc,
-                                         Multicomm::get_instance().translate_into_complex(comm));
+            agree_and_eventually_replace(&rc, Context::get().m_comm.translate_into_complex(comm));
             if (rc == MPI_SUCCESS)
             {
                 MPI_Comm_set_errhandler(*intercomm, MPI_ERRORS_RETURN);
-                bool result = Multicomm::get_instance().add_comm(*intercomm);
+                bool result = Context::get().m_comm.add_comm(*intercomm);
                 if (result)
                     return rc;
             }
@@ -441,8 +438,8 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
     while (1)
     {
         int rc;
-        bool flag = Multicomm::get_instance().part_of(comm);
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        bool flag = Context::get().m_comm.part_of(comm);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         failure_mtx.lock_shared();
         if (flag)
             rc = PMPI_Comm_set_info(translated.get_comm(), info);
@@ -464,8 +461,8 @@ int MPI_Comm_set_info(MPI_Comm comm, MPI_Info info)
 int MPI_Comm_get_info(MPI_Comm comm, MPI_Info* info_used)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
-    ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
+    ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
     failure_mtx.lock_shared();
     if (flag)
         rc = PMPI_Comm_get_info(translated.get_comm(), info_used);

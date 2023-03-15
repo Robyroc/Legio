@@ -4,9 +4,9 @@
 #include <shared_mutex>
 #include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
+#include "context.hpp"
 #include "log.hpp"
 #include "mpi-ext.h"
-#include "multicomm.hpp"
 
 extern std::shared_timed_mutex failure_mtx;
 using namespace legio;
@@ -16,13 +16,13 @@ int any_recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status*);
 int MPI_Send(const void* buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
 {
     int i, rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     for (i = 0; i < BuildOptions::num_retry; i++)
     {
         if (flag)
         {
-            ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
-            int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
+            ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
+            int dest_rank = translate_ranks(dest, translated);
             if (dest_rank == MPI_UNDEFINED)
             {
                 if constexpr (BuildOptions::send_resiliency)
@@ -57,12 +57,12 @@ int MPI_Recv(void* buf,
         return any_recv(buf, count, datatype, source, tag, comm, status);
 
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
-    ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
+    ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
     failure_mtx.lock_shared();
     if (flag)
     {
-        int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
+        int source_rank = translate_ranks(source, translated);
         if (source_rank == MPI_UNDEFINED)
         {
             if constexpr (BuildOptions::recv_resiliency)
@@ -97,13 +97,13 @@ int MPI_Sendrecv(const void* sendbuf,
                  MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     failure_mtx.lock_shared();
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
-        int source_rank = Multicomm::get_instance().translate_ranks(source, translated);
-        int dest_rank = Multicomm::get_instance().translate_ranks(dest, translated);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
+        int source_rank = translate_ranks(source, translated);
+        int dest_rank = translate_ranks(dest, translated);
         if (source_rank == MPI_UNDEFINED)
         {
             if constexpr (BuildOptions::recv_resiliency && BuildOptions::send_resiliency)
@@ -135,10 +135,10 @@ int any_recv(void* buf,
              MPI_Status* status)
 {
     int rc;
-    bool flag = Multicomm::get_instance().part_of(comm);
+    bool flag = Context::get().m_comm.part_of(comm);
     if (flag)
     {
-        ComplexComm& translated = Multicomm::get_instance().translate_into_complex(comm);
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         rc = PMPI_Recv(buf, count, datatype, source, tag, translated.get_comm(), status);
     }
     else
@@ -155,7 +155,7 @@ int any_recv(void* buf,
         }
         */
 
-        MPIX_Comm_failure_ack(Multicomm::get_instance().translate_into_complex(comm).get_comm());
+        MPIX_Comm_failure_ack(Context::get().m_comm.translate_into_complex(comm).get_comm());
     }
     return rc;
 }

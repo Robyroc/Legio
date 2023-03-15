@@ -1,9 +1,9 @@
 extern "C" {
 #include "legio.h"
 }
+#include "context.hpp"
 #include "intercomm_utils.hpp"
 #include "mpi.h"
-#include "multicomm.hpp"
 
 #include "mpi-ext.h"
 
@@ -36,6 +36,6 @@ int MPIX_Horizon_from_group(MPI_Group group)
     MPI_Comm horizon;
     int rc = PMPI_Comm_create_from_group(group, "Legio_horizon_construction", MPI_INFO_NULL,
                                          MPI_ERRORS_RETURN, &horizon);
-    Multicomm::get_instance().add_horizon_comm(horizon);
+    Context::get().s_manager.add_horizon_comm(horizon);
     return rc;
 }

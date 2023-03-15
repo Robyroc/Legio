@@ -1,7 +1,8 @@
 #include "supported_comm.hpp"
+#include "comm_manipulation.hpp"
 #include "complex_comm.hpp"
+#include "context.hpp"
 #include "mpi.h"
-#include "multicomm.hpp"
 // #include "respawn_multicomm.h"
 
 using namespace legio;
@@ -29,8 +30,7 @@ int RespawnedSupportedComm::rank()
     int size = RespawnedSupportedComm::size();
     MPI_Comm_rank(get_alias(), &rank);
 
-    return Multicomm::get_instance().translate_ranks(
-        rank, Multicomm::get_instance().translate_into_complex(alias));
+    return translate_ranks(rank, Context::get().m_comm.translate_into_complex(alias));
 }
 
 int SupportedComm::get_failed_ranks_before(int rank)

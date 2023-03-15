@@ -4,9 +4,9 @@
 #include <sstream>
 #include <thread>
 #include "complex_comm.hpp"
+#include "context.hpp"
 #include "log.hpp"
 #include "mpi.h"
-#include "multicomm.hpp"
 #include "restart_routines.hpp"
 #include "utils.hpp"
 extern "C" {
@@ -54,12 +54,12 @@ void legio::initialization(int* argc, char*** argv)
             rank = std::stoi(get_command_line_option(*argc, *argv, "--rank"));
             // printf("PARSED RANK: %d\n", rank);
             // cur_comms = new RespawnMulticomm(size, rank, failed);
-            Multicomm::get_instance().initialize(size, rank, failed);
+            Context::get().r_manager.initialize(size, rank, failed);
         }
         else
         {
             PMPI_Comm_size(MPI_COMM_WORLD, &size);
-            Multicomm::get_instance().initialize(size);
+            Context::get().r_manager.initialize(size);
         }
     }
     else
@@ -72,11 +72,11 @@ void legio::initialization(int* argc, char*** argv)
         PMPI_Comm_create_from_group(temp_group, "Legio_horizon_construction", MPI_INFO_NULL,
                                     MPI_ERRORS_RETURN, &temp);
         PMPI_Group_free(&temp_group);
-        Multicomm::get_instance().add_pending_session(temp_session);
-        Multicomm::get_instance().add_open_session();
+        Context::get().s_manager.add_pending_session(temp_session);
+        Context::get().s_manager.add_open_session();
         PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        Multicomm::get_instance().initialize(size);
-        Multicomm::get_instance().add_horizon_comm(temp);
+        Context::get().r_manager.initialize(size);
+        Context::get().s_manager.add_horizon_comm(temp);
     }
 
     if constexpr (BuildOptions::with_restart)
@@ -92,18 +92,18 @@ void legio::initialization(int* argc, char*** argv)
 
                 getline(ss, substr, ',');
                 legio::log(substr.c_str(), LogLevel::full);
-                Multicomm::get_instance().add_to_respawn_list(std::stoi(substr));
+                Context::get().r_manager.add_to_respawn_list(std::stoi(substr));
             }
         }
     }
 
-    Multicomm::get_instance().add_comm(MPI_COMM_SELF);
-    Multicomm::get_instance().add_comm(MPI_COMM_WORLD);
+    Context::get().m_comm.add_comm(MPI_COMM_SELF);
+    Context::get().m_comm.add_comm(MPI_COMM_WORLD);
 
     MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
     if constexpr (BuildOptions::with_restart)
     {
-        if (Multicomm::get_instance().is_respawned())
+        if (Context::get().r_manager.is_respawned())
         {
             char* rank = get_command_line_option(*argc, *argv, "--rank");
             restart(atoi(rank));
@@ -113,13 +113,13 @@ void legio::initialization(int* argc, char*** argv)
 
 void legio::finalization()
 {
-    Multicomm::get_instance().close_session();
+    Context::get().s_manager.close_session();
 }
 
 void legio::replace_comm(ComplexComm& cur_complex)
 {
     if constexpr (BuildOptions::with_restart)
-        if (!Multicomm::get_instance().get_respawn_list().empty())
+        if (!Context::get().r_manager.get_respawn_list().empty())
             return replace_and_repair_comm(cur_complex);
     MPI_Comm new_comm;
     int old_size, new_size, diff;
@@ -143,7 +143,7 @@ void legio::replace_and_repair_comm(ComplexComm& cur_complex)
     int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, current_rank;
     std::set<int> failed_ranks_set;
 
-    ComplexComm& world_complex = Multicomm::get_instance().translate_into_complex(MPI_COMM_WORLD);
+    ComplexComm& world_complex = Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
     MPIX_Comm_failure_ack(world_complex.get_comm());
     who_failed(world_complex.get_comm(), &failed, ranks);
 
@@ -208,6 +208,21 @@ void legio::agree_and_eventually_replace(int* rc, ComplexComm& cur_complex)
     if (*rc != MPI_SUCCESS)
         replace_comm(cur_complex);
 }
+
+int legio::translate_ranks(const int rank, ComplexComm& comm)
+{
+    if constexpr (BuildOptions::with_restart)
+        return Context::get().r_manager.translate_ranks(rank, comm);
+    else
+    {
+        MPI_Group tr_group;
+        int source = rank, dest_rank;
+        MPI_Comm_group(comm.get_comm(), &tr_group);
+        MPI_Group_translate_ranks(comm.get_group(), 1, &source, tr_group, &dest_rank);
+        return dest_rank;
+    }
+}
+
 /*
 void receiver()
 {
