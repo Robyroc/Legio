@@ -13,7 +13,7 @@ char t2[80] = "1 W Point Source Heating in Infinite Isotropic Scattering Medium"
 double mu_a = 2;               /* Absorption Coefficient in 1/cm !!non-zero!! */
 double mu_s = 20;              /* Reduced Scattering Coefficient in 1/cm */
 double microns_per_shell = 50; /* Thickness of spherical shells in microns */
-long i, shell, photons = 10000;
+long i, shell, photons = 1000000;
 double x, y, z, u, v, w, weight;
 double albedo, shells_per_mfp, xi1, xi2, t, heat[SHELL_MAX] = {0.0};
 
@@ -29,12 +29,14 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // This piece of code handles the restart, nothing more!!
-    if (rank == 0 && !is_respawned())
+    if ((rank == 0) && !is_respawned())
+        raise(SIGINT);
+
+    if(rank == 4 && !is_respawned())
         raise(SIGINT);
 
     long photons_per_node =
         (rank == size - 1 ? photons - (photons / size) * (size - 1) : photons / size);
-    printf("%d: START COMPUTATION\n", rank);
     for (i = 1; i <= photons_per_node; i++)
     {
         x = 0.0;
@@ -77,11 +79,12 @@ int main(int argc, char** argv)
             }
         }
     }
-    printf("  %d: START REDUCTION\n", rank);
     if (rank != 0)
     {
-        MPI_Reduce(heat, NULL, SHELL_MAX, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&photons_per_node, NULL, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+        double temp;
+        long temp2;
+        MPI_Reduce(heat, &temp, SHELL_MAX, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&photons_per_node, &temp2, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     }
     else
     {

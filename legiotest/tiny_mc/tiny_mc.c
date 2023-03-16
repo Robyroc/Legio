@@ -12,7 +12,7 @@ char t2[80] = "1 W Point Source Heating in Infinite Isotropic Scattering Medium"
 double mu_a = 2;               /* Absorption Coefficient in 1/cm !!non-zero!! */
 double mu_s = 20;              /* Reduced Scattering Coefficient in 1/cm */
 double microns_per_shell = 50; /* Thickness of spherical shells in microns */
-long i, shell, photons = 10000000;
+long i, shell, photons = 1000000;
 double x, y, z, u, v, w, weight;
 double albedo, shells_per_mfp, xi1, xi2, t, heat[SHELL_MAX] = {0.0};
 
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 4)
+    if (rank == 3)
         raise(SIGINT);
     long photons_per_node =
         (rank == size - 1 ? photons - (photons / size) * (size - 1) : photons / size);

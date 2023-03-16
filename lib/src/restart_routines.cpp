@@ -85,9 +85,9 @@ void legio::repair_failure()
     std::vector<int> current_to_respawn;
     for (auto failed_world_rank : failed_world_ranks)
     {
-        if (std::find(Context::get().r_manager.get_respawn_list().begin(),
-                      Context::get().r_manager.get_respawn_list().end(),
-                      failed_world_rank) == Context::get().r_manager.get_respawn_list().end())
+        auto respawn_list = Context::get().r_manager.get_respawn_list();
+        if (std::find(respawn_list.begin(), respawn_list.end(),
+                      failed_world_rank) == respawn_list.end())
         {
             Context::get().r_manager.set_failed_rank(failed_world_rank);
         }
