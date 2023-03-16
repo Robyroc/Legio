@@ -54,6 +54,7 @@ It is possible to configure the behaviour of the Legio library at configuration 
 | LOG_LEVEL            | 1-4                           | 2       | Specify the log level (1->None, 2->Errors, 3->Errors&info, 4->Full)                      |
 | SESSION_THREAD       | On/Off                        | Off     | Use a separate thread to handle the horizon communicator initialisation                  |
 | WITH_RESTART         | On/Off                        | On      | Include critical nodes restart functionalities                                           |
+| WITH_SESSION         | On/Off                        | On      | Include MPI_Session support (set to Off on MPI versions prior to 4.0)                    |
 | CUBE_ALGORITHM       | On/Off                        | Off     | Use the Hypercube LDA instead of the Tree-based one                                      |
 
 To change the default configuration of the Legio library, add options to the cmake command in the form `-D[Variable]=[Value]`.

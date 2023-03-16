@@ -49,11 +49,13 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/restart_manager.cpp"
     "${LIBRARY_SRC_PATH}/restart_routines.cpp"
     "${LIBRARY_SRC_PATH}/restart.cpp"
-    "${LIBRARY_SRC_PATH}/session_manager.cpp"
     "${LIBRARY_SRC_PATH}/session.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
 )
+if(${WITH_SESSION})
+set(LIBRARY_SOURCES ${LIBRARY_SOURCES} "${LIBRARY_SRC_PATH}/session_manager.cpp")
+endif()
 
 
 add_library(legio ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})

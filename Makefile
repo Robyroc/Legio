@@ -1,10 +1,10 @@
-ULFM_PREFIX ?= $(CURDIR)/./ulfm/build
+ULFM_PREFIX ?= $(CURDIR)/ulfm/install
 ULFM_FILE = $(ULFM_PREFIX)/bin/mpiexec
 CC = $(ULFM_PREFIX)/bin/mpicc
 
-.PHONY = run ulfm
+.PHONY = run find_ulfm
 
-ulfm: $(ULFM_FILE)
+find_ulfm: $(ULFM_FILE)
 	@echo $(CC)
 
 $(ULFM_FILE):
@@ -12,7 +12,8 @@ $(ULFM_FILE):
 	cd ulfm; \
 	./autogen.pl; \
 	mkdir build; \
-	./configure --with-ft --prefix=$(ULFM_PREFIX); \
+	cd build; \
+	../configure --with-ft --prefix=$(ULFM_PREFIX); \
 	make all; \
 	make install
 

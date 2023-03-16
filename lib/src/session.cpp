@@ -13,6 +13,7 @@
 extern std::shared_timed_mutex failure_mtx;
 using namespace legio;
 
+#if WITH_SESSION
 void check_group(MPI_Comm cur_comm, MPI_Group group, MPI_Group* clean)
 {
     if constexpr (BuildOptions::cube_algorithm)
@@ -114,3 +115,5 @@ int MPI_Session_finalize(MPI_Session* session)
     Context::get().s_manager.close_session();
     return rc;
 }
+
+#endif

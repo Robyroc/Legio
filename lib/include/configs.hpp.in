@@ -15,6 +15,7 @@
 #cmakedefine LOG_LEVEL @LOG_LEVEL@
 #cmakedefine01 SESSION_THREAD
 #cmakedefine01 WITH_RESTART
+#cmakedefine01 WITH_SESSION
 #cmakedefine01 CUBE_ALGORITHM
 
 namespace legio {

@@ -9,19 +9,31 @@
 #include "complex_comm.hpp"
 #include "config.hpp"
 #include "mpi.h"
+extern "C" {
+#include "restart.h"
+}
 
 using namespace legio;
 
 int Multicomm::add_comm(MPI_Comm added)
 {
-    // assert(initialized);
-    int id = c2f<MPI_Comm>(added);
-    MPI_Comm temp;
-    PMPI_Comm_dup(added, &temp);
-    MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
-    std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id));
-    auto res = comms.insert(adding);
-    return res.second;
+    if (is_respawned())
+    {
+        int id = c2f<MPI_Comm>(added);
+        MPI_Comm temp;
+        PMPI_Comm_dup(added, &temp);
+        MPI_Comm_set_errhandler(temp, MPI_ERRORS_RETURN);
+        std::pair<int, ComplexComm> adding(id, ComplexComm(temp, id));
+        auto res = comms.insert(adding);
+        return res.second;
+    }
+    else
+    {
+        int id = c2f<MPI_Comm>(added);
+        std::pair<int, ComplexComm> adding(id, ComplexComm(added, id));
+        auto res = comms.insert(adding);
+        return res.second;
+    }
 }
 
 ComplexComm& Multicomm::translate_into_complex(MPI_Comm input)

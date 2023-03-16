@@ -38,3 +38,5 @@ add_subdirectory(algo_test)
 if(WITH_SESSION_TESTS)
     add_subdirectory(session_test)
 endif()
+
+add_subdirectory(tiny_mc)

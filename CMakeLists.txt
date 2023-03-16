@@ -31,6 +31,7 @@ if(NOT DEFINED LOG_LEVEL)
 endif()
 option(SESSION_THREAD "Use background session thread" Off)
 option(WITH_RESTART "Include restart functionalities" On)
+option(WITH_SESSION "Include Session support" On)
 option(CUBE_ALGORITHM "Cube algorithm for group-collective operations" Off)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
@@ -40,7 +41,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(MPICC $ENV{MPICC})
 if("a${MPICC}" STREQUAL "a")
     execute_process(
-        COMMAND bash -c "cd .. && make ulfm"
+        COMMAND bash -c "cd .. && make find_ulfm"
         OUTPUT_VARIABLE outVar
     )
     set(MPICC ${outVar})
@@ -89,6 +90,7 @@ message ( STATUS "Build tests........................: ${WITH_TESTS} (CMake opti
 message ( STATUS "Build session tests................: ${WITH_SESSION_TESTS} (CMake option WITH_SESSION_TESTS)")
 message ( STATUS "Build examples.....................: ${WITH_EXAMPLES} (CMake option WITH_EXAMPLES)" )
 message ( STATUS "Enable restart functionalities.....: ${WITH_RESTART} (CMake option WITH_RESTART)" )
+message ( STATUS "Enable session support.............: ${WITH_SESSION} (CMake option WITH_SESSION)" )
 message ( STATUS "Broadcast resilient to root fail...: ${BROADCAST_RESILIENCY} (CMake option BROADCAST_RESILIENCY)" )
 message ( STATUS "Send resilient to target fail......: ${SEND_RESILIENCY} (CMake option SEND_RESILIENCY)" )
 message ( STATUS "Recv resilient to source fail......: ${RECV_RESILIENCY} (CMake option RECV_RESILIENCY)")

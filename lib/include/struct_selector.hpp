@@ -2,6 +2,7 @@
 #define STRUCT_SELECTOR_HPP
 
 #include <tuple>
+#include "config.hpp"
 #include "mpi.h"
 #include "structure_handler.hpp"
 
@@ -34,11 +35,13 @@ inline const int c2f<MPI_Comm>(const MPI_Comm comm)
     return MPI_Comm_c2f(const_cast<MPI_Comm>(comm));
 }
 
+#if WITH_SESSION
 template <>
 inline const int c2f<MPI_Session>(const MPI_Session session)
 {
     return MPI_Session_c2f(const_cast<MPI_Session>(session));
 }
+#endif
 
 typedef std::tuple<StructureHandler<MPI_Win, MPI_Comm>*,
                    StructureHandler<MPI_File, MPI_Comm>*,

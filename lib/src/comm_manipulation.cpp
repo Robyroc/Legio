@@ -64,6 +64,7 @@ void legio::initialization(int* argc, char*** argv)
     }
     else
     {
+#if WITH_SESSION
         MPI_Comm temp;
         MPI_Session temp_session;
         MPI_Group temp_group;
@@ -74,9 +75,9 @@ void legio::initialization(int* argc, char*** argv)
         PMPI_Group_free(&temp_group);
         Context::get().s_manager.add_pending_session(temp_session);
         Context::get().s_manager.add_open_session();
-        PMPI_Comm_size(MPI_COMM_WORLD, &size);
-        Context::get().r_manager.initialize(size);
+        Context::get().s_manager.initialize();
         Context::get().s_manager.add_horizon_comm(temp);
+#endif
     }
 
     if constexpr (BuildOptions::with_restart)
@@ -113,7 +114,9 @@ void legio::initialization(int* argc, char*** argv)
 
 void legio::finalization()
 {
+#if WITH_SESSION
     Context::get().s_manager.close_session();
+#endif
 }
 
 void legio::replace_comm(ComplexComm& cur_complex)

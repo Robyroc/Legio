@@ -31,6 +31,7 @@ int MPIX_Comm_agree_group(MPI_Comm comm, MPI_Group group, int* flag)
     return MPI_SUCCESS;
 }
 
+#if WITH_SESSION
 int MPIX_Horizon_from_group(MPI_Group group)
 {
     MPI_Comm horizon;
@@ -39,3 +40,4 @@ int MPIX_Horizon_from_group(MPI_Group group)
     Context::get().s_manager.add_horizon_comm(horizon);
     return rc;
 }
+#endif
