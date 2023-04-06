@@ -17,7 +17,7 @@ using namespace legio;
 
 int Multicomm::add_comm(MPI_Comm added)
 {
-    if (is_respawned())
+    if (!is_respawned())
     {
         int id = c2f<MPI_Comm>(added);
         MPI_Comm temp;
