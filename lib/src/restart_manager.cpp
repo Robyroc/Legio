@@ -36,23 +36,44 @@ int RestartManager::translate_ranks(int source_rank, ComplexComm& comm)
     auto res = supported_comms.find(comm.get_alias_id());
     if (res == supported_comms.end() && comm.get_alias() != MPI_COMM_WORLD)
     {
+#ifdef TRANSLATION_LOG
+        double start = MPI_Wtime();
+#endif
         MPI_Group tr_group;
         int source = source_rank, dest_rank;
         MPI_Comm_group(comm.get_comm(), &tr_group);
         MPI_Group_translate_ranks(comm.get_group(), 1, &source, tr_group, &dest_rank);
+#ifdef TRANSLATION_LOG
+        double end = MPI_Wtime();
+        printf("Traslation normal: %f\n", end-start);
+#endif
         return dest_rank;
     }
     else if (comm.get_alias() == MPI_COMM_WORLD)
     {
+#ifdef TRANSLATION_LOG
+        double start = MPI_Wtime();
+#endif
         for (int i = 0; i < source_rank; i++)
             if (ranks.at(i).failed)
                 failed_ranks++;
+#ifdef TRANSLATION_LOG
+        double end = MPI_Wtime();
+        printf("Traslation subsidia: %f\n", end-start);
+#endif
         return source_rank - failed_ranks;
     }
     else
     {
+#ifdef TRANSLATION_LOG
+        double start = MPI_Wtime();
+#endif
         SupportedComm respawned_comm = supported_comms_vector[res->second];
         failed_ranks = respawned_comm.get_failed_ranks_before(source_rank);
+#ifdef TRANSLATION_LOG
+        double end = MPI_Wtime();
+        printf("Traslation subsidia: %f\n", end-start);
+#endif
         return source_rank - failed_ranks;
     }
 }

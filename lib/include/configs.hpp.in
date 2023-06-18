@@ -18,6 +18,9 @@
 #cmakedefine01 WITH_SESSION
 #cmakedefine01 CUBE_ALGORITHM
 
+#define TRANSLATION_LOG
+#define RESTART_LOG
+
 namespace legio {
 
 enum class LogLevel { none = 1, errors_only = 2, errors_and_info = 3, full = 4 };

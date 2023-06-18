@@ -13,8 +13,6 @@ using namespace legio;
 
 int MPI_Barrier(MPI_Comm comm)
 {
-    int rank;
-    MPI_Comm_rank(comm, &rank);
     while (1)
     {
         int rc;

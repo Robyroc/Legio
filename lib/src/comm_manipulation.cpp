@@ -161,6 +161,9 @@ void legio::replace_and_repair_comm(ComplexComm& cur_complex)
         //     rank,
         //            size);
         // }
+#ifdef RESTART_LOG
+        double begin = MPI_Wtime();
+#endif
         for (i = 0; i < failed; i++)
         {
             failed_ranks_set.insert(ranks[i]);
@@ -193,6 +196,10 @@ void legio::replace_and_repair_comm(ComplexComm& cur_complex)
             free(statuses);
         }
 
+#ifdef RESTART_LOG
+        double end = MPI_Wtime();
+        printf("Propagation: %f\n", end-begin);
+#endif
         // PMPI_Group_size(not_failed_group, &not_failed_size);
         // PMPI_Comm_create_group(world_complex->get_comm(), not_failed_group, 1, &not_failed_comm);
         // PMPI_Comm_rank(not_failed_comm, &current_rank);

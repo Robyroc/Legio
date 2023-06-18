@@ -66,9 +66,16 @@ void legio::repair_failure()
         */
     }
 
+#ifdef RESTART_LOG
+    double begin = MPI_Wtime();
+#endif
     MPI_Comm tmp_intracomm, tmp_intercomm, tmp_world, new_world;
     // PMPI_Comm_size(world->get_comm(), &rank);
     PMPIX_Comm_shrink(world.get_comm(), &tmp_world);
+#ifdef RESTART_LOG
+    double end = MPI_Wtime();
+    printf("Shrink: %f\n", end-begin);
+#endif
     PMPI_Comm_size(tmp_world, &new_size);
 
     // Transform the failed processes to world alias ranks
@@ -101,6 +108,9 @@ void legio::repair_failure()
         }
     }
 
+#ifdef RESTART_LOG
+    begin = MPI_Wtime();
+#endif
     std::vector<int> all_failed_ranks;
     for (auto cur_rank : Context::get().r_manager.get_ranks())
     {
@@ -166,6 +176,11 @@ void legio::repair_failure()
         PMPI_Comm_spawn_multiple(current_to_respawn.size(), program_names.data(), argvs.data(),
                                  max_procs.data(), infos.data(), 0, tmp_world, &tmp_intercomm,
                                  NULL);
+#ifdef RESTART_LOG
+        end = MPI_Wtime();
+        printf("Respawn: %f\n", end-begin);
+        begin = MPI_Wtime();
+#endif
         PMPI_Intercomm_merge(tmp_intercomm, 1, &tmp_intracomm);
         PMPI_Comm_split(tmp_intracomm, 1, rank, &new_world);
         /*
@@ -183,10 +198,17 @@ void legio::repair_failure()
     }
     MPI_Comm_set_errhandler(new_world, MPI_ERRORS_RETURN);
     Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD).replace_comm(new_world);
+#ifdef RESTART_LOG
+    end = MPI_Wtime();
+    printf("World_fix: %f\n", end-begin);
+#endif
 
     MPI_Group group_world;
     PMPI_Comm_group(new_world, &group_world);
     ComplexComm& complex = Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
+#ifdef RESTART_LOG
+    begin = MPI_Wtime();
+#endif
 
     // Regenerate the supported comms
     for (auto entry : Context::get().r_manager.supported_comms_vector)
@@ -219,6 +241,10 @@ void legio::repair_failure()
         Context::get().m_comm.translate_into_complex(alias_comm).replace_comm(new_comm);
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
     }
+#ifdef RESTART_LOG
+    end = MPI_Wtime();
+    printf("Comm_reconstruct: %f\n", end-begin);
+#endif
 
     /*
     if (VERBOSE)
