@@ -29,15 +29,16 @@ using namespace legio;
 void legio::initialization(int* argc, char*** argv)
 {
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+    MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
     int size, rank;
     std::vector<int> failed;
 
     if constexpr (BuildOptions::with_restart)
     {
-        if (command_line_option_exists(*argc, *argv, "--respawned"))
+        if (command_line_option_exists(argc, argv, "--respawned"))
         {
-            size = std::stoi(get_command_line_option(*argc, *argv, "--size"));
-            char* possibly_null_failed = get_command_line_option(*argc, *argv, "--failed-ranks");
+            size = std::stoi(get_command_line_option(argc, argv, "--size"));
+            char* possibly_null_failed = get_command_line_option(argc, argv, "--failed-ranks");
             if (possibly_null_failed != 0)
             {
                 std::string raw_failed = possibly_null_failed;
@@ -51,7 +52,7 @@ void legio::initialization(int* argc, char*** argv)
                 }
             }
 
-            rank = std::stoi(get_command_line_option(*argc, *argv, "--rank"));
+            rank = std::stoi(get_command_line_option(argc, argv, "--rank"));
             // printf("PARSED RANK: %d\n", rank);
             // cur_comms = new RespawnMulticomm(size, rank, failed);
             Context::get().r_manager.initialize(size, rank, failed);
@@ -60,6 +61,21 @@ void legio::initialization(int* argc, char*** argv)
         {
             PMPI_Comm_size(MPI_COMM_WORLD, &size);
             Context::get().r_manager.initialize(size);
+        }
+
+        char* possibly_null_to_respawn = get_command_line_option(argc, argv, "--to-respawn");
+        if (possibly_null_to_respawn != 0)
+        {
+            std::string raw_to_respawn = possibly_null_to_respawn;
+            std::stringstream ss(raw_to_respawn);
+            while (ss.good())
+            {
+                std::string substr;
+
+                getline(ss, substr, ',');
+                legio::log(substr.c_str(), LogLevel::full);
+                Context::get().r_manager.add_to_respawn_list(std::stoi(substr));
+            }
         }
     }
     else
@@ -80,34 +96,15 @@ void legio::initialization(int* argc, char*** argv)
 #endif
     }
 
-    if constexpr (BuildOptions::with_restart)
-    {
-        char* possibly_null_to_respawn = get_command_line_option(*argc, *argv, "--to-respawn");
-        if (possibly_null_to_respawn != 0)
-        {
-            std::string raw_to_respawn = possibly_null_to_respawn;
-            std::stringstream ss(raw_to_respawn);
-            while (ss.good())
-            {
-                std::string substr;
-
-                getline(ss, substr, ',');
-                legio::log(substr.c_str(), LogLevel::full);
-                Context::get().r_manager.add_to_respawn_list(std::stoi(substr));
-            }
-        }
-    }
-
     Context::get().m_comm.add_comm(MPI_COMM_SELF);
     Context::get().m_comm.add_comm(MPI_COMM_WORLD);
 
-    MPI_Comm_set_errhandler(MPI_COMM_SELF, MPI_ERRORS_RETURN);
     if constexpr (BuildOptions::with_restart)
     {
         if (Context::get().r_manager.is_respawned())
         {
-            char* rank = get_command_line_option(*argc, *argv, "--rank");
-            restart(atoi(rank));
+            int rank = Context::get().r_manager.get_own_rank();
+            restart(rank);
         }
     }
 }
