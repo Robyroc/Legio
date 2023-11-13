@@ -25,9 +25,10 @@ std::mutex change_world_mtx;
 void legio::repair_failure()
 {
     // Failure repair procedure needed - for all ranks
-    int old_size, new_size, failed, ranks[LEGIO_MAX_FAILS], i, rank, original_world_size, flag;
+    int failed, ranks[LEGIO_MAX_FAILS], rank, original_world_size;
+
     MPI_Comm_size(MPI_COMM_WORLD, &original_world_size);
-    std::vector<int> failed_world_ranks;
+
     ComplexComm& world = Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
 
     // Ensure all failed ranks are acked
@@ -38,90 +39,45 @@ void legio::repair_failure()
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     if (failed == 0)
-    {
-        // We already repaired, let's exit!
-        /*
-        if (VERBOSE)
-        {
-            int rank, size;
-            MPI_Comm_size(MPI_COMM_WORLD, &size);
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            printf("Skipping to repair failure from rank %d / %d\n", rank, size);
-            fflush(stdout);
-        }
-        */
         return;
-    }
-    else
-    {
-        /*
-        if (VERBOSE)
-        {
-            int rank, size;
-            MPI_Comm_size(MPI_COMM_WORLD, &size);
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            printf("Found a number of process failed (%d) from rank %d / %d\n", failed, rank, size);
-            fflush(stdout);
-        }
-        */
-    }
 
     MPI_Comm tmp_intracomm, tmp_intercomm, tmp_world, new_world;
-    // PMPI_Comm_size(world->get_comm(), &rank);
+
     PMPIX_Comm_shrink(world.get_comm(), &tmp_world);
-    PMPI_Comm_size(tmp_world, &new_size);
 
     // Transform the failed processes to world alias ranks
+    std::vector<int> failed_world_ranks;
     std::vector<Rank> world_ranks = Context::get().r_manager.get_ranks();
-    for (i = 0; i < failed; i++)
-    {
+    for (int i = 0; i < failed; i++)
         failed_world_ranks.push_back(Context::get().r_manager.untranslate_world_rank(ranks[i]));
-        // printf("FAILED RANK: %d TRANSLATED %d\n", ranks[i],
-        // Context::get().r_manager.untranslate_world_rank(ranks[i]));
-        fflush(stdout);
-    }
 
     // Set the ranks as failed and gather to respawn
     std::vector<int> current_to_respawn;
+    auto respawn_list = Context::get().r_manager.get_respawn_list();
     for (auto failed_world_rank : failed_world_ranks)
-    {
-        auto respawn_list = Context::get().r_manager.get_respawn_list();
-        if (std::find(respawn_list.begin(), respawn_list.end(),
-                      failed_world_rank) == respawn_list.end())
-        {
+        if (std::find(respawn_list.begin(), respawn_list.end(), failed_world_rank) ==
+            respawn_list.end())
             Context::get().r_manager.set_failed_rank(failed_world_rank);
-        }
         else
-        {
             current_to_respawn.push_back(failed_world_rank);
-            /*
-            printf("I should respawn the following rank: %d\n", failed_world_rank);
-            fflush(stdout);
-            */
-        }
-    }
 
+    // Create a list of failed ranks to pass as parameter
     std::vector<int> all_failed_ranks;
     for (auto cur_rank : Context::get().r_manager.get_ranks())
-    {
         if (cur_rank.failed)
-        {
             all_failed_ranks.push_back(cur_rank.number);
-        }
-    }
 
     // Re-generate all MPI_Comm_world for all the restarted processes
     std::vector<char*> program_names;
     std::vector<char**> argvs;
     std::vector<int> max_procs;
     std::vector<MPI_Info> infos;
+    char** newargv = (char**)malloc(sizeof(char*) * 10);
+    for (int i = 0; i < 10; i++)
+        newargv[i] = (char*)malloc(sizeof(char) * 30);
+
     for (auto to_respawn : current_to_respawn)
     {
-        char** newargv = (char**)malloc(sizeof(char*) * 10);
-        for (i = 0; i < 10; i++)
-        {
-            newargv[i] = (char*)malloc(sizeof(char) * 30);
-        }
         sprintf(newargv[0], "--respawned");
         sprintf(newargv[1], "--rank");
         sprintf(newargv[2], "%d", to_respawn);
@@ -161,6 +117,10 @@ void legio::repair_failure()
         infos.push_back(MPI_INFO_NULL);
     }
 
+    for (int i = 0; i < 10; i++)
+        free(newargv[i]);
+    free(newargv);
+
     if (current_to_respawn.size() != 0)
     {
         PMPI_Comm_spawn_multiple(current_to_respawn.size(), program_names.data(), argvs.data(),
@@ -168,21 +128,14 @@ void legio::repair_failure()
                                  NULL);
         PMPI_Intercomm_merge(tmp_intercomm, 1, &tmp_intracomm);
         PMPI_Comm_split(tmp_intracomm, 1, rank, &new_world);
-        /*
-        printf("Completed respawn of process from rank %d\n", rank);
-        fflush(stdout);
-        */
     }
     else
-    {
-        /*
-        printf("NO RANK TO RESPAWN from process %d!\n", rank);
-        fflush(stdout);
-        */
         new_world = tmp_world;
-    }
+
     MPI_Comm_set_errhandler(new_world, MPI_ERRORS_RETURN);
+    change_world_mtx.lock();
     Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD).replace_comm(new_world);
+    change_world_mtx.unlock();
 
     MPI_Group group_world;
     PMPI_Comm_group(new_world, &group_world);
@@ -191,19 +144,15 @@ void legio::repair_failure()
     // Regenerate the supported comms
     for (auto entry : Context::get().r_manager.supported_comms_vector)
     {
-        /*
-        printf("Rank %d is regenerating the supported comm\n", rank);
-        */
         auto world_ranks = entry.get_current_world_ranks();
         // Get the group of current world ranks
         std::vector<int> ranks_in_comm, ranks_in_comm_translated;
         MPI_Group new_group;
         MPI_Comm new_comm, alias_comm = entry.alias;
+
         for (auto rank : world_ranks)
-        {
             if (!rank.failed)
                 ranks_in_comm.push_back(rank.number);
-        }
 
         // Translate the ranks according to current world
         for (auto rank : ranks_in_comm)
@@ -216,20 +165,9 @@ void legio::repair_failure()
                        ranks_in_comm_translated.data(), &new_group);
 
         PMPI_Comm_create(new_world, new_group, &new_comm);
-        Context::get().m_comm.translate_into_complex(alias_comm).replace_comm(new_comm);
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
+        Context::get().m_comm.translate_into_complex(alias_comm).replace_comm(new_comm);
     }
-
-    /*
-    if (VERBOSE)
-    {
-        int rank, size;
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("Rank %d / %d: completed respawning process for current failure.\n", rank, size);
-        fflush(stdout);
-    }
-    */
 }
 
 void legio::loop_repair_failures()
@@ -243,7 +181,7 @@ void legio::loop_repair_failures()
         MPI_Status status;
         MPI_Comm world_comm;
         change_world_mtx.lock();
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
         ComplexComm& world = Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD);
         world_comm = world.get_comm();
         MPI_Comm_set_errhandler(world_comm, MPI_ERRORS_RETURN);
@@ -253,25 +191,16 @@ void legio::loop_repair_failures()
             return;
         }
         // printf("Probing from rank %d\n", rank);
-        int flag = 0, flag_self = 0, buf;
+        int flag = 0, buf;
         int local_rank;
         PMPI_Iprobe(MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &flag, MPI_STATUS_IGNORE);
         if (flag)
         {
-            // failure_mtx.lock();
             int rank, size;
             MPI_Comm_size(MPI_COMM_WORLD, &size);
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             printf("\n\n\n%d FOUND SOMETHING TO REPAIR THROUGH THREAD!\n", rank);
             PMPI_Recv(&buf, 1, MPI_INT, MPI_ANY_SOURCE, LEGIO_FAILURE_TAG, world_comm, &status);
-            /*
-            if (VERBOSE)
-            {
-                printf("Rank %d / %d: received failure notification from %d.\n", rank, size,
-                       status.MPI_SOURCE);
-                fflush(stdout);
-            }
-            */
             change_world_mtx.unlock();
             failure_mtx.lock();
             repair_failure();
@@ -296,12 +225,4 @@ void legio::restart(int rank)
     MPI_Comm_set_errhandler(new_world, MPI_ERRORS_RETURN);
     // Reassign world with the merged comm
     Context::get().m_comm.translate_into_complex(MPI_COMM_WORLD).replace_comm(new_world);
-
-    /*
-    if (VERBOSE)
-    {
-        printf("Rank %d respawn complete.\n", rank);
-        fflush(stdout);
-    }
-    */
 }

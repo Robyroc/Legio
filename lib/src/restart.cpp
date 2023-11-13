@@ -136,3 +136,13 @@ int is_respawned()
 {
     return Context::get().r_manager.is_respawned();
 }
+
+void add_critical(int rank)
+{
+    if constexpr (!BuildOptions::with_restart)
+    {
+        assert(false && "Unsupported (recompile with restart)");
+    }
+    else
+        Context::get().r_manager.add_to_respawn_list(rank);
+}

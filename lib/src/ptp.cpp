@@ -126,6 +126,46 @@ int MPI_Sendrecv(const void* sendbuf,
     return rc;
 }
 
+int MPI_Sendrecv_replace(void* sendbuf,
+                         int count,
+                         MPI_Datatype datatype,
+                         int dest,
+                         int sendtag,
+                         int source,
+                         int recvtag,
+                         MPI_Comm comm,
+                         MPI_Status* status)
+{
+    int rc;
+    bool flag = Context::get().m_comm.part_of(comm);
+    failure_mtx.lock_shared();
+    if (flag)
+    {
+        ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
+        int source_rank = translate_ranks(source, translated);
+        int dest_rank = translate_ranks(dest, translated);
+        if (source_rank == MPI_UNDEFINED)
+        {
+            if constexpr (BuildOptions::recv_resiliency && BuildOptions::send_resiliency)
+                rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Sendrecv_replace failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
+        }
+        else
+            rc = PMPI_Sendrecv_replace(sendbuf, count, datatype, dest_rank, sendtag, source_rank,
+                                       recvtag, translated.get_comm(), status);
+    }
+    else
+        rc = PMPI_Sendrecv_replace(sendbuf, count, datatype, dest, sendtag, source, recvtag, comm,
+                                   status);
+    failure_mtx.unlock_shared();
+    legio::report_execution(rc, comm, "Sendrecv");
+    return rc;
+}
+
 int any_recv(void* buf,
              int count,
              MPI_Datatype datatype,

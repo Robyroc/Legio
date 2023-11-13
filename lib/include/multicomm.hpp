@@ -63,6 +63,7 @@ class Multicomm
         }
         else
             assert(false && "STRUCTURE NOT MAPPED\n");
+        exit(0);
     }
 
     template <class MPI_T>

@@ -55,8 +55,13 @@ class RestartManager
 
     inline const bool is_respawned() const
     {
-        assert(initialized);
-        return respawned;
+        if constexpr (BuildOptions::with_restart)
+        {
+            assert(initialized);
+            return respawned;
+        }
+        else
+            return false;
     }
 
     inline void add_to_supported_comms(std::pair<int, int> addee)

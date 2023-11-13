@@ -5,13 +5,14 @@ char t2[80] = "1 W Point Source Heating in Infinite Isotropic Scattering Medium"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include "mpi.h"
-#define SHELL_MAX 101
+#define SHELL_MAX 33
 
-double mu_a = 2;               /* Absorption Coefficient in 1/cm !!non-zero!! */
-double mu_s = 20;              /* Reduced Scattering Coefficient in 1/cm */
-double microns_per_shell = 50; /* Thickness of spherical shells in microns */
+double mu_a = 2;                /* Absorption Coefficient in 1/cm !!non-zero!! */
+double mu_s = 20;               /* Reduced Scattering Coefficient in 1/cm */
+double microns_per_shell = 100; /* Thickness of spherical shells in microns */
 long i, shell, photons = 1000000;
 double x, y, z, u, v, w, weight;
 double albedo, shells_per_mfp, xi1, xi2, t, heat[SHELL_MAX] = {0.0};
@@ -19,15 +20,48 @@ double albedo, shells_per_mfp, xi1, xi2, t, heat[SHELL_MAX] = {0.0};
 int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
-    // srand(time(NULL));
+    srand(time(NULL));
     albedo = mu_s / (mu_s + mu_a);
     shells_per_mfp = 1e4 / microns_per_shell / (mu_a + mu_s);
 
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 3)
+    int fail_size;
+    if (argc < 3)
+        fail_size = 0;
+    else
+        fail_size = atoi(argv[2]);
+    if (fail_size > size - 2)
+        fail_size = size - 2;
+    int have_to_fail;
+    if (rank == 0)
+    {
+        srand(time(NULL));
+        int* fails = malloc(sizeof(int) * size);
+        memset(fails, 0, sizeof(int) * size);
+        int fail_count = 0;
+        while (fail_count < fail_size)
+        {
+            int to_fail = (rand() % (size - 1)) + 1;
+            if (!fails[to_fail])
+            {
+                fails[to_fail] = 1;
+                fail_count++;
+            }
+        }
+        MPI_Scatter(fails, 1, MPI_INT, &have_to_fail, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        free(fails);
+    }
+    else
+        MPI_Scatter(NULL, 0, MPI_INT, &have_to_fail, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    // printf("I'm %d, have_to_fail: %d\n", rank, have_to_fail);
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (have_to_fail)
+    {
+        printf("Rank %d, suiciding\n", rank);
         raise(SIGINT);
+    }
     long photons_per_node =
         (rank == size - 1 ? photons - (photons / size) * (size - 1) : photons / size);
 
@@ -91,13 +125,13 @@ int main(int argc, char** argv)
             printf("%6.0f    %12.5f\n", i * microns_per_shell,
                    heat[i] / t / (i * i + i + 1.0 / 3.0));
             if (fp != NULL)
-                fprintf(fp, "%6.0f,%12.5f\n", i * microns_per_shell,
+                fprintf(fp, "%.0f,%.5f\n", i * microns_per_shell,
                         heat[i] / t / (i * i + i + 1.0 / 3.0));
         }
         printf(" extra    %12.5f\n", heat[SHELL_MAX - 1] / photons);
         if (fp != NULL)
         {
-            fprintf(fp, "extra,%12.5f\n", heat[SHELL_MAX - 1] / photons);
+            fprintf(fp, "extra,%.5f\n", heat[SHELL_MAX - 1] / photons);
             fclose(fp);
         }
     }

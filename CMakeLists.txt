@@ -41,7 +41,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(MPICC $ENV{MPICC})
 if("a${MPICC}" STREQUAL "a")
     execute_process(
-        COMMAND bash -c "cd .. && make find_ulfm"
+        COMMAND bash -c "cd .. && make ulfm"
         OUTPUT_VARIABLE outVar
     )
     set(MPICC ${outVar})

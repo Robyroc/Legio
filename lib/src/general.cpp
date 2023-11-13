@@ -57,13 +57,16 @@ int MPI_Comm_rank(MPI_Comm comm, int* rank)
             return PMPI_Comm_rank(comm, rank);
         else
         {
+            if (comm == MPI_COMM_WORLD)
+            {
+                *rank = Context::get().r_manager.get_own_rank();
+                return MPI_SUCCESS;
+            }
             // RespawnMulticomm* respawned_comms = dynamic_cast<RespawnMulticomm*>(cur_comms);
             auto supported_comms = Context::get().r_manager.access_supported_comms_respawned();
             auto found_comm = supported_comms.find(c2f<MPI_Comm>(comm));
 
-            if (comm == MPI_COMM_WORLD)
-                *rank = Context::get().r_manager.get_own_rank();
-            else if (found_comm == supported_comms.end())
+            if (found_comm == supported_comms.end())
                 return PMPI_Comm_rank(comm, rank);
             else
                 *rank = found_comm->second.rank();
