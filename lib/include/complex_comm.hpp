@@ -3,7 +3,9 @@
 
 #include <functional>
 #include <list>
+#include <optional>
 #include <unordered_map>
+#include "cart_topology.hpp"
 #include "mpi.h"
 #include "struct_selector.hpp"
 #include "structure_handler.hpp"
@@ -57,6 +59,8 @@ class ComplexComm
     MPI_Group get_group();
     MPI_Comm get_alias();
     int get_alias_id() { return alias_id; }
+    std::optional<Cartesian>& get_topology() { return topo; }
+    void set_topology(Cartesian t) { topo = t; }
 
    private:
     handlers struct_handlers;
@@ -68,6 +72,7 @@ class ComplexComm
     {
         return std::get<handle_selector<MPI_T>::get()>(struct_handlers);
     }
+    std::optional<Cartesian> topo;
 };
 
 }  // namespace legio

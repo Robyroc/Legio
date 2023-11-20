@@ -9,6 +9,7 @@ configure_file(
 set(LIBRARY_HDR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBRARY_HEADERS
     "${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp"
+    "${LIBRARY_HDR_PATH}/cart_topology.hpp"
     "${LIBRARY_HDR_PATH}/comm_manipulation.hpp"
     "${LIBRARY_HDR_PATH}/complex_comm.hpp"
     "${LIBRARY_HDR_PATH}/context.hpp"
@@ -34,6 +35,7 @@ set(LIBRARY_INTERFACE
 set(LIBRARY_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/async.cpp"
+    "${LIBRARY_SRC_PATH}/cart_topology.cpp"
     "${LIBRARY_SRC_PATH}/coll.cpp"
     "${LIBRARY_SRC_PATH}/comm_manipulation.cpp"
     "${LIBRARY_SRC_PATH}/complex_comm.cpp"
@@ -51,6 +53,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/restart.cpp"
     "${LIBRARY_SRC_PATH}/session.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
+    "${LIBRARY_SRC_PATH}/topo.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
 )
 if(${WITH_SESSION})
@@ -68,7 +71,7 @@ target_include_directories(legio PUBLIC
 )
 
 target_compile_features(legio PUBLIC cxx_std_17)
-set_target_properties(legio PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(legio PROPERTIES CXX_EXTENSIONS ON)
 set_target_properties(legio PROPERTIES PUBLIC_HEADER "${LIBRARY_INTERFACE}")
 
 linkMPI(legio)

@@ -33,6 +33,7 @@ option(SESSION_THREAD "Use background session thread" Off)
 option(WITH_RESTART "Include restart functionalities" Off)
 option(WITH_SESSION "Include Session support" On)
 option(CUBE_ALGORITHM "Cube algorithm for group-collective operations" Off)
+option(CARTESIAN_BRIDGE "Cartesian topology shift bridges over failed processes" Off)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
@@ -102,6 +103,7 @@ message ( STATUS "Scatter resilient to root fail.....: ${SCATTER_RESILIENCY} (CM
 message ( STATUS "Gather rank shift on fail..........: ${GATHER_SHIFT} (CMake option GATHER_SHIFT)")
 message ( STATUS "Scatter rank shift on fail.........: ${SCATTER_SHIFT} (CMake option SCATTER_SHIFT)")
 message ( STATUS "Usage of hypercube algorithm.......: ${CUBE_ALGORITHM} (CMake option CUBE_ALGORITHM)")
+message ( STATUS "Cartesian shift bridging fails ....: ${CARTESIAN_BRIDGE} (CMake option CARTESIAN_BRIDGE)")
 message ( STATUS "Number of tries for send...........: ${NUM_RETRY} (CMake set NUM_RETRY)")
 message ( STATUS "Session thread.....................: ${SESSION_THREAD} (CMake set SESSION_THREAD)")
 message ( STATUS "Log level (4 max, 1 none)..........: ${LOG_LEVEL} (CMake set LOG_LEVEL)")

@@ -7,5 +7,7 @@ add_executable(algo_test
                 algo.cpp)
 
 target_include_directories(algo_test PUBLIC ${LEGIO_HDR_FOLDER} "${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib/include")
+target_compile_features(algo_test PUBLIC cxx_std_17)
+set_target_properties(algo_test PROPERTIES CXX_EXTENSIONS ON)
 
 linkMPI(algo_test)

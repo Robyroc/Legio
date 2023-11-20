@@ -17,6 +17,7 @@
 #cmakedefine01 WITH_RESTART
 #cmakedefine01 WITH_SESSION
 #cmakedefine01 CUBE_ALGORITHM
+#cmakedefine01 CARTESIAN_BRIDGE
 
 namespace legio {
 
@@ -40,6 +41,7 @@ struct BuildOptions
     constexpr static bool session_thread = static_cast<bool>(SESSION_THREAD);
     constexpr static bool with_restart = static_cast<bool>(WITH_RESTART);
     constexpr static bool cube_algorithm = static_cast<bool>(CUBE_ALGORITHM);
+    constexpr static bool cartesian_bridge = static_cast<bool>(CARTESIAN_BRIDGE);
 };
 
 }  // namespace legio
