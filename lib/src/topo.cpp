@@ -57,7 +57,7 @@ int MPI_Cart_create(MPI_Comm old_comm,
                     bool result = Context::get().m_comm.add_comm(*comm_cart);
                     if (result)
                     {
-                        ComplexComm new_complex =
+                        ComplexComm& new_complex =
                             Context::get().m_comm.translate_into_complex(*comm_cart);
                         new_complex.set_topology(Cartesian(rank, ndims, dims, periods));
                         return rc;
@@ -253,7 +253,7 @@ int MPI_Cart_sub(MPI_Comm comm, const int remain_dims[], MPI_Comm* new_comm)
                 bool result = Context::get().m_comm.add_comm(*new_comm);
                 if (result)
                 {
-                    ComplexComm new_complex =
+                    ComplexComm& new_complex =
                         Context::get().m_comm.translate_into_complex(*new_comm);
                     new_complex.set_topology(Cartesian(rank, temp_dim, temp_periods));
                     return rc;

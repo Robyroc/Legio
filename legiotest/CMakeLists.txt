@@ -40,3 +40,5 @@ if(WITH_SESSION_TESTS)
 endif()
 
 add_subdirectory(tiny_mc)
+
+add_subdirectory(cart)

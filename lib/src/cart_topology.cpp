@@ -8,11 +8,11 @@ using namespace legio;
 Coordinate from_rank_to_coord(const int rank, const Dimensions dims)
 {
     int temp_rank = rank;
-    std::vector<int> output;
-    for (auto dim : dims)
+    std::vector<int> output(dims.size(), 0);
+    for (int i = dims.size() - 1; i >= 0; i--)
     {
-        output.push_back(temp_rank % dim);
-        temp_rank /= dim;
+        output[i] = temp_rank % dims[i];
+        temp_rank /= dims[i];
     }
     return output;
 }
@@ -21,7 +21,7 @@ const int from_coord_to_rank(const Coordinate coord, const Dimensions dims)
 {
     int temp_rank = 0;
     int mult_factor = 1;
-    for (int i = 0; i < dims.size(); i++)
+    for (int i = dims.size() - 1; i >= 0; i--)
     {
         if (coord[i] < 0)
             return MPI_PROC_NULL;
