@@ -11,6 +11,9 @@
 #include "log.hpp"
 #include "mpi-ext.h"
 #include "restart_routines.hpp"
+extern "C" {
+#include "legio.h"
+}
 
 extern std::shared_timed_mutex failure_mtx;
 using namespace legio;
@@ -187,16 +190,53 @@ int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int* rank_source, int
             return MPI_ERR_TOPOLOGY;
         else
         {
+            std::pair<Coordinate, Coordinate> result = topo.value().cart_shift(direction, disp);
+            *rank_source = topo.value().get_rank(result.first);
+            *rank_dest = topo.value().get_rank(result.second);
             if constexpr (!BuildOptions::cartesian_bridge)
             {
-                std::pair<Coordinate, Coordinate> result = topo.value().cart_shift(direction, disp);
-                *rank_source = topo.value().get_rank(result.first);
-                *rank_dest = topo.value().get_rank(result.second);
                 return MPI_SUCCESS;
             }
             else
             {
-                // TODO fill me with bridge policy
+                int num_failed;
+                fault_number(comm, &num_failed);
+                if (num_failed == 0)
+                    return MPI_SUCCESS;
+                std::vector<int> failed_ranks(num_failed, 0);
+                who_failed(comm, &num_failed, failed_ranks.data());
+                int cur_disp = disp;
+                bool to_check = false;
+                do
+                {
+                    to_check = false;
+                    for (auto rank : failed_ranks)
+                    {
+                        if (rank == *rank_source)
+                        {
+                            cur_disp += disp;
+                            *rank_source = topo.value().get_rank(
+                                topo.value().cart_shift(direction, cur_disp).first);
+                            to_check = true;
+                        }
+                    }
+                } while (to_check);
+
+                cur_disp = disp;
+                do
+                {
+                    to_check = false;
+                    for (auto rank : failed_ranks)
+                    {
+                        if (rank == *rank_dest)
+                        {
+                            cur_disp += disp;
+                            *rank_dest = topo.value().get_rank(
+                                topo.value().cart_shift(direction, cur_disp).second);
+                            to_check = true;
+                        }
+                    }
+                } while (to_check);
                 return MPI_SUCCESS;
             }
         }

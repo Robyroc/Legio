@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "mpi.h"
 
-/* A two-dimensional torus of 12 processes in a 4x3 grid */
+/* A two-dimensional torus of 6 processes in a 2x3 grid */
 int main(int argc, char* argv[])
 {
     int rank, size;
