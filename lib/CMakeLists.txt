@@ -63,6 +63,7 @@ endif()
 
 add_library(legio ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})
 add_library(legio::legio ALIAS legio)
+target_link_libraries(legio pthread)
 
 target_include_directories(legio PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

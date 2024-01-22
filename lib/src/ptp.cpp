@@ -144,10 +144,31 @@ int MPI_Sendrecv_replace(void* sendbuf,
         ComplexComm& translated = Context::get().m_comm.translate_into_complex(comm);
         int source_rank = translate_ranks(source, translated);
         int dest_rank = translate_ranks(dest, translated);
-        if (source_rank == MPI_UNDEFINED)
+        if (source_rank == MPI_UNDEFINED && dest_rank == MPI_UNDEFINED)
         {
             if constexpr (BuildOptions::recv_resiliency && BuildOptions::send_resiliency)
                 rc = MPI_SUCCESS;
+            else
+            {
+                legio::log("##### Sendrecv_replace failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
+        }
+        if (source_rank == MPI_UNDEFINED)
+        {
+            if constexpr (BuildOptions::recv_resiliency)
+                rc = PMPI_Send(sendbuf, count, datatype, dest_rank, sendtag, translated.get_comm());
+            else
+            {
+                legio::log("##### Sendrecv_replace failed, stopping a node", LogLevel::errors_only);
+                raise(SIGINT);
+            }
+        }
+        else if (dest_rank == MPI_UNDEFINED)
+        {
+            if constexpr (BuildOptions::send_resiliency)
+                rc = PMPI_Recv(sendbuf, count, datatype, source_rank, recvtag,
+                               translated.get_comm(), status);
             else
             {
                 legio::log("##### Sendrecv_replace failed, stopping a node", LogLevel::errors_only);
