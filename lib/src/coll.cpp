@@ -376,3 +376,39 @@ int MPI_Scan(const void* sendbuf,
             return rc;
     }
 }
+
+
+// to be checked
+int MPI_Allgather(const void* sendbuf, int sendcount, MPI_Datatype sendtype,
+                       void* recvbuf, int recvcount, MPI_Datatype recvtype,
+                       MPI_Comm comm) {
+    int rc; 
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    // Allocate temporary buffer to gather data on each process
+    char* temp_recvbuf = new char[recvcount * size * sizeof(recvtype)];
+
+    // Gather data from each process to temporary buffer
+    // the root processor (0) gathers the data
+    rc = MPI_Gather(sendbuf, sendcount, sendtype, temp_recvbuf, recvcount, recvtype, 0, comm);
+
+    if (rc != MPI_SUCCESS){
+        delete[] temp_recvbuf;
+        // handle error
+    }
+    // Scatter gathered data from temporary buffer to all processes
+    rc = MPI_Scatter(temp_recvbuf, recvcount * sizeof(recvtype), MPI_CHAR,
+                recvbuf, recvcount, recvtype, 0, comm);
+
+    if (rc != MPI_SUCCESS){
+        delete[] temp_recvbuf;
+        // handle error
+    }
+
+    // Free temporary buffer
+    delete[] temp_recvbuf;
+    return rc;
+}
+

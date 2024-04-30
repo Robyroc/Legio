@@ -180,3 +180,22 @@ int MPI_Request_free(MPI_Request* request)
     Context::get().m_comm.remove_structure(request);
     return PMPI_Request_free(request);
 }
+
+
+// to be checked
+int MPI_Waitall(int count, MPI_Request *array_of_requests, MPI_Status *array_of_statuses) {
+    int rc;
+    MPI_Request *request_ptr = array_of_requests;
+    MPI_Status *status_ptr = array_of_statuses;
+    for (int i = 0; i < count; ++i) {
+        rc = MPI_Wait(request_ptr, status_ptr);
+        if (rc != MPI_SUCCESS) {
+            // Error handling
+            return rc;
+        }
+        ++request_ptr;
+        ++status_ptr;
+    }
+    return rc;
+}
+
