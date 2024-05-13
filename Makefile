@@ -1,4 +1,4 @@
-ULFM_PREFIX ?= $(CURDIR)/ompi/install
+ULFM_PREFIX ?= /usr/local/
 ULFM_FILE = $(ULFM_PREFIX)/bin/mpiexec
 CC = $(ULFM_PREFIX)/bin/mpicc
 
