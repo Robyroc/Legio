@@ -185,17 +185,17 @@ int MPI_Request_free(MPI_Request* request)
 // to be checked
 int MPI_Waitall(int count, MPI_Request *array_of_requests, MPI_Status *array_of_statuses) {
     int rc;
+    int error_flag = 0;
     MPI_Request *request_ptr = array_of_requests;
     MPI_Status *status_ptr = array_of_statuses;
     for (int i = 0; i < count; ++i) {
         rc = MPI_Wait(request_ptr, status_ptr);
         if (rc != MPI_SUCCESS) {
-            // Error handling
-            return rc;
+            error_flag++;    
         }
         ++request_ptr;
         ++status_ptr;
     }
-    return rc;
+    return error_flag;
 }
 
