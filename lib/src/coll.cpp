@@ -376,3 +376,25 @@ int MPI_Scan(const void* sendbuf,
             return rc;
     }
 }
+
+// to be checked
+int MPI_Allgather(const void* sendbuf, int sendcount, MPI_Datatype sendtype,
+                       void* recvbuf, int recvcount, MPI_Datatype recvtype,
+                       MPI_Comm comm) {
+
+    int rc;
+    int size;
+
+    MPI_Comm_size(comm, &size);
+
+    // Gather data from all processes to root process
+    rc = MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm);
+
+    // broadcast gathered data from root process to all processes
+    rc = MPI_Bcast(recvbuf, recvcount * size, recvtype, 0, comm);
+
+    return rc;
+}
+
+
+

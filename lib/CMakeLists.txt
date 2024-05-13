@@ -52,6 +52,7 @@ set(LIBRARY_SOURCES
     "${LIBRARY_SRC_PATH}/session.cpp"
     "${LIBRARY_SRC_PATH}/supported_comm.cpp"
     "${LIBRARY_SRC_PATH}/utils.cpp"
+    "${LIBRARY_SRC_PATH}/mpi_wrapper.cpp"
 )
 if(${WITH_SESSION})
 set(LIBRARY_SOURCES ${LIBRARY_SOURCES} "${LIBRARY_SRC_PATH}/session_manager.cpp")
