@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 
     send = rank;
     MPI_Barrier(MPI_COMM_WORLD);
-    if(rank == 4) raise(SIGINT);
+    if(rank == 2) raise(SIGINT);
     int source = (rank-1 < 0 ? size-1 : rank-1);
     int destination = (rank+1 == size ? 0 : rank+1);
     MPI_Request send_req, recv_req;

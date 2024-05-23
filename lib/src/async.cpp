@@ -94,8 +94,9 @@ int MPI_Irecv(void* buf,
         int source_rank = translate_ranks(source, translated);
         if (source_rank == MPI_UNDEFINED)
         {
-            if constexpr (BuildOptions::recv_resiliency)
+            if constexpr (BuildOptions::recv_resiliency){
                 rc = MPI_SUCCESS;
+            }
             else
             {
                 legio::log("##### Irecv failed, stopping a node", LogLevel::errors_only);
@@ -184,6 +185,7 @@ int MPI_Request_free(MPI_Request* request)
 
 // to be checked
 int MPI_Waitall(int count, MPI_Request *array_of_requests, MPI_Status *array_of_statuses) {
+    printf("call");
     int rc;
     int error_flag = 0;
     MPI_Request *request_ptr = array_of_requests;

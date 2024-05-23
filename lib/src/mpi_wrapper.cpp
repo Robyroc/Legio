@@ -53,6 +53,7 @@ extern "C" {
         // define them as c type inside the function and then convert back to fortran
         // after the mpi call
         // just like the my_mpi_Wait function
+        printf("WAIT ");
         MPI_Request *cmpi_requests = (MPI_Request *)malloc(count * sizeof(MPI_Request));
         MPI_Status *cmpi_statuses = (MPI_Status *)malloc(count * sizeof(MPI_Status));
         MPI_Status c_status;
@@ -65,7 +66,14 @@ extern "C" {
         }
         
         // Call MPI_Waitall
-        MPI_Waitall(count, cmpi_requests, cmpi_statuses);
+        int c = MPI_Waitall(count, cmpi_requests, cmpi_statuses);
+        printf("%d, ", c);
+
+        // convert c requests back to fortran
+        for (int i = 0; i < count; ++i) {
+            MPI_Status_c2f(&cmpi_statuses[i], &array_of_statuses[i]);
+            array_of_requests[i] = MPI_Request_c2f(cmpi_requests[i]);
+        }
         
         // Free allocated memory
         free(cmpi_requests);
@@ -76,22 +84,21 @@ extern "C" {
     // MPI_ISEND
     void my_MPI_Isend(void *buf, int count, MPI_Fint datatype, int *dest,
                     int tag, MPI_Fint comm, MPI_Fint *request, int *ierr){
-
         MPI_Comm c_comm = MPI_Comm_f2c(comm);
         MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
         MPI_Request c_request;
-        MPI_Isend(buf, count, c_datatype, *dest, tag, c_comm, &c_request);
+        *ierr = MPI_Isend(buf, count, c_datatype, *dest, tag, c_comm, &c_request);
         *request = MPI_Request_c2f(c_request);
+        
     }
 
     // MPI_IRECV
     void my_MPI_Irecv(void *buf, int count, MPI_Fint datatype, int *source, 
                     int tag, MPI_Fint comm, MPI_Fint *request, int *ierr){
-
         MPI_Comm c_comm = MPI_Comm_f2c(comm);
         MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
         MPI_Request c_request;
-        MPI_Irecv(buf, count, c_datatype, *source, tag, c_comm, &c_request);
+        *ierr = MPI_Irecv(buf, count, c_datatype, *source, tag, c_comm, &c_request);
         *request = MPI_Request_c2f(c_request);
     }
 
@@ -126,7 +133,7 @@ extern "C" {
         MPI_Datatype c_send_datatype = MPI_Type_f2c(sendtype);
         MPI_Datatype c_rec_datatype = MPI_Type_f2c(recvtype);
         
-        MPI_Allgather(sendbuf, sendcount, c_send_datatype, recvbuf, 
+        *ierr = MPI_Allgather(sendbuf, sendcount, c_send_datatype, recvbuf, 
                     recvcount, c_rec_datatype, c_comm);
         }
 
@@ -138,7 +145,7 @@ extern "C" {
         MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
         MPI_Op c_op = MPI_Op_f2c(op);
 
-        MPI_Reduce(sendbuf, recvbuf, count, c_datatype, c_op, root, c_comm);
+        *ierr = MPI_Reduce(sendbuf, recvbuf, count, c_datatype, c_op, root, c_comm);
     }
 
     // MPI_ALLREDUCE
@@ -150,7 +157,26 @@ extern "C" {
         MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
         MPI_Op c_op = MPI_Op_f2c(op);
 
-        MPI_Allreduce(sendbuf, recvbuf, count, c_datatype, c_op, c_comm);
+        * ierr = MPI_Allreduce(sendbuf, recvbuf, count, c_datatype, c_op, c_comm);
+    }
+
+
+    void my_MPI_Sendrecv(void* sendbuf, int sendcount, MPI_Fint sendtype,
+                        int *dest, int sendtag, void* recvbuf, int recvcount,
+                        MPI_Fint recvtype, int *source, int recvtag,
+                        MPI_Fint comm, MPI_Fint status){
+
+        MPI_Comm c_comm = MPI_Comm_f2c(comm);
+        MPI_Datatype c_sendtype = MPI_Type_f2c(sendtype);
+        MPI_Datatype c_recvtype = MPI_Type_f2c(recvtype);
+
+        MPI_Status c_status;
+        MPI_Status_f2c(&status, &c_status);
+
+        MPI_Sendrecv(sendbuf, sendcount, c_sendtype, *dest, sendtag,
+                        recvbuf, recvcount, c_recvtype, *source, recvtag,
+                        c_comm, &c_status);
+
     }
 
 }

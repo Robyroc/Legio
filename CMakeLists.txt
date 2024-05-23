@@ -27,7 +27,7 @@ option(SCATTER_SHIFT "Scatter rank movement upon failure" Off)
 
 #"Library log level: 1->None, 2->Errors, 3->Errors&Info, 4->Full" 
 if(NOT DEFINED LOG_LEVEL)
-    set(LOG_LEVEL 4)
+    set(LOG_LEVEL 2)
 endif()
 option(SESSION_THREAD "Use background session thread" Off)
 option(WITH_RESTART "Include restart functionalities" Off)
