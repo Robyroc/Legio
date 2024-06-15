@@ -6,6 +6,18 @@
 #include "context.hpp"
 
 extern "C" {
+#include <legio.h>
+
+    void fort_fault_number(MPI_Fint comm, int *size){
+        MPI_Comm c_comm = MPI_Comm_f2c(comm);
+        fault_number(c_comm, size);
+    }
+
+    void fort_who_failed(MPI_Fint comm, int* size, int* ranks){
+        MPI_Comm c_comm = MPI_Comm_f2c(comm);
+        who_failed(c_comm, size, ranks);
+    }
+
     void raise_sigint() {
         raise(SIGINT);
     }
@@ -53,7 +65,6 @@ extern "C" {
         // define them as c type inside the function and then convert back to fortran
         // after the mpi call
         // just like the my_mpi_Wait function
-        printf("WAIT ");
         MPI_Request *cmpi_requests = (MPI_Request *)malloc(count * sizeof(MPI_Request));
         MPI_Status *cmpi_statuses = (MPI_Status *)malloc(count * sizeof(MPI_Status));
         MPI_Status c_status;
@@ -66,8 +77,14 @@ extern "C" {
         }
         
         // Call MPI_Waitall
-        int c = MPI_Waitall(count, cmpi_requests, cmpi_statuses);
-        printf("%d, ", c);
+        // int message = 42;
+        // MPI_Request request;
+        // MPI_Status status;
+        // // Initiate a non-blocking send to itself
+        // MPI_Isend(&message, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
+        // cmpi_requests[0] = request;
+
+        *ierr = MPI_Waitall(count, cmpi_requests, cmpi_statuses);
 
         // convert c requests back to fortran
         for (int i = 0; i < count; ++i) {
@@ -89,7 +106,14 @@ extern "C" {
         MPI_Request c_request;
         *ierr = MPI_Isend(buf, count, c_datatype, *dest, tag, c_comm, &c_request);
         *request = MPI_Request_c2f(c_request);
-        
+    }
+
+    // MPI_SEND
+    void my_MPI_Send(void *buf, int count, MPI_Fint datatype, int *dest,
+                    int tag, MPI_Fint comm, int *ierr){
+        MPI_Comm c_comm = MPI_Comm_f2c(comm);
+        MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
+        *ierr = MPI_Send(buf, count, c_datatype, *dest, tag, c_comm);
     }
 
     // MPI_IRECV
@@ -102,12 +126,22 @@ extern "C" {
         *request = MPI_Request_c2f(c_request);
     }
 
+    // MPI_RECV
+    void my_MPI_Recv(void *buf, int count, MPI_Fint datatype, int *source, 
+                    int tag, MPI_Fint comm, MPI_Fint status, int *ierr){
+        MPI_Comm c_comm = MPI_Comm_f2c(comm);
+        MPI_Datatype c_datatype = MPI_Type_f2c(datatype);
+        MPI_Status c_status;
+        MPI_Status_f2c(&status, &c_status);
+        *ierr = MPI_Recv(buf, count, c_datatype, *source, tag, c_comm, &c_status);
+    }
+
     // MPI_WAIT
     void my_MPI_Wait(MPI_Fint request, MPI_Fint status, int *ierr){
         MPI_Request c_request = MPI_Request_f2c(request);
         MPI_Status c_status;
         MPI_Status_f2c(&status, &c_status);
-        MPI_Wait(&c_request, &c_status);
+        *ierr = MPI_Wait(&c_request, &c_status);
     }
 
     // MPI_GATHER

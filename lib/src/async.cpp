@@ -185,18 +185,13 @@ int MPI_Request_free(MPI_Request* request)
 
 // to be checked
 int MPI_Waitall(int count, MPI_Request *array_of_requests, MPI_Status *array_of_statuses) {
-    printf("call");
     int rc;
     int error_flag = 0;
-    MPI_Request *request_ptr = array_of_requests;
-    MPI_Status *status_ptr = array_of_statuses;
     for (int i = 0; i < count; ++i) {
-        rc = MPI_Wait(request_ptr, status_ptr);
+        rc = MPI_Wait(&array_of_requests[i], &array_of_statuses[i]);
         if (rc != MPI_SUCCESS) {
             error_flag++;    
         }
-        ++request_ptr;
-        ++status_ptr;
     }
     return error_flag;
 }
