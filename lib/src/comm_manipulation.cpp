@@ -131,6 +131,7 @@ void legio::replace_comm(ComplexComm& cur_complex)
         PMPI_Comm_free(&new_comm);
     else
     {
+        MPIX_Comm_failure_ack(cur_complex.get_alias());
         MPI_Comm_set_errhandler(new_comm, MPI_ERRORS_RETURN);
         cur_complex.replace_comm(new_comm);
     }
